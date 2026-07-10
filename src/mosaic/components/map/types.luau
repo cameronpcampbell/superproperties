@@ -1,3 +1,5 @@
+--!strict
+
 local Utils = script.Parent.Parent.Parent.utils
 local ThemeUtils = require(Utils.themeUtils)
 

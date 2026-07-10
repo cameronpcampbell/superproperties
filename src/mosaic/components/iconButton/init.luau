@@ -2,17 +2,22 @@
 --!nolint LocalShadow
 
 local Packages = script.Parent.Parent.Parent.packages
+
 local Fusion = require(Packages.fusion)
-
-local Utils = script.Parent.Parent.utils
-local TableUtils = require(Utils.tableUtils)
-local ThemeUtils = require(Utils.themeUtils)
-
 local Value, Peek, New, Children, OnEvent =
     Fusion.Value, Fusion.peek, Fusion.New, Fusion.Children, Fusion.OnEvent
-local TableExtract = TableUtils.Extract
+
+local Utils = script.Parent.Parent.utils
+
+local FusionUtils = require(Utils.fusionUtils)
+local Component = FusionUtils.Component
+
+local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope, CalcColorModifier =
     ThemeUtils.GetThemeForScope, ThemeUtils.CalcColorModifier
+
+local TableUtils = require(Utils.tableUtils)
+local TableExtract = TableUtils.Extract
 
 type IconButtonProps = {
     Rotation: Fusion.UsedAs<number>?,
@@ -20,7 +25,7 @@ type IconButtonProps = {
     [Fusion.SpecialKey]: any
 }
 
-local function IconButton(scope: Fusion.Scope, props: IconButtonProps)
+return Component<<IconButtonProps>>(function(scope, props)
     local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
 
     local props, rotation = TableExtract(props, "Rotation")
@@ -67,6 +72,4 @@ local function IconButton(scope: Fusion.Scope, props: IconButtonProps)
             }
         }
     }
-end
-
-return IconButton
+end)

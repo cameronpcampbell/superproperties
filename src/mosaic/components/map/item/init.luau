@@ -2,18 +2,19 @@
 --!nolint LocalShadow
 
 local Packages = script.Parent.Parent.Parent.Parent.packages
-local Fusion = require(Packages.fusion)
 local Typeforge = require(Packages.typeforge)
 
+local Fusion = require(Packages.fusion)
+local Peek, New, Children = Fusion.peek, Fusion.New, Fusion.Children
+
 local Utils = script.Parent.Parent.Parent.utils
+
 local ThemeUtils = require(Utils.themeUtils)
+local GetThemeForScope = ThemeUtils.GetThemeForScope
 
 local Types = require(script.Parent.types)
 local MapItemKey = require(script.key)
 local MapItemValue = require(script.value)
-
-local Peek, New, Children = Fusion.peek, Fusion.New, Fusion.Children
-local GetThemeForScope = ThemeUtils.GetThemeForScope
 
 type MapItemProps = Typeforge.Flatten<
     Types.BaseMapProps & {

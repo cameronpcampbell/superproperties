@@ -2,26 +2,28 @@
 --!nolint LocalShadow
 
 local Packages = script.Parent.Parent.Parent.packages
-local Fusion = require(Packages.fusion)
-
-local Utils = script.Parent.Parent.utils
-local FusionUtils = require(Utils.fusionUtils)
-local TableUtils = require(Utils.tableUtils)
-local ThemeUtils = require(Utils.themeUtils)
-
-local Components = script.Parent.Parent.components
-local FocusRing = require(Components.focusRing)
-
 local Supercorner = require(Packages.supercorner)
 
+local Fusion = require(Packages.fusion)
 local Peek, New, Children, Value, OnEvent =
     Fusion.peek, Fusion.New, Fusion.Children, Fusion.Value, Fusion.OnEvent
+
+local Utils = script.Parent.Parent.utils
+
+local FusionUtils = require(Utils.fusionUtils)
 local Component, CombineProps =
     FusionUtils.Component, FusionUtils.CombineProps
-local TableExtract = TableUtils.Extract
+
+local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope, GetNextVariant, CalcColorModifier =
     ThemeUtils.GetThemeForScope, ThemeUtils.GetNextVariant,
     ThemeUtils.CalcColorModifier
+
+local TableUtils = require(Utils.tableUtils)
+local TableExtract = TableUtils.Extract
+
+local Components = script.Parent.Parent.components
+local FocusRing = require(Components.focusRing)
 
 type InputProps = {
 	Variant: ThemeUtils.BgVariantLayer?,

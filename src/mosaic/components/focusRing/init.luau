@@ -2,19 +2,22 @@
 --!nolint LocalShadow
 
 local Packages = script.Parent.Parent.Parent.packages
-local Fusion = require(Packages.fusion)
-
-local Utils = script.Parent.Parent.utils
-local TableUtils = require(Utils.tableUtils)
-local ThemeUtils = require(Utils.themeUtils)
-local FusionUtils = require(Utils.fusionUtils)
-
 local Supercorner = require(Packages.supercorner)
 
+local Fusion = require(Packages.fusion)
 local Peek = Fusion.peek
-local TableExtract = TableUtils.Extract
-local CombineProps = FusionUtils.CombineProps
+
+local Utils = script.Parent.Parent.utils
+
+local FusionUtils = require(Utils.fusionUtils)
+local Component, CombineProps =
+    FusionUtils.Component, FusionUtils.CombineProps
+
+local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
+
+local TableUtils = require(Utils.tableUtils)
+local TableExtract = TableUtils.Extract
 
 type FocusRingProps = {
     CornerRadius: number?,
@@ -25,7 +28,7 @@ type FocusRingProps = {
 	IsFocus: Fusion.UsedAs<boolean>
 }
 
-local function IconButton(scope: Fusion.Scope, props: FocusRingProps)
+return Component<<FocusRingProps>>(function(scope, props)
     local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
 
     local props, cornerRadius = TableExtract(props, "CornerRadius")
@@ -83,6 +86,4 @@ local function IconButton(scope: Fusion.Scope, props: FocusRingProps)
         CornerSmoothing = 1,
         ZIndex = 0,
     }, props :: any))
-end
-
-return IconButton
+end)

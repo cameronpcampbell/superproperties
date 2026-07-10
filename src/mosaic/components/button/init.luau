@@ -2,25 +2,27 @@
 --!nolint LocalShadow
 
 local Packages = script.Parent.Parent.Parent.packages
+local Supercorner = require(Packages.supercorner)
+
 local Fusion = require(Packages.fusion)
+local New, Children, Value, Peek, OnEvent =
+    Fusion.New, Fusion.Children, Fusion.Value, Fusion.peek, Fusion.OnEvent
 
 local Utils = script.Parent.Parent.utils
-local FusionUtils = require(Utils.fusionUtils)
-local TableUtils = require(Utils.tableUtils)
-local ThemeUtils = require(Utils.themeUtils)
 
-local Supercorner = require(Packages.supercorner)
+local FusionUtils = require(Utils.fusionUtils)
+local Component, CombineProps, ChildrenTransform =
+    FusionUtils.Component, FusionUtils.CombineProps, FusionUtils.ChildrenTransform
+
+local ThemeUtils = require(Utils.themeUtils)
+local GetThemeForScope, CalcColorModifier =
+    ThemeUtils.GetThemeForScope, ThemeUtils.CalcColorModifier
+
+local TableUtils = require(Utils.tableUtils)
+local TableExtract = TableUtils.Extract
 
 local Components = script.Parent
 local Text = require(Components.text)
-
-local New, Children, Value, Peek, OnEvent =
-    Fusion.New, Fusion.Children, Fusion.Value, Fusion.peek, Fusion.OnEvent
-local Component, CombineProps, ChildrenTransform =
-    FusionUtils.Component, FusionUtils.CombineProps, FusionUtils.ChildrenTransform
-local TableExtract = TableUtils.Extract
-local GetThemeForScope, CalcColorModifier =
-    ThemeUtils.GetThemeForScope, ThemeUtils.CalcColorModifier
 
 type ButtonProps = {
 	Variant: ThemeUtils.AccentVariant?,

@@ -2,18 +2,21 @@
 --!nolint LocalShadow
 
 local Packages = script.Parent.Parent.Parent.packages
+
 local Fusion = require(Packages.fusion)
+local Peek, New = Fusion.peek, Fusion.New
 
 local Utils = script.Parent.Parent.utils
-local FusionUtils = require(Utils.fusionUtils)
-local TableUtils = require(Utils.tableUtils)
-local ThemeUtils = require(Utils.themeUtils)
 
-local Peek, New = Fusion.peek, Fusion.New
+local FusionUtils = require(Utils.fusionUtils)
 local Component, CombineProps =
     FusionUtils.Component, FusionUtils.CombineProps
-local TableExtract = TableUtils.Extract
+
+local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
+
+local TableUtils = require(Utils.tableUtils)
+local TableExtract = TableUtils.Extract
 
 type BackgroundProps = {
 	Variant: ThemeUtils.BgVariant?

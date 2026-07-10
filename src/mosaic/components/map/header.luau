@@ -2,24 +2,24 @@
 --!nolint LocalShadow
 
 local Packages = script.Parent.Parent.Parent.Parent.packages
-local Fusion = require(Packages.fusion)
+local Supercorner = require(Packages.supercorner)
 local Typeforge = require(Packages.typeforge)
 
-local Assets = require(script.Parent.Parent.Parent.assets)
+local Fusion = require(Packages.fusion)
+local Peek, New, Children, OnEvent =
+    Fusion.peek, Fusion.New, Fusion.Children, Fusion.OnEvent
 
 local Utils = script.Parent.Parent.Parent.utils
+
 local ThemeUtils = require(Utils.themeUtils)
+local GetThemeForScope = ThemeUtils.GetThemeForScope
 
 local Components = script.Parent.Parent
 local Text = require(Components.text)
 local IconButton = require(Components.iconButton)
 
-local Supercorner = require(Packages.supercorner)
-
+local Assets = require(script.Parent.Parent.Parent.assets)
 local Types = require(script.Parent.types)
-
-local Peek, New, Children, OnEvent = Fusion.peek, Fusion.New, Fusion.Children, Fusion.OnEvent
-local GetThemeForScope = ThemeUtils.GetThemeForScope
 
 type MapHeaderProps = Typeforge.Flatten<
     Types.BaseMapProps & {

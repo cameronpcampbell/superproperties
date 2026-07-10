@@ -2,6 +2,7 @@
 --!nolint LocalShadow
 
 local Packages = script.Parent.Parent.Parent.packages
+local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
 local New, Children, Value, Peek, Computed, OnEvent, Tween =
@@ -14,15 +15,14 @@ local FusionUtils = require(Utils.fusionUtils)
 local Component, CombineProps, CoerceToValue =
     FusionUtils.Component, FusionUtils.CombineProps, FusionUtils.CoerceToValue
 
-local TableUtils = require(Utils.tableUtils)
-local TableExtract = TableUtils.Extract
-
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope, CalcColorModifier =
     ThemeUtils.GetThemeForScope, ThemeUtils.CalcColorModifier
 
+local TableUtils = require(Utils.tableUtils)
+local TableExtract = TableUtils.Extract
+
 local Assets = require(script.Parent.Parent.assets)
-local Supercorner = require(Packages.supercorner)
 
 type CheckboxProps = {
     Checked: Fusion.UsedAs<boolean>?,

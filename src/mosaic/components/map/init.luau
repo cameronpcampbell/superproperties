@@ -2,24 +2,26 @@
 --!nolint LocalShadow
 
 local Packages = script.Parent.Parent.Parent.packages
+local Supercorner = require(Packages.supercorner)
+
 local Fusion = require(Packages.fusion)
+local Peek, New, Children = Fusion.peek, Fusion.New, Fusion.Children
 
 local Utils = script.Parent.Parent.utils
-local FusionUtils = require(Utils.fusionUtils)
-local TableUtils = require(Utils.tableUtils)
-local ThemeUtils = require(Utils.themeUtils)
 
-local Supercorner = require(Packages.supercorner)
+local FusionUtils = require(Utils.fusionUtils)
+local Component, CombineProps =
+    FusionUtils.Component, FusionUtils.CombineProps
+
+local ThemeUtils = require(Utils.themeUtils)
+local GetThemeForScope, GetNextVariant =
+    ThemeUtils.GetThemeForScope, ThemeUtils.GetNextVariant
+
+local TableUtils = require(Utils.tableUtils)
+local TableExtract = TableUtils.Extract
 
 local MapHeader = require(script.header)
 local MapItem = require(script.item)
-
-local Peek, New, Children = Fusion.peek, Fusion.New, Fusion.Children
-local Component, CombineProps =
-    FusionUtils.Component, FusionUtils.CombineProps
-local TableExtract = TableUtils.Extract
-local GetThemeForScope, GetNextVariant =
-    ThemeUtils.GetThemeForScope, ThemeUtils.GetNextVariant
 
 type Items = {{
     Key: string,

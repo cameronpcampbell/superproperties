@@ -2,20 +2,23 @@
 --!nolint LocalShadow
 
 local Packages = script.Parent.Parent.Parent.packages
+
 local Fusion = require(Packages.fusion)
+local Peek, New, Children = Fusion.peek, Fusion.New, Fusion.Children
 
 local Utils = script.Parent.Parent.utils
+
 local FusionUtils = require(Utils.fusionUtils)
-local TableUtils = require(Utils.tableUtils)
-local ThemeUtils = require(Utils.themeUtils)
-
-local Assets = require(script.Parent.Parent.assets)
-
-local Peek, New, Children = Fusion.peek, Fusion.New, Fusion.Children
 local Component, CombineProps =
     FusionUtils.Component, FusionUtils.CombineProps
-local TableExtract = TableUtils.Extract
+
+local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
+
+local TableUtils = require(Utils.tableUtils)
+local TableExtract = TableUtils.Extract
+
+local Assets = require(script.Parent.Parent.assets)
 
 type ScrollableProps = {
 

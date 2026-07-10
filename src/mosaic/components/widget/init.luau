@@ -4,18 +4,20 @@
 local StarterGui = game:GetService("StarterGui")
 
 local Packages = script.Parent.Parent.Parent.packages
+
 local Fusion = require(Packages.fusion)
+local New, Hydrate, Children = Fusion.New, Fusion.Hydrate, Fusion.Children
 
 local Utils = script.Parent.Parent.utils
-local TableUtils = require(Utils.tableUtils)
+
 local FusionUtils = require(Utils.fusionUtils)
+local Component = FusionUtils.Component
+
+local TableUtils = require(Utils.tableUtils)
+local TableExtract = TableUtils.Extract
 
 local Components = script.Parent
 local Background = require(Components.background)
-
-local New, Hydrate, Children = Fusion.New, Fusion.Hydrate, Fusion.Children
-local Component = FusionUtils.Component
-local TableExtract = TableUtils.Extract
 
 type WidgetProps = {
 	Id: string,
@@ -35,7 +37,8 @@ return Component<<WidgetProps>>(function(scope, props)
     local props, title = TableExtract(props, "Title")
     local props, initDockState = TableExtract(props, "InitDockState")
     local props, initEnabled = TableExtract(props, "InitEnabled")
-    local props, overrideEnabledRestore = TableExtract(props, "OverrideEnabledRestore")
+    local props, overrideEnabledRestore =
+        TableExtract(props, "OverrideEnabledRestore")
     local props, floatXSize = TableExtract(props, "FloatXSize")
     local props, floatYSize = TableExtract(props, "FloatYSize")
     local props, minWidth = TableExtract(props, "MinWidth")
