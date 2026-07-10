@@ -5,8 +5,9 @@ local Packages = script.Parent.Parent.Parent.packages
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local New, Children, Value, Peek, OnEvent =
-    Fusion.New, Fusion.Children, Fusion.Value, Fusion.peek, Fusion.OnEvent
+local New, Children, Value, Peek, OnEvent, Tween =
+    Fusion.New, Fusion.Children, Fusion.Value,
+    Fusion.peek, Fusion.OnEvent, Fusion.Tween
 
 local Utils = script.Parent.Parent.utils
 
@@ -65,7 +66,7 @@ return Component<<ButtonProps>>(function(scope, props)
 
     return Supercorner.new(scope :: any, CombineProps({
         Button = true,
-        BackgroundColor3 = Fusion.Tween<<Color3>>(
+        BackgroundColor3 = Tween<<Color3>>(
             scope,
             theme:GetAccent(scope, variant, themeColorModifier),
             TweenInfo.new(

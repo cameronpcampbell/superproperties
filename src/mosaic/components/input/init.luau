@@ -5,8 +5,9 @@ local Packages = script.Parent.Parent.Parent.packages
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local Peek, New, Children, Value, OnEvent =
-    Fusion.peek, Fusion.New, Fusion.Children, Fusion.Value, Fusion.OnEvent
+local Peek, New, Children, Value, OnEvent, Computed, Tween =
+    Fusion.peek, Fusion.New, Fusion.Children, Fusion.Value,
+    Fusion.OnEvent, Fusion.Computed, Fusion.Tween
 
 local Utils = script.Parent.Parent.utils
 
@@ -47,9 +48,9 @@ return Component<<InputProps>>(function(scope, props)
     local isHoverState, isFocusState = Value(scope, false), Value(scope, false)
     local themeColorModifier = CalcColorModifier(scope, isHoverState, isFocusState, "Stroke")
 
-    local tweenComputeStrokeColor = Fusion.Tween<<Color3>>(
+    local tweenComputeStrokeColor = Tween<<Color3>>(
         scope,
-        Fusion.Computed(scope, function(use, scope)
+        Computed(scope, function(use, scope)
             return
                 if use<<boolean>>(isFocusState) then
                     use<<Color3>>(theme:GetAccent(scope, "Primary", themeColorModifier))

@@ -6,8 +6,9 @@ local Supercorner = require(Packages.supercorner)
 local Typeforge = require(Packages.typeforge)
 
 local Fusion = require(Packages.fusion)
-local Peek, New, Children, OnEvent =
-    Fusion.peek, Fusion.New, Fusion.Children, Fusion.OnEvent
+local Peek, New, Children, OnEvent, Computed, Tween =
+    Fusion.peek, Fusion.New, Fusion.Children,
+    Fusion.OnEvent, Fusion.Computed, Fusion.Tween
 
 local Utils = script.Parent.Parent.Parent.utils
 
@@ -43,7 +44,7 @@ local function CalcCornerRadii(
     local lgHeight = theme:GetHeight("Lg")
 
     local function cornerRadius(roundFirst: boolean, roundLast: boolean)
-        return Fusion.Computed(scope, function(use, scope): number
+        return Computed(scope, function(use, scope): number
             local usedTweenComputeMapSize = use<<UDim2>>(tweenComputeMapSize)
             local usedTweenComputeMapHeightOffset = usedTweenComputeMapSize.Height.Offset
 
@@ -100,9 +101,9 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
         [Children] = {
             IconButton(scope, {
                 Image = Assets.Arrow,
-                Rotation = Fusion.Tween<<number>>(
+                Rotation = Tween<<number>>(
                     scope,
-                    Fusion.Computed(scope, function(use, scope)
+                    Computed(scope, function(use, scope)
                         return if use(mapCollapsedState) then -90 else 0
                     end) :: any,
                     TweenInfo.new(

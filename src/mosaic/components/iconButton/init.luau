@@ -4,8 +4,9 @@
 local Packages = script.Parent.Parent.Parent.packages
 
 local Fusion = require(Packages.fusion)
-local Value, Peek, New, Children, OnEvent =
-    Fusion.Value, Fusion.peek, Fusion.New, Fusion.Children, Fusion.OnEvent
+local Value, Peek, New, Children, OnEvent, Tween =
+    Fusion.Value, Fusion.peek, Fusion.New, Fusion.Children,
+    Fusion.OnEvent, Fusion.Tween
 
 local Utils = script.Parent.Parent.utils
 
@@ -46,7 +47,7 @@ return Component<<IconButtonProps>>(function(scope, props)
                 Image = image,
                 Size = UDim2.fromOffset(9, 9),
                 BackgroundTransparency = 1,
-                ImageColor3 = Fusion.Tween<<Color3>>(
+                ImageColor3 = Tween<<Color3>>(
                     scope,
                     theme:GetFg(scope, "Primary", themeColorModifier),
                     TweenInfo.new(

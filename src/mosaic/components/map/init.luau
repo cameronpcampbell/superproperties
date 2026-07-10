@@ -5,7 +5,9 @@ local Packages = script.Parent.Parent.Parent.packages
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local Peek, New, Children = Fusion.peek, Fusion.New, Fusion.Children
+local Peek, New, Children, Value, Computed, Tween =
+    Fusion.peek, Fusion.New, Fusion.Children,
+    Fusion.Value, Fusion.Computed, Fusion.Tween
 
 local Utils = script.Parent.Parent.utils
 
@@ -92,16 +94,16 @@ return Component<<MapProps>>(function(scope, props)
     local props, header = TableExtract(props, "Header")
     local props, items = TableExtract(props, "Items")
 
-    local mapCollapsedState = Fusion.Value(scope, false)
+    local mapCollapsedState = Value(scope, false)
 
     local strokeVariant = GetNextVariant(variant)
     local itemCount =
         if items then if header then #items + 1 else #items else 0
     local mapUncollapsedHeight = CalcMapHeight(itemCount, lgHeight)
 
-    local tweenComputeMapSize = Fusion.Tween<<UDim2>>(
+    local tweenComputeMapSize = Tween<<UDim2>>(
         scope,
-        Fusion.Computed(scope, function(use, scope)
+        Computed(scope, function(use, scope)
             local usedMapCollapsed = use<<boolean>>(mapCollapsedState)
 
             local height =

@@ -5,7 +5,7 @@ local Packages = script.Parent.Parent.Parent.packages
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local Peek = Fusion.peek
+local Peek, Tween, Computed = Fusion.peek, Fusion.Tween, Fusion.Computed
 
 local Utils = script.Parent.Parent.utils
 
@@ -42,9 +42,9 @@ return Component<<FocusRingProps>>(function(scope, props)
     local ringInset = .5
     local unfocusOffset = ringThickness + 8
 
-    local computeAlpha = Fusion.Tween<<number>>(
+    local computeAlpha = Tween<<number>>(
         scope,
-        Fusion.Computed(scope, function(use, scope)
+        Computed(scope, function(use, scope)
             return if use<<boolean>>(isFocus) then 1 else 0
         end),
         TweenInfo.new(
@@ -52,14 +52,14 @@ return Component<<FocusRingProps>>(function(scope, props)
         )
     )
 
-    local computeSize = Fusion.Computed(scope, function(use, scope)
+    local computeSize = Computed(scope, function(use, scope)
         local usedAlpha = use<<number>>(computeAlpha)
         local sizeOffset = math.map(usedAlpha, 0, 1, unfocusOffset, ringThickness * 2)
 
         return UDim2.new(1, sizeOffset + ringInset, 1, sizeOffset + ringInset)
     end)
 
-    local computeTransparency = Fusion.Computed(scope, function(use, scope)
+    local computeTransparency = Computed(scope, function(use, scope)
         local usedAlpha = use<<number>>(computeAlpha)
 
         return math.map(usedAlpha, 0, 1, 1, .6)
