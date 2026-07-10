@@ -5,17 +5,17 @@ local SelectionService = game:GetService("Selection")
 local Packages = script.Parent.Parent.packages
 
 local Fusion = require(Packages.fusion)
+local Value, Computed = Fusion.Value, Fusion.Computed
 
-local Mosaic = require(script.Parent.Parent.mosaic)
+local Mosaic = require(Packages.mosaic)
+local Map = Mosaic.Map
 
 local GetProperties = require(script.getProperties)
 
 local CategoryOrder = require(script.categoryOrder)
 
-type Scope = Fusion.Scope<typeof(Fusion) & typeof(Mosaic)>
-
-local function SelectedValue(scope: Scope)
-    local selectedValue = scope:Value(SelectionService:Get()[1])
+local function SelectedValue(scope: Fusion.Scope)
+    local selectedValue = Value(scope, SelectionService:Get()[1])
 
     SelectionService.SelectionChanged:Connect(function()
         selectedValue:set(SelectionService:Get()[1])
@@ -24,10 +24,10 @@ local function SelectedValue(scope: Scope)
     return selectedValue
 end
 
-return function(scope: Scope)
+return function(scope: Fusion.Scope)
     local selectedValue = SelectedValue(scope)
 
-    return scope:Computed(function(use, scope: Scope): { Fusion.Child }?
+    return Computed(scope, function(use, scope): { Fusion.Child }?
         local usedSelected = use<<Instance>>(selectedValue)
         if not usedSelected then return nil end
 
@@ -36,11 +36,11 @@ return function(scope: Scope)
         local maps: { Fusion.Child } = {}
 
         for categoryName, categoryData in properties do
-            table.insert(maps, scope:Map {
+            table.insert(maps, Map(scope, {
                 Header = categoryName,
                 Items = categoryData.Properties,
                 LayoutOrder = CategoryOrder[categoryName] or 999999,
-            })
+            }))
         end
 
         return maps

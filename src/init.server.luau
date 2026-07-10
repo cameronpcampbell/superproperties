@@ -5,11 +5,12 @@ local Packages = script.packages
 local Fusion = require(Packages.fusion)
 local Children = Fusion.Children
 
-local Mosaic = require(script.mosaic)
-local Assets = require(script.assets)
+local Mosaic = require(Packages.mosaic)
 
 local Blocks = script.blocks
 local Properties = require(Blocks.properties)
+
+local Assets = require(script.assets)
 
 local Scope = Fusion.scoped(Fusion, Mosaic)
 
