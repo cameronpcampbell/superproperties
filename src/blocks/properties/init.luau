@@ -43,6 +43,20 @@ return function(scope: Fusion.Scope)
             }))
         end
 
+        table.insert(maps, Map(scope, {
+            Header = "Tags",
+            Items = {},
+            LayoutOrder = CategoryOrder["Tags"] or 999999,
+            EmptyText = "No Tags have been added yet."
+        }))
+
+        table.insert(maps, Map(scope, {
+            Header = "Attributes",
+            Items = {},
+            LayoutOrder = CategoryOrder["Attributes"] or 999999,
+            EmptyText = "No Attributes have been added yet."
+        }))
+
         return maps
     end)
 end

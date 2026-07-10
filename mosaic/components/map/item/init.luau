@@ -26,7 +26,7 @@ type MapItemProps = Typeforge.Flatten<
 local function MapItem(scope: Fusion.Scope, props: MapItemProps)
     local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
 
-    local itemCount, itemIdx = props.ItemCount, props.ItemIdx
+    local rowCount, rowIdx = props.RowCount, props.RowIdx
     local variant = props.Variant
     local key, value = props.Key, props.Value
 
@@ -34,7 +34,7 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps)
         BackgroundTransparency = 1,
         -- We subtract 2 to account for the for the extra stroke that will be added.
         Size = UDim2.new(1, 0, 0, theme:GetHeight("Lg") - 2),
-        LayoutOrder = props.ItemIdx,
+        LayoutOrder = props.RowIdx,
 
         Name = `MapItem [{key}]`,
 
@@ -42,15 +42,15 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps)
             MapItemKey(scope, {
                 Key = key,
                 Variant = variant,
-                ItemCount = itemCount,
-                ItemIdx = itemIdx,
+                RowCount = rowCount,
+                RowIdx = rowIdx,
             }),
 
             MapItemValue(scope, {
                 Value = value,
                 Variant = variant,
-                ItemCount = itemCount,
-                ItemIdx = itemIdx,
+                RowCount = rowCount,
+                RowIdx = rowIdx,
             }),
 
             New(scope, "UIListLayout") {

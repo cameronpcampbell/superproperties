@@ -32,8 +32,8 @@ type MapHeaderProps = Typeforge.Flatten<
 
 local function CalcCornerRadii(
     scope: Fusion.Scope,
-    itemCount: number,
-    itemIdx: number,
+    rowCount: number,
+    rowIdx: number,
     baseRadius: number,
     tweenComputeMapSize: Fusion.Tween<UDim2>
 ): (
@@ -49,13 +49,13 @@ local function CalcCornerRadii(
             local usedTweenComputeMapHeightOffset = usedTweenComputeMapSize.Height.Offset
 
             local itemCount =
-                if usedTweenComputeMapHeightOffset == lgHeight then 1 else itemCount
+                if usedTweenComputeMapHeightOffset == lgHeight then 1 else rowCount
 
-            if roundFirst and itemIdx == 1 then
+            if roundFirst and rowIdx == 1 then
                 return baseRadius
             end
 
-            if roundLast and itemIdx == itemCount then
+            if roundLast and rowIdx == itemCount then
                 return baseRadius
             end
 
@@ -73,7 +73,7 @@ end
 local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
     local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
 
-    local itemCount, itemIdx = props.ItemCount, props.ItemIdx
+    local rowCount, rowIdx = props.RowCount, props.RowIdx
     local variant = props.Variant
     local mapCollapsedState = props.MapCollapsedState
     local tweenComputeMapSize = props.TweenComputeMapSize
@@ -82,13 +82,13 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
     local maxCornerRadius = theme:GetCornerRadius("Md") - 1
 
     local topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius =
-        CalcCornerRadii(scope, itemCount, itemIdx, maxCornerRadius, tweenComputeMapSize)
+        CalcCornerRadii(scope, rowCount, rowIdx, maxCornerRadius, tweenComputeMapSize)
 
     return Supercorner.new(scope, {
         BackgroundColor3 = theme:GetBgHighlight(scope, variant),
         -- We subtract 2 to account for the for the extra stroke that will be added.
         Size = UDim2.new(1, 0, 0, theme:GetHeight("Lg") - 2),
-        LayoutOrder = itemIdx,
+        LayoutOrder = rowIdx,
         TopLeftRadius = topLeftRadius,
         TopRightRadius = topRightRadius,
         BottomLeftRadius = bottomLeftRadius,

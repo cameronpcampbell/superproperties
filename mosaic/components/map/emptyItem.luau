@@ -1,50 +1,50 @@
 --!strict
 --!nolint LocalShadow
 
-local Packages = script.Parent.Parent.Parent.Parent.Parent
+local Packages = script.Parent.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
 local Typeforge = require(Packages.typeforge)
 
 local Fusion = require(Packages.fusion)
 local Peek, New, Children = Fusion.peek, Fusion.New, Fusion.Children
 
-local Utils = script.Parent.Parent.Parent.Parent.utils
+local Utils = script.Parent.Parent.Parent.utils
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
 
-local Components = script.Parent.Parent.Parent
+local Components = script.Parent.Parent
 local Text = require(Components.text)
-local Checkbox = require(Components.checkbox)
 
-local Types = require(script.Parent.Parent.types)
+local Assets = require(script.Parent.Parent.Parent.assets)
+local Types = require(script.Parent.types)
 
-type MapItemValueProps = Typeforge.Flatten<
+type MapEmptyItemProps = Typeforge.Flatten<
     Types.BaseMapProps & {
-        Value: any
+        Text: string
     }
 >
 
-local function CalcValueCornerRadii(
+local function CalcKeyCornerRadii(
     rowCount: number,
     rowIdx: number,
     baseRadius: number
 ): (number, number, number, number)
-    local topRightRadius = 0
-    local bottomRightRadius = 0
+    local topLeftRadius = 0
+    local bottomLeftRadius = 0
 
     if rowIdx == 1 then
-        topRightRadius = baseRadius
+        topLeftRadius = baseRadius
     end
 
     if rowIdx == rowCount then
-        bottomRightRadius = baseRadius
+        bottomLeftRadius = baseRadius
     end
 
-    return 0, topRightRadius, 0, bottomRightRadius
+    return topLeftRadius, 0, bottomLeftRadius, 0
 end
 
-local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
+local function MapEmptyItem(scope: Fusion.Scope, props: MapEmptyItemProps)
     local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
 
     local rowCount, rowIdx = props.RowCount, props.RowIdx
@@ -52,30 +52,34 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
 
     local topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius =
         -- We subtract 1 as we this squircle is inset by 1px.
-        CalcValueCornerRadii(rowCount, rowIdx, theme:GetCornerRadius("Md") - 1)
+        CalcKeyCornerRadii(rowCount, rowIdx, theme:GetCornerRadius("Md") - 1)
 
     return Supercorner.new(scope, {
         BackgroundColor3 = theme:GetBg(scope, variant),
-        Size = UDim2.fromScale(1, 1),
+        -- We subtract 2 to account for the for the extra stroke that will be added.
+        Size = UDim2.new(1, 0, 0, theme:GetHeight("Lg") - 2),
         TopLeftRadius = topLeftRadius,
         TopRightRadius = topRightRadius,
         BottomLeftRadius = bottomLeftRadius,
         BottomRightRadius = bottomRightRadius,
-        LayoutOrder = 1,
+        LayoutOrder = 0,
 
-        Name = "MapItemValue",
+        Name = "MapItem",
 
         [Children] = {
-            if type(props.Value) == "boolean" then
-                Checkbox(scope, {
-                    Checked = props.Value
-                })
-            else
-                Text(scope, {
-                    Text = tostring(props.Value),
-                    Variant = "Primary",
-                    FontWeight = Enum.FontWeight.Regular
-                }),
+            New(scope, "ImageLabel") {
+                Image = Assets.Dot,
+                Size = UDim2.fromOffset(9, 9),
+                BackgroundTransparency = 1,
+                ImageColor3 = theme:GetFg(scope, "Tertiary"),
+                ImageTransparency = .5
+            },
+
+            Text(scope, {
+                Text = props.Text,
+                Variant = "Secondary",
+                FontWeight = Enum.FontWeight.Regular
+            }),
 
             New(scope, "UIListLayout") {
                 Padding = UDim.new(0, 6),
@@ -91,4 +95,4 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
     })
 end
 
-return MapItemValue
+return MapEmptyItem

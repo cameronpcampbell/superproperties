@@ -5,8 +5,8 @@ local ThemeUtils = require(Utils.themeUtils)
 
 export type BaseMapProps = {
     Variant: ThemeUtils.BgVariantLayer,
-    ItemCount: number,
-    ItemIdx: number
+    RowCount: number,
+    RowIdx: number
 }
 
 return nil

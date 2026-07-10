@@ -24,6 +24,7 @@ local TableExtract = TableUtils.Extract
 
 local MapHeader = require(script.header)
 local MapItem = require(script.item)
+local MapEmptyItem = require(script.emptyItem)
 
 type Items = {{
     Key: string,
@@ -34,21 +35,40 @@ type MapProps = {
 	Variant: ThemeUtils.BgVariantLayer?,
 	Width: UDim?,
 	Header: string?,
-	Items: Items?
+	Items: Items?,
+	EmptyText: string?
 }
+
+local function CalcRowCount(
+    header: string?,
+    items: Items?,
+    emptyText: string?
+)
+    local rowCount = 0
+
+    if items and #items ~= 0 then
+        rowCount += #items
+
+    elseif emptyText then
+        rowCount += 1
+    end
+
+    if header then rowCount += 1 end
+
+    return rowCount
+end
 
 local function ItemsToInstances(
     scope: Fusion.Scope,
     variant: ThemeUtils.BgVariantLayer,
     header: string?,
     items: Items?,
-    itemCount: number,
+    rowCount: number,
+    emptyText: string?,
     mapCollapsedState: Fusion.Value<boolean>,
     tweenComputeMapSize: Fusion.Tween<UDim2>
-): { Instance }?
-    if not items then return nil end
-
-    local baseIdx, instances = 0, table.create(itemCount) :: { Instance }
+): Fusion.Child?
+    local baseIdx, instances = 0, table.create(rowCount) :: { Instance }
 
     if header then
         baseIdx = 1
@@ -56,11 +76,24 @@ local function ItemsToInstances(
         instances[1] = MapHeader(scope, {
             Header = header,
             Variant = variant,
-            ItemCount = itemCount,
-            ItemIdx = 1,
+            RowCount = rowCount,
+            RowIdx = 1,
             MapCollapsedState = mapCollapsedState,
             TweenComputeMapSize = tweenComputeMapSize
         })
+    end
+
+    if not items or #items == 0 then
+        if not emptyText then return nil end
+
+        instances[baseIdx + 1] = MapEmptyItem(scope, {
+            Text = emptyText,
+            Variant = variant,
+            RowCount = rowCount,
+            RowIdx = baseIdx + 1,
+        })
+
+        return instances :: Fusion.Child
     end
 
     for idx, item in items do
@@ -70,19 +103,19 @@ local function ItemsToInstances(
             Key = item.Key,
             Value = item.Value,
             Variant = variant,
-            ItemCount = itemCount,
-            ItemIdx = idx
+            RowCount = rowCount,
+            RowIdx = idx
         })
     end
 
-    return instances
+    return instances :: Fusion.Child
 end
 
-local function CalcMapHeight(itemCount: number, lgHeight: number): number
+local function CalcMapHeight(rowCount: number, lgHeight: number): number
     -- We subtract 2 to account for the stroke.
     local itemHeight = lgHeight - 2
 
-    return itemHeight * itemCount + itemCount + 1
+    return itemHeight * rowCount + rowCount + 1
 end
 
 return Component<<MapProps>>(function(scope, props)
@@ -93,13 +126,13 @@ return Component<<MapProps>>(function(scope, props)
     local props, width = TableExtract(props, "Width", UDim.new(1, 0))
     local props, header = TableExtract(props, "Header")
     local props, items = TableExtract(props, "Items")
+    local props, emptyText = TableExtract(props, "EmptyText")
 
     local mapCollapsedState = Value(scope, false)
 
     local strokeVariant = GetNextVariant(variant)
-    local itemCount =
-        if items then if header then #items + 1 else #items else 0
-    local mapUncollapsedHeight = CalcMapHeight(itemCount, lgHeight)
+    local rowCount = CalcRowCount(header, items, emptyText)
+    local mapUncollapsedHeight = CalcMapHeight(rowCount, lgHeight)
 
     local tweenComputeMapSize = Tween<<UDim2>>(
         scope,
@@ -116,11 +149,10 @@ return Component<<MapProps>>(function(scope, props)
         )
     )
 
-    local itemInstances =
-        ItemsToInstances(
-            scope, variant, header, items, itemCount,
-            mapCollapsedState, tweenComputeMapSize
-        )
+    local itemInstances = ItemsToInstances(
+        scope, variant, header, items, rowCount, emptyText,
+        mapCollapsedState, tweenComputeMapSize
+    )
 
     return Supercorner.new(scope :: any, CombineProps({
         BackgroundColor3 = theme:GetBg(scope, strokeVariant),

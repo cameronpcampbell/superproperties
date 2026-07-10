@@ -26,18 +26,18 @@ type MapItemKeyProps = Typeforge.Flatten<
 >
 
 local function CalcKeyCornerRadii(
-    itemCount: number,
-    itemIdx: number,
+    rowCount: number,
+    rowIdx: number,
     baseRadius: number
 ): (number, number, number, number)
     local topLeftRadius = 0
     local bottomLeftRadius = 0
 
-    if itemIdx == 1 then
+    if rowIdx == 1 then
         topLeftRadius = baseRadius
     end
 
-    if itemIdx == itemCount then
+    if rowIdx == rowCount then
         bottomLeftRadius = baseRadius
     end
 
@@ -47,12 +47,12 @@ end
 local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
     local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
 
-    local itemCount, itemIdx = props.ItemCount, props.ItemIdx
+    local rowCount, rowIdx = props.RowCount, props.RowIdx
     local variant = props.Variant
 
     local topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius =
         -- We subtract 1 as we this squircle is inset by 1px.
-        CalcKeyCornerRadii(itemCount, itemIdx, theme:GetCornerRadius("Md") - 1)
+        CalcKeyCornerRadii(rowCount, rowIdx, theme:GetCornerRadius("Md") - 1)
 
     return Supercorner.new(scope, {
         BackgroundColor3 = theme:GetBg(scope, variant),

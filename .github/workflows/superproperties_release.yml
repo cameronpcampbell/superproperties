@@ -1,0 +1,181 @@
+name: Superproperties Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions: {}
+
+concurrency:
+  group: superproperties-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  ROKIT_VERSION: "1.2.0"
+
+jobs:
+  preflight:
+    name: Preflight Checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check release metadata
+        run: |
+          TAG="$GITHUB_REF_NAME"
+          VERSION="${TAG#v}"
+
+          if [ -z "$VERSION" ] || [ "$TAG" = "$VERSION" ]; then
+            echo "::error::Release tags must start with 'v' and include a version."
+            exit 1
+          fi
+
+          MANIFEST_VERSION="$(awk -F '"' '/^[[:space:]]*version[[:space:]]*=/ { print $2; exit }' pesde.toml)"
+          if [ -z "$MANIFEST_VERSION" ]; then
+            echo "::error::Could not read the version from pesde.toml."
+            exit 1
+          fi
+
+          if [ "$MANIFEST_VERSION" != "$VERSION" ]; then
+            echo "::error::pesde.toml version ($MANIFEST_VERSION) does not match tag ($TAG)."
+            exit 1
+          fi
+
+          CHANGELOG="$(awk -v heading="# $TAG" '
+            $0 == heading { found=1; next }
+            found && /^# / { exit }
+            found { print }
+          ' CHANGELOG.md)"
+
+          if [ -z "$(printf '%s' "$CHANGELOG" | tr -d '[:space:]')" ]; then
+            echo "::error::CHANGELOG.md must contain a non-empty '# $TAG' section."
+            exit 1
+          fi
+
+          if ! grep -Fq '{{TAG}}' RELEASE_TEMPLATE.md; then
+            echo "::error::RELEASE_TEMPLATE.md is missing the {{TAG}} placeholder."
+            exit 1
+          fi
+
+          if ! grep -Fxq '{{CHANGELOG}}' RELEASE_TEMPLATE.md; then
+            echo "::error::RELEASE_TEMPLATE.md must contain {{CHANGELOG}} on its own line."
+            exit 1
+          fi
+
+  build-and-release:
+    name: Build and Publish Release
+    needs: preflight
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rokit
+        env:
+          GITHUB_PAT: ${{ github.token }}
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf \
+            "https://raw.githubusercontent.com/rojo-rbx/rokit/v${ROKIT_VERSION}/scripts/install.sh" \
+            | bash -s -- "$ROKIT_VERSION"
+
+          echo "$HOME/.rokit/bin" >> "$GITHUB_PATH"
+          "$HOME/.rokit/bin/rokit" --version
+
+      - name: Install project tools
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          rokit authenticate github --token "$GITHUB_TOKEN"
+          rokit install --no-trust-check
+          rokit list
+
+      - name: Install pesde dependencies
+        run: pesde install --locked
+
+      - name: Build plugin
+        run: |
+          mkdir -p dist
+          rojo build default.project.json --output dist/superproperties.rbxm
+
+          if [ ! -s dist/superproperties.rbxm ]; then
+            echo "::error::Rojo did not produce a non-empty superproperties.rbxm."
+            exit 1
+          fi
+
+      - name: Render release notes
+        run: |
+          TAG="$GITHUB_REF_NAME"
+          VERSION="${TAG#v}"
+          CHANGELOG_FILE="$RUNNER_TEMP/changelog.md"
+          RELEASE_NOTES_FILE="$RUNNER_TEMP/release-notes.md"
+
+          awk -v heading="# $TAG" '
+            $0 == heading { found=1; next }
+            found && /^# / { exit }
+            found {
+              if ($0 ~ /^#{1,6}[[:space:]]/) {
+                $0 = "##" $0
+              }
+              print
+            }
+          ' CHANGELOG.md > "$CHANGELOG_FILE"
+
+          awk -v version="$VERSION" -v changelog_file="$CHANGELOG_FILE" '
+            $0 == "{{CHANGELOG}}" {
+              while ((getline line < changelog_file) > 0) {
+                print line
+              }
+              close(changelog_file)
+              next
+            }
+            {
+              gsub(/\{\{TAG\}\}/, version)
+              print
+            }
+          ' RELEASE_TEMPLATE.md > "$RELEASE_NOTES_FILE"
+
+          if [ ! -s "$RELEASE_NOTES_FILE" ]; then
+            echo "::error::Failed to render the GitHub release notes."
+            exit 1
+          fi
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="$GITHUB_REF_NAME"
+          TITLE="Superproperties $TAG"
+          RELEASE_NOTES_FILE="$RUNNER_TEMP/release-notes.md"
+          ASSET="dist/superproperties.rbxm"
+
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release edit "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$TITLE" \
+              --notes-file "$RELEASE_NOTES_FILE"
+          else
+            gh release create "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --draft \
+              --verify-tag \
+              --title "$TITLE" \
+              --notes-file "$RELEASE_NOTES_FILE"
+          fi
+
+          gh release upload "$TAG" "$ASSET" \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
+
+          gh release edit "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false
