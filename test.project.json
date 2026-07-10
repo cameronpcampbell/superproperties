@@ -1,0 +1,12 @@
+{
+    "name": "superproperties",
+    "tree": {
+        "$className": "DataModel",
+
+        "ServerScriptService": {
+            "superproperties": {
+                "$path": "default.project.json"
+            }
+        }
+    }
+}

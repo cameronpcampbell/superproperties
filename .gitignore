@@ -1,0 +1,35 @@
+# Project place file
+/test.rbxlx
+
+# Roblox Studio lock files
+/*.rbxlx.lock
+/*.rbxl.lock
+
+# Pesde
+/luau_packages
+/lune_packages
+/roblox_packages
+
+sourcemap.json
+
+*.model.json
+
+# IDEs
+.idea/       # JetBrains (CLion, IntelliJ, etc.)
+.vscode/
+.trae/
+.zed/
+*.swp        # Vim swap files
+*.swo        # Vim swap overflow files
+
+# AI agents
+.claude/
+.cursor/
+.aider/
+.copilot/
+.codex/
+.gemini/
+
+# MacOS file system clutter.
+._*
+.DS_STORE

@@ -1,0 +1,10 @@
+{
+    "name": "superproperties",
+    "tree": {
+        "$path": "src",
+
+        "packages": {
+            "$path": "roblox_packages"
+        }
+    }
+}
