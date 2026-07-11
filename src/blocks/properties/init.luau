@@ -8,7 +8,7 @@ local Fusion = require(Packages.fusion)
 local Value, Computed = Fusion.Value, Fusion.Computed
 
 local Mosaic = require(Packages.mosaic)
-local Map = Mosaic.Map
+local Map, Text = Mosaic.Map, Mosaic.Text
 
 local GetProperties = require(script.getProperties)
 
@@ -24,12 +24,20 @@ local function SelectedValue(scope: Fusion.Scope)
     return selectedValue
 end
 
+local function NoInstanceSelected(scope: Fusion.Scope): Fusion.Child
+    return Text(scope, {
+        Text = "No Instance selected.",
+        Variant = "Secondary",
+        Size = UDim2.fromScale(1, 1)
+    })
+end
+
 return function(scope: Fusion.Scope)
     local selectedValue = SelectedValue(scope)
 
-    return Computed(scope, function(use, scope): { Fusion.Child }?
+    return Computed(scope, function(use, scope: Fusion.Scope): Fusion.Child?
         local usedSelected = use<<Instance>>(selectedValue)
-        if not usedSelected then return nil end
+        if not usedSelected then return NoInstanceSelected(scope) end
 
         local properties = GetProperties(usedSelected)
 
@@ -57,6 +65,6 @@ return function(scope: Fusion.Scope)
             EmptyText = "No Attributes have been added yet."
         }))
 
-        return maps
+        return maps :: Fusion.Child
     end)
 end
