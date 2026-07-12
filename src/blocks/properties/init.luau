@@ -32,14 +32,49 @@ local function NoInstanceSelected(scope: Fusion.Scope): Fusion.Child
     })
 end
 
+local function GetTags(
+    instance: Instance
+): {{ Key: string, Value: nil }}
+    local tags = instance:GetTags()
+    local tagItems =
+        table.create(#tags) :: {{ Key: string, Value: nil }}
+
+    for idx, tag in tags do
+        tagItems[idx] = {
+            Key = tag
+        }
+    end
+
+    return tagItems
+end
+
+local function GetAttributes(
+    instance: Instance
+): {{ Key: string, Value: any }}
+    local attributes = instance:GetAttributes()
+    local attributeItems ={} :: {{ Key: string, Value: any }}
+
+    local idx = 1
+    for attributeName, attributeValue in attributes do
+        attributeItems[idx] = {
+            Key = attributeName,
+            Value = attributeValue
+        }
+
+        idx += 1
+    end
+
+    return attributeItems
+end
+
 return function(scope: Fusion.Scope)
-    local selectedValue = SelectedValue(scope)
+    local selectedInstValue = SelectedValue(scope)
 
     return Computed(scope, function(use, scope: Fusion.Scope): Fusion.Child?
-        local usedSelected = use<<Instance>>(selectedValue)
-        if not usedSelected then return NoInstanceSelected(scope) end
+        local usedSelectedInst = use<<Instance>>(selectedInstValue)
+        if not usedSelectedInst then return NoInstanceSelected(scope) end
 
-        local properties = GetProperties(usedSelected)
+        local properties = GetProperties(usedSelectedInst)
 
         local maps: { Fusion.Child } = {}
 
@@ -53,14 +88,15 @@ return function(scope: Fusion.Scope)
 
         table.insert(maps, Map(scope, {
             Header = "Tags",
-            Items = {},
+            Items = GetTags(usedSelectedInst),
+            HideValues = true,
             LayoutOrder = CategoryOrder["Tags"] or 999999,
             EmptyText = "No Tags have been added yet."
         }))
 
         table.insert(maps, Map(scope, {
             Header = "Attributes",
-            Items = {},
+            Items = GetAttributes(usedSelectedInst),
             LayoutOrder = CategoryOrder["Attributes"] or 999999,
             EmptyText = "No Attributes have been added yet."
         }))

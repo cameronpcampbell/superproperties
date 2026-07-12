@@ -36,7 +36,8 @@ type MapProps = {
 	Width: UDim?,
 	Header: string?,
 	Items: Items?,
-	EmptyText: string?
+	HideValues: boolean?,
+	EmptyText: string?,
 }
 
 local function CalcRowCount(
@@ -64,6 +65,7 @@ local function ItemsToInstances(
     header: string?,
     items: Items?,
     rowCount: number,
+    hideValues: boolean,
     emptyText: string?,
     mapCollapsedState: Fusion.Value<boolean>,
     tweenComputeMapSize: Fusion.Tween<UDim2>
@@ -102,6 +104,7 @@ local function ItemsToInstances(
         instances[idx] = MapItem(scope, {
             Key = item.Key,
             Value = item.Value,
+            HideValue = hideValues,
             Variant = variant,
             RowCount = rowCount,
             RowIdx = idx
@@ -127,6 +130,7 @@ return Component<<MapProps>>(function(scope, props)
     local props, header = TableExtract(props, "Header")
     local props, items = TableExtract(props, "Items")
     local props, emptyText = TableExtract(props, "EmptyText")
+    local props, hideValues = TableExtract(props, "HideValues", false)
 
     local mapCollapsedState = Value(scope, false)
 
@@ -150,7 +154,8 @@ return Component<<MapProps>>(function(scope, props)
     )
 
     local itemInstances = ItemsToInstances(
-        scope, variant, header, items, rowCount, emptyText,
+        scope, variant, header, items,
+        rowCount, hideValues, emptyText,
         mapCollapsedState, tweenComputeMapSize
     )
 

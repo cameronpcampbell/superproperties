@@ -19,7 +19,8 @@ local MapItemValue = require(script.value)
 type MapItemProps = Typeforge.Flatten<
     Types.BaseMapProps & {
         Key: string,
-        Value: any
+        Value: any,
+        HideValue: boolean?
     }
 >
 
@@ -28,7 +29,7 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps)
 
     local rowCount, rowIdx = props.RowCount, props.RowIdx
     local variant = props.Variant
-    local key, value = props.Key, props.Value
+    local key, value, hideValue = props.Key, props.Value, props.HideValue
 
     return New(scope, "Frame") {
         BackgroundTransparency = 1,
@@ -46,7 +47,7 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps)
                 RowIdx = rowIdx,
             }),
 
-            MapItemValue(scope, {
+            if hideValue then nil else MapItemValue(scope, {
                 Value = value,
                 Variant = variant,
                 RowCount = rowCount,
