@@ -176,8 +176,13 @@ local function ScoreSubsequence(
     local scores = table.create(candidateLength, NegativeInfinity)
     local firstQueryByte = query.Bytes[1]
 
+    -- Loose subsequences need a strong first match. Internal contiguous
+    -- matches have already been accepted by the substring tier.
     for candidateIdx = 1, candidateLength do
-        if candidateBytes[candidateIdx] == firstQueryByte then
+        if
+            candidateBytes[candidateIdx] == firstQueryByte and
+            candidate.BoundaryBonuses[candidateIdx] > 0
+        then
             previousScores[candidateIdx] =
                 candidate.BoundaryBonuses[candidateIdx] -
                 (candidateIdx - 1) * GapPenalty

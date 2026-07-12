@@ -74,6 +74,21 @@ mutableItems[1].Key = "CompletelyDifferent"
 Record(mutableFilter, "before")
 Record(mutableFilter, "different")
 
+-- Loose subsequences need a strong first match. Contiguous substrings still
+-- match inside a word, while noisy internal subsequences are rejected.
+local relevanceFilter = CreateFilter({
+    { Key = "Parent", Value = 201 },
+    { Key = "Part", Value = 202 },
+    { Key = "Articulation", Value = 203 },
+    { Key = "Transparency", Value = 204 }
+})
+local artResults = relevanceFilter("art")
+assert(#artResults == 2, `expected two relevant art results, got {#artResults}`)
+assert(artResults[1].Key == "Articulation", "expected prefix match first")
+assert(artResults[2].Key == "Part", "expected contiguous substring second")
+assert(#CreateFilter({ { Key = "Parent", Value = 1 } })("art") == 0)
+assert(#CreateFilter({ { Key = "Transparency", Value = 1 } })("trnsp") == 1)
+
 math.randomseed(0x5EED)
 
 local alphabet =
@@ -111,5 +126,5 @@ for datasetIdx = 1, 150 do
 end
 
 assert(comparisonCount == 1_821, `unexpected comparison count: {comparisonCount}`)
-assert(hash == 1_396_902_059, `filterItems result hash changed: {hash}`)
+assert(hash == 1_338_791_159, `filterItems result hash changed: {hash}`)
 print(`filterItems verification: comparisons={comparisonCount} hash={hash}`)
