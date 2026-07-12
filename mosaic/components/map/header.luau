@@ -118,7 +118,11 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
 
             Text(scope, {
                 Text = props.Header,
-                FontWeight = Enum.FontWeight.Medium
+                FontWeight = Enum.FontWeight.Medium,
+
+                [Children] = New(scope, "UIFlexItem") {
+                    FlexMode = Enum.UIFlexMode.Shrink
+                }
             }),
 
             New(scope, "UIListLayout") {

@@ -56,7 +56,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
 
     return Supercorner.new(scope, {
         BackgroundColor3 = theme:GetBg(scope, variant),
-        Size = UDim2.fromScale(.5, 1),
+        Size = UDim2.fromScale(1, 1),
         TopLeftRadius = topLeftRadius,
         TopRightRadius = topRightRadius,
         BottomLeftRadius = bottomLeftRadius,
