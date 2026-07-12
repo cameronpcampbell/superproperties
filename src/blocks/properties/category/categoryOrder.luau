@@ -1,16 +1,25 @@
 --!strict
 
-local function IntoHashSet(tble: { string }): { [string]: number }
-    local hashSet = {}
+local function Combine(
+    array: { string },
+    hashmap: { [string]: number }
+): { [string]: number }
+    local outputHashMap = {}
 
-    for idx, value in tble do
-        hashSet[value] = idx
+    for idx, value in array do
+        outputHashMap[value] = idx
     end
 
-    return hashSet
+    if hashmap then
+        for key, value in hashmap do
+            outputHashMap[key] = value
+        end
+    end
+
+    return outputHashMap
 end
 
-return IntoHashSet({
+return Combine({
     "Appearance",
     "Data",
     "Listening",
@@ -40,4 +49,7 @@ return IntoHashSet({
     "Forcefield",
     "Teams",
     "Assembly"
+}, {
+    Attributes = 999999,
+    Tags = 999998,
 })
