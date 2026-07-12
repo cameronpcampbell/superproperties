@@ -5,11 +5,11 @@ local Packages = script.Parent.Parent.Parent.Parent
 local Fusion = require(Packages.fusion)
 local Peek, Value, Observer = Fusion.peek, Fusion.Value, Fusion.Observer
 
-local function CreateOutProxy<T, S>(
+local function CreateOutProxy<T>(
     scope: Fusion.Scope,
-    target: Fusion.Value<T, S>,
-    source: Fusion.UsedAs<S>
-): Fusion.Value<S>
+    source: Fusion.UsedAs<T>,
+    write: (T) -> ()
+): Fusion.Value<T>
     local proxy = Value(scope, Peek(source))
     local isUpdatingFromSource = false
 
@@ -21,10 +21,10 @@ local function CreateOutProxy<T, S>(
 
     Observer(scope, proxy):onChange(function()
         if isUpdatingFromSource then return end
-        target:set(Peek(proxy))
+        write(Peek(proxy))
     end)
 
-    return proxy
+    return proxy :: any
 end
 
 return CreateOutProxy
