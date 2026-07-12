@@ -8,7 +8,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: superproperties-release-${{ github.ref }}
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 
 env:
