@@ -49,10 +49,11 @@ local function ComputeRowCount(
     emptyText: string?
 )
     return Computed(scope, function(use, scope)
+        local usedItems = use<<{ Item }>>(items)
         local rowCount = 0
 
-        if items and #items ~= 0 then
-            rowCount += #items
+        if usedItems and #usedItems ~= 0 then
+            rowCount += #usedItems
 
         elseif emptyText then
             rowCount += 1
@@ -74,9 +75,10 @@ local function ItemsToInstances(
     emptyText: string?,
     collapsedState: Fusion.Value<boolean>,
     tweenComputeMapSize: Fusion.Tween<UDim2>
-): Fusion.Computed<Fusion.Child?>
-    return Computed(scope, function(use, scope: Fusion.Scope): Fusion.Child?
+): Fusion.Computed<{ Fusion.Child }?>
+    return Computed(scope, function(use, scope: Fusion.Scope): { Fusion.Child }?
         local usedRowCount = use<<number>>(computeRowCount)
+        local usedItems = use<<{ Item }>>(items)
         local baseIdx, instances = 0, table.create(usedRowCount) :: { Instance }
 
         if header then
@@ -92,8 +94,8 @@ local function ItemsToInstances(
             })
         end
 
-        if not items or #items == 0 then
-            if not emptyText then return nil end
+        if not usedItems or #usedItems == 0 then
+            if not emptyText then return instances :: { Fusion.Child } end
 
             instances[baseIdx + 1] = MapEmptyItem(scope, {
                 Text = emptyText,
@@ -102,10 +104,10 @@ local function ItemsToInstances(
                 RowIdx = baseIdx + 1,
             })
 
-            return instances :: Fusion.Child
+            return instances :: { Fusion.Child }
         end
 
-        for idx, item in items do
+        for idx, item in usedItems do
             local idx = baseIdx + idx
 
             instances[idx] = MapItem(scope, {
@@ -118,7 +120,7 @@ local function ItemsToInstances(
             })
         end
 
-        return instances :: Fusion.Child
+        return instances :: { Fusion.Child }
     end)
 end
 
@@ -169,7 +171,7 @@ return Component<<MapProps>>(function(scope, props)
             return UDim2.new(width, UDim.new(0, height))
         end) :: any,
         TweenInfo.new(
-            .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
+            .18, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
         )
     )
 

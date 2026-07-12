@@ -2,7 +2,7 @@
 
 local MaterialService = game:GetService("MaterialService")
 
-local Packages = script.Parent.Parent.Parent.Parent.packages
+local Packages = script.Parent.Parent.Parent.Parent.Parent.packages
 local Fusion = require(Packages.fusion)
 
 local Category = require(script.Parent.Parent.category)

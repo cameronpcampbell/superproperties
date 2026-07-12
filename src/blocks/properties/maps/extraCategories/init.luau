@@ -1,13 +1,13 @@
 --!strict
 
-local Packages = script.Parent.Parent.Parent.packages
+local Packages = script.Parent.Parent.Parent.Parent.packages
 local Fusion = require(Packages.fusion)
 
 type ExtraCategories = {
     [string]: (
         scope: Fusion.Child,
         outerScope: Fusion.Child
-    ) -> { Fusion.Child }
+    ) -> { Fusion.UsedAs<Fusion.Child?> }
 }
 
 return {

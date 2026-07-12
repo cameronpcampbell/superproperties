@@ -45,17 +45,11 @@ Scope:Widget {
     Debug = Debug,
 
     [Children] = {
-        Scope:Input {
-            PlaceholderText = "Filter Properties",
-
-            LeftChildren = Scope:IconButton {
-                Image = Assets.Search,
-            }
-        },
+        Properties.Input(Scope),
 
         Scope:Scrollable {
             [Children] = {
-                Properties(Scope, SelectedInstanceValue),
+                Properties.Maps(Scope, SelectedInstanceValue),
 
                 Scope:New "UIListLayout" {
                     FillDirection = Enum.FillDirection.Vertical,

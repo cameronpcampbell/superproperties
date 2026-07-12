@@ -107,7 +107,7 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
                         return if use(collapsedState) then -90 else 0
                     end) :: any,
                     TweenInfo.new(
-                        .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
+                        .18, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
                     )
                 ),
 

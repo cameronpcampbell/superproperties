@@ -28,7 +28,7 @@ local FocusRing = require(Components.focusRing)
 
 type InputProps = {
 	Variant: ThemeUtils.BgVariantLayer?,
-	Text: Fusion.UsedAs<string>?,
+	Text: Fusion.UsedAs<string?>?,
 	PlaceholderText: Fusion.UsedAs<string>?,
 	Width: UDim?,
 	LeftChildren: Fusion.Child?,
@@ -62,6 +62,11 @@ return Component<<InputProps>>(function(scope, props)
         )
     )
 
+    local computeVisualText = Computed(scope, function(use, scope)
+        local usedText = use<<string?>>(text)
+        return if usedText == nil then "" else usedText
+    end)
+
     return Supercorner.new(scope :: any, CombineProps({
         BackgroundColor3 = theme:GetBg(scope, variant),
         StrokeColor = tweenComputeStrokeColor,
@@ -90,7 +95,7 @@ return Component<<InputProps>>(function(scope, props)
             New(scope, "TextBox") {
                 Size = UDim2.fromScale(1, 1),
                 BackgroundTransparency = 1,
-                Text = text,
+                Text = computeVisualText,
                 PlaceholderText = placeholderText,
                 TextSize = theme:GetFontSize("Main", "Title"),
                 TextColor3 = theme:GetFg(scope, "Primary"),
@@ -102,6 +107,8 @@ return Component<<InputProps>>(function(scope, props)
 
                 [OnEvent "Focused"] = function() isFocusState:set(true) end,
                 [OnEvent "FocusLost"] = function() isFocusState:set(false) end,
+
+                [Fusion.Out "Text"] = if type(text) == "table" then text else nil,
 
                 [Children] = New(scope, "UIFlexItem") {
                     FlexMode = Enum.UIFlexMode.Shrink
