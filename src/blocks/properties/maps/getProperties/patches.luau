@@ -53,7 +53,25 @@ local Patches: Patches = {
         }
     },
     Text = {
-        GuiObject = {
+        TextLabel = {
+
+            TextColor = {
+                Display = {
+                    DeprecationMessage = "Use 'TextColor3' instead."
+                }
+            }
+
+        },
+        TextButton = {
+
+            TextColor = {
+                Display = {
+                    DeprecationMessage = "Use 'TextColor3' instead."
+                }
+            }
+
+        },
+        TextBox = {
 
             TextColor = {
                 Display = {

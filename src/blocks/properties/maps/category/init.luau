@@ -9,6 +9,7 @@ local Mosaic = require(Packages.mosaic)
 local Map = Mosaic.Map
 
 local CategoryOrder = require(script.categoryOrder)
+local FilterItemList = require(script.filterItems)
 local GetCollapsedState = require(script.getCollapsedState)
 local GetFilterState = require(script.Parent.Parent.getFilterState)
 
@@ -28,29 +29,14 @@ local function SortItems(
     items: Fusion.UsedAs<{ Item }>
 ): Fusion.Computed<{ Item }>
     return Computed(scope, function(use, scope)
-        local usedItems = use<<{ Item }>>(items)
+        local sortedItems = table.clone(use<<{ Item }>>(items))
 
-        table.sort(usedItems, function(a: Item, b: Item)
+        table.sort(sortedItems, function(a: Item, b: Item)
             return a.Key < b.Key
         end)
 
-        return usedItems
+        return sortedItems
     end)
-end
-
-local function TableSwapRemove(
-    input: { [any]: any },
-    idx: number
-)
-    -- Last item, we can just remove from
-    -- the end of the input table.
-    if idx == #input then
-        table.remove(input, idx)
-
-    -- Swap remove optimisation.
-    else
-        input[idx] = table.remove(input)
-    end
 end
 
 local function FilterItems(
@@ -62,18 +48,7 @@ local function FilterItems(
         local usedItems = use<<{ Item }>>(items)
 
         local usedFilter = use<<string?>>(filter)
-        if not usedFilter then return usedItems end
-
-        local filteredItems = table.clone(usedItems)
-
-        for idx = #filteredItems, 1, -1 do
-            local item = filteredItems[idx]
-            if item.Key:find(`^{usedFilter}`) then continue end
-
-            TableSwapRemove(filteredItems, idx)
-        end
-
-        return filteredItems
+        return FilterItemList(usedItems, usedFilter)
     end)
 end
 
