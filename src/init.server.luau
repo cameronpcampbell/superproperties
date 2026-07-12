@@ -14,8 +14,11 @@ local Assets = require(script.assets)
 
 local Scope = Fusion.scoped(Fusion, Mosaic)
 
+local Debug = script.debug.Value == "true"
+
 Scope:Widget {
     Id = "Superproperties",
+    Debug = Debug,
 
     [Children] = {
         Scope:Input {

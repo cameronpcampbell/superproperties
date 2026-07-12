@@ -1,5 +1,6 @@
 name = "cameronpcampbell/superproperties"
 version = "0.1.0"
+private = true
 description = "A custom properties explorer."
 authors = ["cameronpcampbell"]
 license = "MIT"

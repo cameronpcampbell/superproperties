@@ -47,6 +47,17 @@ jobs:
             exit 1
           fi
 
+          if [ ! -f src/version.txt ]; then
+            echo "::error::src/version.txt is missing."
+            exit 1
+          fi
+
+          VERSION_FILE_VERSION="$(tr -d '\r' < src/version.txt)"
+          if [ "$VERSION_FILE_VERSION" != "$VERSION" ]; then
+            echo "::error::src/version.txt version ($VERSION_FILE_VERSION) does not match tag ($TAG)."
+            exit 1
+          fi
+
           CHANGELOG="$(awk -v heading="# $TAG" '
             $0 == heading { found=1; next }
             found && /^# / { exit }
@@ -100,6 +111,8 @@ jobs:
 
       - name: Build plugin
         run: |
+          printf '%s\n' 'false' > src/debug.txt
+
           mkdir -p dist
           rojo build default.project.json --output dist/superproperties.rbxm
 
