@@ -74,7 +74,7 @@ return Component<<InputProps>>(function(scope, props)
 
     local textOutProxy =
         if textValue then
-            CreateOutProxy(scope, textValue, Peek<<string>>(computeVisualText))
+            CreateOutProxy(scope, textValue, computeVisualText)
         else nil
 
     return Supercorner.new(scope :: any, CombineProps({
