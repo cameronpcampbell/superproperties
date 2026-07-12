@@ -13,6 +13,7 @@ return {
     Input = require(Components.input),
     Button = require(Components.button),
     IconButton = require(Components.iconButton),
+    Icon = require(Components.icon),
     Text = require(Components.text),
     Map = require(Components.map),
     Scrollable = require(Components.scrollable),

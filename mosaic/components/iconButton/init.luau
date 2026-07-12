@@ -11,7 +11,7 @@ local Value, Peek, New, Children, OnEvent, Tween =
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component = FusionUtils.Component
+local Component, CombineProps = FusionUtils.Component, FusionUtils.CombineProps
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope, CalcColorModifier =
@@ -21,6 +21,7 @@ local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
 type IconButtonProps = {
+    Variant: ThemeUtils.FgVariant?,
     Rotation: Fusion.UsedAs<number>?,
     Image: Fusion.UsedAs<string>?,
     [Fusion.SpecialKey]: any
@@ -29,16 +30,17 @@ type IconButtonProps = {
 return Component<<IconButtonProps>>(function(scope, props)
     local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
 
+    local props, variant = TableExtract(props, "Variant", "Primary")
     local props, rotation = TableExtract(props, "Rotation")
     local props, onClickEvent = TableExtract(props, OnEvent "MouseButton1Click")
-    local _props, image = TableExtract(props, "Image")
+    local props, image = TableExtract(props, "Image")
 
     local lgHeight = theme:GetHeight("Lg")
 
     local isHoverState, isFocusState = Value(scope, false), Value(scope, false)
     local themeColorModifier = CalcColorModifier(scope, isHoverState, isFocusState)
 
-    return New(scope, "Frame") {
+    return New(scope, "Frame") (CombineProps({
         Size = UDim2.fromOffset(9, 9),
         BackgroundTransparency = 1,
 
@@ -49,7 +51,7 @@ return Component<<IconButtonProps>>(function(scope, props)
                 BackgroundTransparency = 1,
                 ImageColor3 = Tween<<Color3>>(
                     scope,
-                    theme:GetFg(scope, "Primary", themeColorModifier),
+                    theme:GetFg(scope, variant, themeColorModifier),
                     TweenInfo.new(
                         .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
                     )
@@ -72,5 +74,5 @@ return Component<<IconButtonProps>>(function(scope, props)
                 [OnEvent "MouseButton1Click"] = onClickEvent
             }
         }
-    }
+    }, props))
 end)

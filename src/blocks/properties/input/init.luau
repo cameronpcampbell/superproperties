@@ -1,11 +1,10 @@
 --!strict
 
 local Packages = script.Parent.Parent.Parent.packages
-
 local Fusion = require(Packages.fusion)
 
 local Mosaic = require(Packages.mosaic)
-local Input, IconButton = Mosaic.Input, Mosaic.IconButton
+local Input, Icon = Mosaic.Input, Mosaic.Icon
 
 local Assets = require(script.Parent.Parent.Parent.assets)
 local GetFilterState = require(script.Parent.getFilterState)
@@ -17,7 +16,7 @@ return function(scope: Fusion.Scope)
         PlaceholderText = "Filter Properties",
         Text = filterState,
 
-        LeftChildren = IconButton(scope, {
+        LeftChildren = Icon(scope, {
             Image = Assets.Search,
         })
     })
