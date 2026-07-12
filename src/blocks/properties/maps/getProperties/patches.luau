@@ -50,6 +50,12 @@ local Patches: Patches = {
                 }
             },
 
+            Transparency = {
+                Display = {
+                    DeprecationMessage = "Use 'BackgroundTransparency' instead."
+                }
+            }
+
         }
     },
     Text = {
