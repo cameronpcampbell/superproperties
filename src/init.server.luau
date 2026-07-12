@@ -16,7 +16,6 @@ local Scope = Fusion.scoped(Fusion, Mosaic)
 
 Scope:Widget {
     Id = "Superproperties",
-    Debug = true,
 
     [Children] = {
         Scope:Input {

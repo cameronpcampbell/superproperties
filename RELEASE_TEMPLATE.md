@@ -1,4 +1,2 @@
-# v{{TAG}}
-
-## Changelog
-{{##CHANGELOG}}
+# Changelog
+{{#CHANGELOG}}

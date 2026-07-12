@@ -1,4 +1,4 @@
-name: Superproperties Release
+name: Release
 
 on:
   push:
@@ -101,11 +101,7 @@ jobs:
           rokit list
 
       - name: Install pesde dependencies
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          pesde auth --index https://github.com login --token "Bearer $GITHUB_TOKEN"
-          pesde install --locked
+        run: pesde install --locked
 
       - name: Build plugin
         run: |
@@ -161,7 +157,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="$GITHUB_REF_NAME"
-          TITLE="Superproperties $TAG"
+          TITLE="$TAG"
           RELEASE_NOTES_FILE="$RUNNER_TEMP/release-notes.md"
           ASSET="dist/superproperties.rbxm"
 
