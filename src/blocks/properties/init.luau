@@ -28,7 +28,8 @@ local function NoInstanceSelected(scope: Fusion.Scope): Fusion.Child
     return Text(scope, {
         Text = "No Instance selected.",
         Variant = "Secondary",
-        Size = UDim2.fromScale(1, 1)
+        Size = UDim2.fromScale(1, 1),
+        TextXAlignment = Enum.TextXAlignment.Center,
     })
 end
 

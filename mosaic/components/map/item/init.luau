@@ -57,7 +57,6 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps)
             New(scope, "UIListLayout") {
                 Padding = UDim.new(0, 1),
                 FillDirection = Enum.FillDirection.Horizontal,
-                HorizontalFlex = Enum.UIFlexAlignment.Fill,
                 SortOrder = Enum.SortOrder.LayoutOrder
             },
         }

@@ -98,6 +98,7 @@ return Component<<InputProps>>(function(scope, props)
                 FontFace = theme:GetFont("Main", Enum.FontWeight.Medium),
                 ClearTextOnFocus = false,
                 TextXAlignment = Enum.TextXAlignment.Left,
+                TextTruncate = Enum.TextTruncate.AtEnd,
 
                 [OnEvent "Focused"] = function() isFocusState:set(true) end,
                 [OnEvent "FocusLost"] = function() isFocusState:set(false) end,

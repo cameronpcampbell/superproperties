@@ -78,7 +78,11 @@ local function MapEmptyItem(scope: Fusion.Scope, props: MapEmptyItemProps)
             Text(scope, {
                 Text = props.Text,
                 Variant = "Secondary",
-                FontWeight = Enum.FontWeight.Regular
+                Size = UDim2.fromScale(1, 0),
+
+                [Children] = New(scope, "UIFlexItem") {
+                    FlexMode = Enum.UIFlexMode.Shrink
+                }
             }),
 
             New(scope, "UIListLayout") {

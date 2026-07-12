@@ -170,6 +170,8 @@ return Component<<MapProps>>(function(scope, props)
 
         Name = `Map {if header then `[{header}]` else ""}`,
 
+        RootChildren = New(scope, "UIFlexItem") {},
+
         [Children] = {
             itemInstances,
 
@@ -183,7 +185,7 @@ return Component<<MapProps>>(function(scope, props)
                 PaddingRight = UDim.new(0, 1),
                 PaddingTop = UDim.new(0, 1),
                 PaddingBottom = UDim.new(0, 1),
-            }
+            },
         }
     }, props))
 end)

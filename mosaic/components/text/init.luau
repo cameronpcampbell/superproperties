@@ -33,7 +33,7 @@ return Component<<TextProps>>(function(scope, props)
     local props, text = TableExtract(props, "Text")
     local props, variant = TableExtract(props, "Variant", "Primary")
     local props, font = TableExtract(props, "Font", "Main")
-    local props, fontWeight = TableExtract(props, "FontWeight", Enum.FontWeight.Medium)
+    local props, fontWeight = TableExtract(props, "FontWeight", Enum.FontWeight.Regular)
     local props, fontStyle = TableExtract(props, "FontStyle", Enum.FontStyle.Normal)
     local props, fontSize = TableExtract(props, "FontSize", "Body")
 
@@ -45,6 +45,8 @@ return Component<<TextProps>>(function(scope, props)
         Size = UDim2.fromScale(0, 0),
         AutomaticSize = Enum.AutomaticSize.XY,
         BackgroundTransparency = 1,
+        TextTruncate = Enum.TextTruncate.AtEnd,
+        TextXAlignment = Enum.TextXAlignment.Left,
 
         Name = "Text"
     }, props))

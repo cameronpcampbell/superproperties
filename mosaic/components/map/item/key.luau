@@ -56,7 +56,7 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
 
     return Supercorner.new(scope, {
         BackgroundColor3 = theme:GetBg(scope, variant),
-        Size = UDim2.fromScale(1, 1),
+        Size = UDim2.fromScale(.5, 1),
         TopLeftRadius = topLeftRadius,
         TopRightRadius = topRightRadius,
         BottomLeftRadius = bottomLeftRadius,
@@ -76,7 +76,11 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
 
             Text(scope, {
                 Text = props.Key,
-                FontWeight = Enum.FontWeight.Regular
+                Size = UDim2.fromScale(1, 0),
+
+                [Children] = New(scope, "UIFlexItem") {
+                    FlexMode = Enum.UIFlexMode.Shrink
+                }
             }),
 
             New(scope, "UIListLayout") {
@@ -88,7 +92,7 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
             New(scope, "UIPadding") {
                 PaddingLeft = UDim.new(0, 6),
                 PaddingRight = UDim.new(0, 6)
-            }
+            },
         }
     })
 end
