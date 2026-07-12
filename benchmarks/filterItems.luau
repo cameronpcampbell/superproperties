@@ -1,9 +1,11 @@
 --!strict
 
-local FilterItems = require("../src/blocks/properties/maps/category/filterItems")
+local CreateItemFilter =
+    require("../src/blocks/properties/maps/category/filterItems")
 
 type Item = { Key: string, Value: any }
-type Filter = (items: { Item }, query: string?) -> { Item }
+type ItemFilter = (query: string?) -> { Item }
+type FilterFactory = (items: { Item }) -> ItemFilter
 
 local Roots = {
     "Absolute", "Active", "Automatic", "Background", "Camera", "Content",
@@ -66,29 +68,30 @@ local function Consume(filteredItems: { Item }): number
 end
 
 local function RunWarm(
-    filter: Filter,
+    filterFactory: FilterFactory,
     itemCount: number,
     iterations: number
 ): (number, number)
     local items = BuildItems(itemCount)
+    local filter = filterFactory(items)
     local checksum = 0
 
     -- Prime any candidate cache before measuring repeated filter changes.
     for _, query in Queries do
-        checksum += Consume(filter(items, query))
+        checksum += Consume(filter(query))
     end
 
     local startedAt = os.clock()
     for iteration = 1, iterations do
         local query = Queries[(iteration - 1) % #Queries + 1]
-        checksum += Consume(filter(items, query))
+        checksum += Consume(filter(query))
     end
 
     return os.clock() - startedAt, checksum
 end
 
 local function RunCold(
-    filter: Filter,
+    filterFactory: FilterFactory,
     itemCount: number,
     iterations: number
 ): (number, number)
@@ -101,7 +104,8 @@ local function RunCold(
     local startedAt = os.clock()
     for iteration = 1, iterations do
         local query = Queries[(iteration - 1) % #Queries + 1]
-        checksum += Consume(filter(itemSets[iteration], query))
+        local filter = filterFactory(itemSets[iteration])
+        checksum += Consume(filter(query))
     end
 
     return os.clock() - startedAt, checksum
@@ -114,7 +118,7 @@ end
 
 local function Benchmark(
     name: string,
-    runner: (Filter, number, number) -> (number, number),
+    runner: (FilterFactory, number, number) -> (number, number),
     itemCount: number,
     iterations: number
 )
@@ -122,11 +126,11 @@ local function Benchmark(
     local checksum = 0
 
     -- Warm the VM and code paths; RunCold still receives fresh item objects.
-    runner(FilterItems, itemCount, math.max(2, math.floor(iterations / 10)))
+    runner(CreateItemFilter, itemCount, math.max(2, math.floor(iterations / 10)))
 
     for sampleIdx = 1, 9 do
         local elapsed, sampleChecksum =
-            runner(FilterItems, itemCount, iterations)
+            runner(CreateItemFilter, itemCount, iterations)
         samples[sampleIdx] = elapsed
         checksum += sampleChecksum
     end

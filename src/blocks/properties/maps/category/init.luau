@@ -9,13 +9,14 @@ local Mosaic = require(Packages.mosaic)
 local Map = Mosaic.Map
 
 local CategoryOrder = require(script.categoryOrder)
-local FilterItemList = require(script.filterItems)
+local CreateItemFilter = require(script.filterItems)
 local GetCollapsedState = require(script.getCollapsedState)
 local GetFilterState = require(script.Parent.Parent.getFilterState)
 
 local DefaultCategoryLayoutOrder = 999997
 
 type Item = { Key: string, Value: any }
+type ItemFilter = (query: string?) -> { Item }
 
 type CategoryProps = {
     Name: string,
@@ -39,19 +40,26 @@ local function SortItems(
     end)
 end
 
-local function FilterItems(
+local function PrepareItemFilter(
     scope: Fusion.Scope,
-    filter: Fusion.Value<string?>,
     items: Fusion.Computed<{ Item }>
-): Fusion.Computed<{ Item }>
+): Fusion.Computed<ItemFilter>
     return Computed(scope, function(use, scope)
-        local usedItems = use<<{ Item }>>(items)
-
-        local usedFilter = use<<string?>>(filter)
-        return FilterItemList(usedItems, usedFilter)
+        return CreateItemFilter(use<<{ Item }>>(items))
     end)
 end
 
+local function FilterItems(
+    scope: Fusion.Scope,
+    filter: Fusion.Value<string?>,
+    itemFilter: Fusion.Computed<ItemFilter>
+): Fusion.Computed<{ Item }>
+    return Computed(scope, function(use, scope)
+        local usedItemFilter = use<<ItemFilter>>(itemFilter)
+        local usedFilter = use<<string?>>(filter)
+        return usedItemFilter(usedFilter)
+    end)
+end
 
 return function(
     scope: Fusion.Scope,
@@ -60,8 +68,10 @@ return function(
 )
     local name = props.Name
 
+    local sortedItems = SortItems(scope, props.Items)
+    local itemFilter = PrepareItemFilter(scope, sortedItems)
     local filteredItems =
-        FilterItems(scope, GetFilterState(outerScope), SortItems(scope, props.Items))
+        FilterItems(scope, GetFilterState(outerScope), itemFilter)
 
     return Computed(scope, function(use, scope): Fusion.Child?
         local usedFilteredItems = use<<{ Item }>>(filteredItems)

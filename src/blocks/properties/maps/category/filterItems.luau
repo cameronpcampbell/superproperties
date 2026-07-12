@@ -17,22 +17,20 @@ type Candidate = {
     BoundaryBonuses: { number }
 }
 
-type CachedCandidate = {
-    Key: string,
-    Candidate: Candidate
-}
-
-type CandidateCacheMap = setmetatable<
-    { [Item]: CachedCandidate },
-    { __mode: string }
->
-
-type ScoredItem = {
+type PreparedItem = {
     Item: Item,
-    Score: number,
+    Key: string,
+    Candidate: Candidate,
     LowerKey: string,
     Index: number
 }
+
+type ScoredItem = {
+    PreparedItem: PreparedItem,
+    Score: number
+}
+
+type ItemFilter = (query: string?) -> { Item }
 
 local ExactScore = 1_000_000
 local PrefixScore = 900_000
@@ -45,13 +43,6 @@ local ConsecutiveBonus = 10
 local GapPenalty = 1
 local MinLooseMatchLength = 3
 local NegativeInfinity = -math.huge
-
--- Candidate values never refer back to their item key, so cache entries can be
--- collected as soon as the item is no longer reachable elsewhere.
-local CandidateCache: CandidateCacheMap = setmetatable(
-    {} :: { [Item]: CachedCandidate },
-    { __mode = "k" }
-)
 
 local function IsWhitespaceByte(byte: number): boolean
     return byte == 32 or byte >= 9 and byte <= 13
@@ -126,21 +117,24 @@ local function PrepareCandidate(input: string): Candidate
     }
 end
 
-local function GetCandidate(item: Item): Candidate
+local function PrepareItem(item: Item, index: number): PreparedItem
     local key = item.Key
-    local cached = CandidateCache[item]
-
-    if cached and cached.Key == key then
-        return cached.Candidate
-    end
-
-    local candidate = PrepareCandidate(key)
-    CandidateCache[item] = {
+    return {
+        Item = item,
         Key = key,
-        Candidate = candidate
+        Candidate = PrepareCandidate(key),
+        LowerKey = key:lower(),
+        Index = index
     }
+end
 
-    return candidate
+local function RefreshPreparedItem(preparedItem: PreparedItem)
+    local key = preparedItem.Item.Key
+    if preparedItem.Key == key then return end
+
+    preparedItem.Key = key
+    preparedItem.Candidate = PrepareCandidate(key)
+    preparedItem.LowerKey = key:lower()
 end
 
 local function PrepareQuery(query: string?): PreparedQuery
@@ -291,40 +285,58 @@ local function ScoreCandidate(
     return SubsequenceScore + subsequence * 10 - lengthPenalty
 end
 
-local function FilterItems(items: { Item }, query: string?): { Item }
-    local preparedQuery = PrepareQuery(query)
-    if preparedQuery.Length == 0 then return table.clone(items) end
-
-    local scoredItems = table.create(#items) :: { ScoredItem }
-    local scoredItemCount = 0
+local function CreateItemFilter(items: { Item }): ItemFilter
+    local preparedItems = table.create(#items) :: { PreparedItem }
 
     for idx, item in items do
-        local score = ScoreCandidate(GetCandidate(item), preparedQuery)
-        if not score then continue end
-
-        scoredItemCount += 1
-        scoredItems[scoredItemCount] = {
-            Item = item,
-            Score = score,
-            LowerKey = item.Key:lower(),
-            Index = idx
-        }
+        preparedItems[idx] = PrepareItem(item, idx)
     end
 
-    table.sort(scoredItems, function(a: ScoredItem, b: ScoredItem): boolean
-        if a.Score ~= b.Score then return a.Score > b.Score end
-        if a.LowerKey ~= b.LowerKey then return a.LowerKey < b.LowerKey end
-        if a.Item.Key ~= b.Item.Key then return a.Item.Key < b.Item.Key end
+    return function(query: string?): { Item }
+        local preparedQuery = PrepareQuery(query)
+        if preparedQuery.Length == 0 then return table.clone(items) end
 
-        return a.Index < b.Index
-    end)
+        local scoredItems = table.create(#items) :: { ScoredItem }
+        local scoredItemCount = 0
 
-    local filteredItems = table.create(scoredItemCount) :: { Item }
-    for idx, scoredItem in scoredItems do
-        filteredItems[idx] = scoredItem.Item
+        for _, preparedItem in preparedItems do
+            RefreshPreparedItem(preparedItem)
+
+            local score =
+                ScoreCandidate(preparedItem.Candidate, preparedQuery)
+            if not score then continue end
+
+            scoredItemCount += 1
+            scoredItems[scoredItemCount] = {
+                PreparedItem = preparedItem,
+                Score = score
+            }
+        end
+
+        table.sort(scoredItems, function(a: ScoredItem, b: ScoredItem): boolean
+            if a.Score ~= b.Score then return a.Score > b.Score end
+
+            local preparedItemA = a.PreparedItem
+            local preparedItemB = b.PreparedItem
+
+            if preparedItemA.LowerKey ~= preparedItemB.LowerKey then
+                return preparedItemA.LowerKey < preparedItemB.LowerKey
+            end
+
+            if preparedItemA.Key ~= preparedItemB.Key then
+                return preparedItemA.Key < preparedItemB.Key
+            end
+
+            return preparedItemA.Index < preparedItemB.Index
+        end)
+
+        local filteredItems = table.create(scoredItemCount) :: { Item }
+        for idx, scoredItem in scoredItems do
+            filteredItems[idx] = scoredItem.PreparedItem.Item
+        end
+
+        return filteredItems
     end
-
-    return filteredItems
 end
 
-return FilterItems
+return CreateItemFilter
