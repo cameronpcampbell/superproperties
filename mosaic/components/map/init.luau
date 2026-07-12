@@ -36,91 +36,105 @@ type MapProps = {
 	Variant: ThemeUtils.BgVariantLayer?,
 	Width: UDim?,
 	Header: string?,
-	Items: Items?,
+	Items: Fusion.UsedAs<Items>?,
 	HideValues: boolean?,
 	EmptyText: string?,
 	Collapsed: Fusion.UsedAs<boolean>?
 }
 
-local function CalcRowCount(
+local function ComputeRowCount(
+    scope: Fusion.Scope,
     header: string?,
-    items: Items?,
+    items: Fusion.UsedAs<Items>?,
     emptyText: string?
 )
-    local rowCount = 0
+    return Computed(scope, function(use, scope)
+        local rowCount = 0
 
-    if items and #items ~= 0 then
-        rowCount += #items
+        if items and #items ~= 0 then
+            rowCount += #items
 
-    elseif emptyText then
-        rowCount += 1
-    end
+        elseif emptyText then
+            rowCount += 1
+        end
 
-    if header then rowCount += 1 end
+        if header then rowCount += 1 end
 
-    return rowCount
+        return rowCount
+    end)
 end
 
 local function ItemsToInstances(
     scope: Fusion.Scope,
     variant: ThemeUtils.BgVariantLayer,
     header: string?,
-    items: Items?,
-    rowCount: number,
+    items: Fusion.UsedAs<Items>?,
+    computeRowCount: Fusion.Computed<number>,
     hideValues: boolean,
     emptyText: string?,
     collapsedState: Fusion.Value<boolean>,
     tweenComputeMapSize: Fusion.Tween<UDim2>
-): Fusion.Child?
-    local baseIdx, instances = 0, table.create(rowCount) :: { Instance }
+): Fusion.Computed<Fusion.Child?>
+    return Computed(scope, function(use, scope: Fusion.Scope): Fusion.Child?
+        local usedRowCount = use<<number>>(computeRowCount)
+        local baseIdx, instances = 0, table.create(usedRowCount) :: { Instance }
 
-    if header then
-        baseIdx = 1
+        if header then
+            baseIdx = 1
 
-        instances[1] = MapHeader(scope, {
-            Header = header,
-            Variant = variant,
-            RowCount = rowCount,
-            RowIdx = 1,
-            CollapsedState = collapsedState,
-            TweenComputeMapSize = tweenComputeMapSize
-        })
-    end
+            instances[1] = MapHeader(scope, {
+                Header = header,
+                Variant = variant,
+                RowCount = usedRowCount,
+                RowIdx = 1,
+                CollapsedState = collapsedState,
+                TweenComputeMapSize = tweenComputeMapSize
+            })
+        end
 
-    if not items or #items == 0 then
-        if not emptyText then return nil end
+        if not items or #items == 0 then
+            if not emptyText then return nil end
 
-        instances[baseIdx + 1] = MapEmptyItem(scope, {
-            Text = emptyText,
-            Variant = variant,
-            RowCount = rowCount,
-            RowIdx = baseIdx + 1,
-        })
+            instances[baseIdx + 1] = MapEmptyItem(scope, {
+                Text = emptyText,
+                Variant = variant,
+                RowCount = usedRowCount,
+                RowIdx = baseIdx + 1,
+            })
+
+            return instances :: Fusion.Child
+        end
+
+        for idx, item in items do
+            local idx = baseIdx + idx
+
+            instances[idx] = MapItem(scope, {
+                Key = item.Key,
+                Value = item.Value,
+                HideValue = hideValues,
+                Variant = variant,
+                RowCount = usedRowCount,
+                RowIdx = idx
+            })
+        end
 
         return instances :: Fusion.Child
-    end
-
-    for idx, item in items do
-        local idx = baseIdx + idx
-
-        instances[idx] = MapItem(scope, {
-            Key = item.Key,
-            Value = item.Value,
-            HideValue = hideValues,
-            Variant = variant,
-            RowCount = rowCount,
-            RowIdx = idx
-        })
-    end
-
-    return instances :: Fusion.Child
+    end)
 end
 
-local function CalcMapHeight(rowCount: number, lgHeight: number): number
-    -- We subtract 2 to account for the stroke.
-    local itemHeight = lgHeight - 2
+local function ComputeUncollapsedMapHeight(
+    scope: Fusion.Scope,
+    computeRowCount: Fusion.Computed<number>,
+    lgHeight: number
+)
+    return Computed(scope, function(use, scope)
+        local usedRowCount = use<<number>>(computeRowCount)
 
-    return itemHeight * rowCount + rowCount + 1
+        -- We subtract 2 to account for the stroke.
+        local itemHeight = lgHeight - 2
+
+        return itemHeight * usedRowCount + usedRowCount + 1
+    end)
 end
 
 return Component<<MapProps>>(function(scope, props)
@@ -136,8 +150,9 @@ return Component<<MapProps>>(function(scope, props)
     local props, collapsed = TableExtract(props, "Collapsed", false)
 
     local strokeVariant = GetNextVariant(variant)
-    local rowCount = CalcRowCount(header, items, emptyText)
-    local mapUncollapsedHeight = CalcMapHeight(rowCount, lgHeight)
+    local computeRowCount = ComputeRowCount(scope, header, items, emptyText)
+    local computeUncollapsedHeight =
+        ComputeUncollapsedMapHeight(scope, computeRowCount, lgHeight)
 
     local collapsedState = CoerceToValue<<boolean>>(scope, collapsed)
 
@@ -145,9 +160,11 @@ return Component<<MapProps>>(function(scope, props)
         scope,
         Computed(scope, function(use, scope)
             local usedCollapsed = use<<boolean>>(collapsedState)
+            local usedUncollapsedMapHeight =
+                use<<number>>(computeUncollapsedHeight)
 
             local height =
-                if usedCollapsed then lgHeight else mapUncollapsedHeight
+                if usedCollapsed then lgHeight else usedUncollapsedMapHeight
 
             return UDim2.new(width, UDim.new(0, height))
         end) :: any,
@@ -158,7 +175,7 @@ return Component<<MapProps>>(function(scope, props)
 
     local itemInstances = ItemsToInstances(
         scope, variant, header, items,
-        rowCount, hideValues, emptyText,
+        computeRowCount, hideValues, emptyText,
         collapsedState, tweenComputeMapSize
     )
 
