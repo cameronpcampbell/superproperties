@@ -62,7 +62,7 @@ local function MapEmptyItem(scope: Fusion.Scope, props: MapEmptyItemProps)
         TopRightRadius = topRightRadius,
         BottomLeftRadius = bottomLeftRadius,
         BottomRightRadius = bottomRightRadius,
-        LayoutOrder = 0,
+        LayoutOrder = 1,
 
         Name = "MapItem",
 

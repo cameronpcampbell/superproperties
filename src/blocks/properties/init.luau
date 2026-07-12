@@ -67,6 +67,18 @@ local function GetAttributes(
     return attributeItems
 end
 
+type PropertyItem = { Key: string, Value: any }
+
+local function SortProperties(
+    properties: { PropertyItem }
+): { PropertyItem }
+    table.sort(properties, function(a: PropertyItem, b: PropertyItem)
+        return a.Key < b.Key
+    end)
+
+    return properties
+end
+
 return function(scope: Fusion.Scope)
     local selectedInstValue = SelectedValue(scope)
 
@@ -81,7 +93,7 @@ return function(scope: Fusion.Scope)
         for categoryName, categoryData in properties do
             table.insert(maps, Map(scope, {
                 Header = categoryName,
-                Items = categoryData.Properties,
+                Items = SortProperties(categoryData.Properties),
                 LayoutOrder = CategoryOrder[categoryName] or 999999,
             }))
         end

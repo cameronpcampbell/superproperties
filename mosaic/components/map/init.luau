@@ -175,7 +175,7 @@ return Component<<MapProps>>(function(scope, props)
 
             New(scope, "UIListLayout") {
                 Padding = UDim.new(0, 1),
-                SortOrder = Enum.SortOrder.Name
+                SortOrder = Enum.SortOrder.LayoutOrder
             },
 
             New(scope, "UIPadding") {
