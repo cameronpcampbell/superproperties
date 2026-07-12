@@ -72,7 +72,9 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
                 })
             else
                 Text(scope, {
-                    Text = tostring(props.Value),
+                    Text =
+                        if typeof(props.Value) == "EnumItem" then props.Value.Name
+                        else tostring(props.Value),
                     Variant = "Primary",
                     FontWeight = Enum.FontWeight.Regular
                 }),
