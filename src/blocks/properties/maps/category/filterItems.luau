@@ -1,4 +1,5 @@
 --!strict
+--!native
 
 type Item = { Key: string, Value: any }
 
@@ -21,6 +22,11 @@ type CachedCandidate = {
     Candidate: Candidate
 }
 
+type CandidateCacheMap = setmetatable<
+    { [Item]: CachedCandidate },
+    { __mode: string }
+>
+
 type ScoredItem = {
     Item: Item,
     Score: number,
@@ -42,10 +48,10 @@ local NegativeInfinity = -math.huge
 
 -- Candidate values never refer back to their item key, so cache entries can be
 -- collected as soon as the item is no longer reachable elsewhere.
-local CandidateCache = setmetatable(
+local CandidateCache: CandidateCacheMap = setmetatable(
     {} :: { [Item]: CachedCandidate },
     { __mode = "k" }
-) :: { [Item]: CachedCandidate }
+)
 
 local function IsWhitespaceByte(byte: number): boolean
     return byte == 32 or byte >= 9 and byte <= 13
@@ -80,10 +86,10 @@ end
 local function PrepareCandidate(input: string): Candidate
     local inputLength = #input
     local lowerInput = input:lower()
-    local compactCharacters = table.create(inputLength)
-    local compactBytes = table.create(inputLength)
-    local boundaryCharacters = table.create(inputLength)
-    local boundaryBonuses = table.create(inputLength)
+    local compactCharacters = table.create(inputLength) :: { string }
+    local compactBytes = table.create(inputLength) :: { number }
+    local boundaryCharacters = table.create(inputLength) :: { string }
+    local boundaryBonuses = table.create(inputLength) :: { number }
     local compactLength = 0
     local boundaryLength = 0
     local previousByte: number? = nil
@@ -140,7 +146,7 @@ end
 local function PrepareQuery(query: string?): PreparedQuery
     local normalizedQuery = if query then query:lower():gsub("%s+", "") else ""
     local queryLength = #normalizedQuery
-    local queryBytes = table.create(queryLength)
+    local queryBytes = table.create(queryLength) :: { number }
     local isWord = queryLength > 0
 
     for idx = 1, queryLength do
