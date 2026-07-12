@@ -58,11 +58,6 @@ jobs:
             exit 1
           fi
 
-          if ! grep -Fq '{{TAG}}' RELEASE_TEMPLATE.md; then
-            echo "::error::RELEASE_TEMPLATE.md is missing the {{TAG}} placeholder."
-            exit 1
-          fi
-
           CHANGELOG_MARKER_COUNT="$(grep -Ec '^\{\{#{1,6}CHANGELOG\}\}$' RELEASE_TEMPLATE.md || true)"
           if [ "$CHANGELOG_MARKER_COUNT" -ne 1 ]; then
             echo "::error::RELEASE_TEMPLATE.md must contain exactly one {{#CHANGELOG}} through {{######CHANGELOG}} marker on its own line."
@@ -116,7 +111,6 @@ jobs:
       - name: Render release notes
         run: |
           TAG="$GITHUB_REF_NAME"
-          VERSION="${TAG#v}"
           CHANGELOG_FILE="$RUNNER_TEMP/changelog.md"
           RELEASE_NOTES_FILE="$RUNNER_TEMP/release-notes.md"
           CHANGELOG_MARKER="$(grep -Em1 '^\{\{#{1,6}CHANGELOG\}\}$' RELEASE_TEMPLATE.md)"
@@ -133,7 +127,7 @@ jobs:
             }
           ' CHANGELOG.md > "$CHANGELOG_FILE"
 
-          awk -v version="$VERSION" -v changelog_file="$CHANGELOG_FILE" -v changelog_marker="$CHANGELOG_MARKER" '
+          awk -v changelog_file="$CHANGELOG_FILE" -v changelog_marker="$CHANGELOG_MARKER" '
             $0 == changelog_marker {
               while ((getline line < changelog_file) > 0) {
                 print line
@@ -141,10 +135,7 @@ jobs:
               close(changelog_file)
               next
             }
-            {
-              gsub(/\{\{TAG\}\}/, version)
-              print
-            }
+            { print }
           ' RELEASE_TEMPLATE.md > "$RELEASE_NOTES_FILE"
 
           if [ ! -s "$RELEASE_NOTES_FILE" ]; then
