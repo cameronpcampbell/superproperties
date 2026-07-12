@@ -101,7 +101,11 @@ jobs:
           rokit list
 
       - name: Install pesde dependencies
-        run: pesde install --locked
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          pesde auth --index https://github.com login --token "Bearer $GITHUB_TOKEN"
+          pesde install --locked
 
       - name: Build plugin
         run: |
