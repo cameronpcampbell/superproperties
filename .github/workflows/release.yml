@@ -63,8 +63,9 @@ jobs:
             exit 1
           fi
 
-          if ! grep -Fxq '{{CHANGELOG}}' RELEASE_TEMPLATE.md; then
-            echo "::error::RELEASE_TEMPLATE.md must contain {{CHANGELOG}} on its own line."
+          CHANGELOG_MARKER_COUNT="$(grep -Ec '^\{\{#{1,6}CHANGELOG\}\}$' RELEASE_TEMPLATE.md || true)"
+          if [ "$CHANGELOG_MARKER_COUNT" -ne 1 ]; then
+            echo "::error::RELEASE_TEMPLATE.md must contain exactly one {{#CHANGELOG}} through {{######CHANGELOG}} marker on its own line."
             exit 1
           fi
 
@@ -118,20 +119,22 @@ jobs:
           VERSION="${TAG#v}"
           CHANGELOG_FILE="$RUNNER_TEMP/changelog.md"
           RELEASE_NOTES_FILE="$RUNNER_TEMP/release-notes.md"
+          CHANGELOG_MARKER="$(grep -Em1 '^\{\{#{1,6}CHANGELOG\}\}$' RELEASE_TEMPLATE.md)"
+          HEADING_PREFIX="$(printf '%s\n' "$CHANGELOG_MARKER" | sed -E 's/^\{\{(#{1,6})CHANGELOG\}\}$/\1/')"
 
-          awk -v heading="# $TAG" '
+          awk -v heading="# $TAG" -v heading_prefix="$HEADING_PREFIX" '
             $0 == heading { found=1; next }
             found && /^# / { exit }
             found {
               if ($0 ~ /^#{1,6}[[:space:]]/) {
-                $0 = "##" $0
+                $0 = heading_prefix $0
               }
               print
             }
           ' CHANGELOG.md > "$CHANGELOG_FILE"
 
-          awk -v version="$VERSION" -v changelog_file="$CHANGELOG_FILE" '
-            $0 == "{{CHANGELOG}}" {
+          awk -v version="$VERSION" -v changelog_file="$CHANGELOG_FILE" -v changelog_marker="$CHANGELOG_MARKER" '
+            $0 == changelog_marker {
               while ((getline line < changelog_file) > 0) {
                 print line
               }
