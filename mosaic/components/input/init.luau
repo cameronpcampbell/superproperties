@@ -102,6 +102,10 @@ return Component<<InputProps>>(function(scope, props)
 
                 [OnEvent "Focused"] = function() isFocusState:set(true) end,
                 [OnEvent "FocusLost"] = function() isFocusState:set(false) end,
+
+                [Children] = New(scope, "UIFlexItem") {
+                    FlexMode = Enum.UIFlexMode.Shrink
+                }
             },
 
             rightChildren,
@@ -109,7 +113,6 @@ return Component<<InputProps>>(function(scope, props)
             New(scope, "UIListLayout") {
                 FillDirection = Enum.FillDirection.Horizontal,
                 HorizontalAlignment = Enum.HorizontalAlignment.Left,
-                HorizontalFlex = Enum.UIFlexAlignment.Fill,
                 VerticalAlignment = Enum.VerticalAlignment.Center,
                 Padding = UDim.new(0, 6)
             },
