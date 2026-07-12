@@ -17,6 +17,12 @@ type Properties = {
     [string]: Category
 }
 
+type PreparedProperties = {
+    Types.PatchedReflectionPropertiesItem
+}
+
+local PreparedPropertiesByClass: { [string]: PreparedProperties } = {}
+
 local function TableMergeFrozen(
     tbleA: { [any]: any },
     tbleB:  { [any]: any }
@@ -66,6 +72,30 @@ local function ApplyPatches(
     return item
 end
 
+local function GetPreparedProperties(className: string): PreparedProperties
+    local cachedProperties = PreparedPropertiesByClass[className]
+    if cachedProperties then return cachedProperties end
+
+    local reflection = ReflectionService:GetPropertiesOfClass(className)
+    local preparedProperties =
+        table.create(#reflection) :: PreparedProperties
+    local preparedPropertyCount = 0
+
+    for _, reflectedItem in reflection do
+        local item = ApplyPatches(reflectedItem)
+        local itemDisplay = item.Display
+
+        if not itemDisplay then continue end
+        if itemDisplay.DeprecationMessage then continue end
+
+        preparedPropertyCount += 1
+        preparedProperties[preparedPropertyCount] = item
+    end
+
+    PreparedPropertiesByClass[className] = preparedProperties
+    return preparedProperties
+end
+
 local function CreateOrGetCategory(
     properties: Properties,
     categoryName: string
@@ -83,17 +113,12 @@ local function CreateOrGetCategory(
 end
 
 local function GetProperties(instance: Instance): Properties
-    local reflection = ReflectionService:GetPropertiesOfClass(instance.ClassName)
-
+    local preparedProperties = GetPreparedProperties(instance.ClassName)
     local properties: Properties = {}
 
-    for _, item in reflection do
-        local item = ApplyPatches(item)
-
+    for _, item in preparedProperties do
         local itemDisplay = item.Display
         if not itemDisplay then continue end
-        if itemDisplay.DeprecationMessage then continue end
-
         local name = item.Name
 
         local ok, value = pcall(function()
