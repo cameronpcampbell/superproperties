@@ -3,14 +3,8 @@
 
 local ReflectionService = game:GetService("ReflectionService")
 
-local Packages = script.Parent.Parent.Parent.Parent.packages
-local Typeforge = require(Packages.typeforge)
-
 local Patches = require(script.patches)
-
-type ReflectedProperties =
-    index<Typeforge.Returns<typeof(ReflectionService.GetPropertiesOfClass)>, "1">
-type ReflectionPropertiesData = index<ReflectedProperties, number>
+local Types = require(script.types)
 
 type Category = {
     Properties: {{
@@ -42,34 +36,34 @@ local function TableMergeFrozen(
 end
 
 local function ApplyOwnerPatches(
-    data: ReflectionPropertiesData,
+    item: Types.ReflectionPropertiesItem,
     patchCategory: { [string]: any },
-    dataOwner: string?
-)
-    if not dataOwner then return data end
+    itemOwner: string?
+): Types.PatchedReflectionPropertiesItem
+    if not itemOwner then return item :: Types.PatchedReflectionPropertiesItem end
 
-    local patchOwner = patchCategory[dataOwner]
-    if not patchOwner then return data end
+    local patchOwner = patchCategory[itemOwner]
+    if not patchOwner then return item :: Types.PatchedReflectionPropertiesItem end
 
-    local patchProperty = patchOwner[data.Name]
-    if not patchProperty then return data end
+    local patchProperty = patchOwner[item.Name]
+    if not patchProperty then return item :: Types.PatchedReflectionPropertiesItem end
 
-    return TableMergeFrozen(table.clone(data) :: any, patchProperty)
+    return TableMergeFrozen(table.clone(item) :: any, patchProperty)
 end
 
 local function ApplyPatches(
-    data: ReflectionPropertiesData
-): ReflectionPropertiesData
-    local dataDisplay = data.Display
-    if not dataDisplay then return data end
+    item: Types.ReflectionPropertiesItem
+): Types.PatchedReflectionPropertiesItem
+    local itemDisplay = item.Display
+    if not itemDisplay then return item :: Types.PatchedReflectionPropertiesItem end
 
-    local patchCategory = Patches[dataDisplay.Category]
-    if not patchCategory then return data end
+    local patchCategory = Patches[itemDisplay.Category]
+    if not patchCategory then return item :: Types.PatchedReflectionPropertiesItem end
 
-    local data = ApplyOwnerPatches(data, patchCategory, data.Owner)
-    local data = ApplyOwnerPatches(data, patchCategory, "*")
+    local item = ApplyOwnerPatches(item, patchCategory, item.Owner)
+    local item = ApplyOwnerPatches(item, patchCategory, "*")
 
-    return data
+    return item
 end
 
 local function CreateOrGetCategory(
@@ -93,23 +87,29 @@ local function GetProperties(instance: Instance): Properties
 
     local properties: Properties = {}
 
-    for _, data in reflection do
-        local data = ApplyPatches(data)
+    for _, item in reflection do
+        local item = ApplyPatches(item)
 
-        local dataDisplay = data.Display
-        if not dataDisplay then continue end
-        if dataDisplay.DeprecationMessage then continue end
+        local itemDisplay = item.Display
+        if not itemDisplay then continue end
+        if itemDisplay.DeprecationMessage then continue end
 
-        local name = data.Name
+        local name = item.Name
 
         local ok, value = pcall(function()
-            return (instance :: any)[name]
+            local customReadWrite = item.CustomReadWrite
+            if customReadWrite then
+                return customReadWrite.Read(instance)
+
+            else
+                return (instance :: any)[name]
+            end
         end)
 
         if not ok then continue end
 
         table.insert(
-            CreateOrGetCategory(properties, dataDisplay.Category).Properties,
+            CreateOrGetCategory(properties, itemDisplay.Category).Properties,
             {
                 Key = name,
                 Value = value

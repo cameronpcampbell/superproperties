@@ -1,6 +1,12 @@
 --!strict
 --!nolint LocalShadow
 
+local Packages = script.Parent.Parent.Parent.Parent.Parent.packages
+local Typeforge = require(Packages.typeforge)
+
+
+local Types = require(script.Parent.types)
+
 type Patches = {
     -- Category
     [string]: {
@@ -8,7 +14,7 @@ type Patches = {
         [string]: {
             -- Property Name
             [string]: {
-                [string]: any
+                [string]: Typeforge.Partial<Types.PatchedReflectionPropertiesItem>
             }
         }
     }
@@ -82,6 +88,23 @@ local Patches: Patches = {
             TextColor = {
                 Display = {
                     DeprecationMessage = "Use 'TextColor3' instead."
+                }
+            }
+
+        }
+    },
+    Transform = {
+        PVInstance = {
+
+            Origin = {
+                CustomReadWrite = {
+                    Read = function(inst: PVInstance)
+                        return inst:GetPivot()
+                    end,
+
+                    Write = function(inst: PVInstance, write: CFrame)
+                        inst:PivotTo(write)
+                    end
                 }
             }
 
