@@ -5,5 +5,7 @@ return {
     CombineProps = require(script.combineProps),
     Component = require(script.component),
     ComputeTransforms = require(script.computeTransforms),
-    CoerceToValue = require(script.coerceToValue)
+    CoerceToValue = require(script.coerceToValue),
+    CreateOutProxy = require(script.createOutProxy),
+    IsValue = require(script.isValue)
 }

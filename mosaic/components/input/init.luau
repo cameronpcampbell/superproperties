@@ -5,15 +5,16 @@ local Packages = script.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local Peek, New, Children, Value, OnEvent, Computed, Tween =
+local Peek, New, Children, Value, Out, OnEvent, Computed, Tween =
     Fusion.peek, Fusion.New, Fusion.Children, Fusion.Value,
-    Fusion.OnEvent, Fusion.Computed, Fusion.Tween
+    Fusion.Out, Fusion.OnEvent, Fusion.Computed, Fusion.Tween
 
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CombineProps =
-    FusionUtils.Component, FusionUtils.CombineProps
+local Component, CombineProps, CreateOutProxy, IsValue =
+    FusionUtils.Component, FusionUtils.CombineProps,
+    FusionUtils.CreateOutProxy, FusionUtils.IsValue
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope, GetNextVariant, CalcColorModifier =
@@ -67,6 +68,15 @@ return Component<<InputProps>>(function(scope, props)
         return if usedText == nil then "" else usedText
     end)
 
+    local textValue = if IsValue(text) then
+        (text :: any) :: Fusion.Value<string?, string>
+        else nil
+
+    local textOutProxy =
+        if textValue then
+            CreateOutProxy(scope, textValue, Peek<<string>>(computeVisualText))
+        else nil
+
     return Supercorner.new(scope :: any, CombineProps({
         BackgroundColor3 = theme:GetBg(scope, variant),
         StrokeColor = tweenComputeStrokeColor,
@@ -108,7 +118,7 @@ return Component<<InputProps>>(function(scope, props)
                 [OnEvent "Focused"] = function() isFocusState:set(true) end,
                 [OnEvent "FocusLost"] = function() isFocusState:set(false) end,
 
-                [Fusion.Out "Text"] = if type(text) == "table" then text else nil,
+                [Out "Text"] = textOutProxy,
 
                 [Children] = New(scope, "UIFlexItem") {
                     FlexMode = Enum.UIFlexMode.Shrink
