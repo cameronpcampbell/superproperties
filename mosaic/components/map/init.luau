@@ -175,6 +175,8 @@ return Component<<MapProps>>(function(scope, props)
         )
     )
 
+    -- Rows remain mounted while collapsed so the size tween can reveal and
+    -- conceal them without destroying child state during a graph update.
     local itemInstances = ItemsToInstances(
         scope, variant, header, items,
         computeRowCount, hideValues, emptyText,

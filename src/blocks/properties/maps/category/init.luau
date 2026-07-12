@@ -21,6 +21,7 @@ type ItemFilter = (query: string?) -> { Item }
 type CategoryProps = {
     Name: string,
     Items: Fusion.UsedAs<{ Item }>,
+    Presorted: boolean?,
     HideValues: boolean?,
     EmptyText: string?
 }
@@ -42,7 +43,7 @@ end
 
 local function PrepareItemFilter(
     scope: Fusion.Scope,
-    items: Fusion.Computed<{ Item }>
+    items: Fusion.UsedAs<{ Item }>
 ): Fusion.Computed<ItemFilter>
     return Computed(scope, function(use, scope)
         return CreateItemFilter(use<<{ Item }>>(items))
@@ -68,7 +69,12 @@ return function(
 )
     local name = props.Name
 
-    local sortedItems = SortItems(scope, props.Items)
+    local sortedItems: Fusion.UsedAs<{ Item }> =
+        if props.Presorted then
+            props.Items
+        else
+            SortItems(scope, props.Items)
+
     local itemFilter = PrepareItemFilter(scope, sortedItems)
     local filteredItems =
         FilterItems(scope, GetFilterState(outerScope), itemFilter)

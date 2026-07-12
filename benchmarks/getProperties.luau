@@ -1,4 +1,5 @@
 --!strict
+--!nolint LocalShadow
 
 -- Measures the warm metadata-processing path with deterministic synthetic
 -- reflection data. It does not include ReflectionService engine-call or UI
@@ -116,6 +117,35 @@ local function BuildReflection(className: string): { ReflectionItem }
                 }
             }
         end
+
+        if idx % 127 == 0 or idx % 131 == 0 then
+            local patchCategory = patches[categoryName]
+            if not patchCategory then
+                patchCategory = {}
+                patches[categoryName] = patchCategory
+            end
+
+            local patchOwner = patchCategory[owner]
+            if not patchOwner then
+                patchOwner = {}
+                patchCategory[owner] = patchOwner
+            end
+
+            local patch = (patchOwner[propertyName] or {}) :: Patch
+            patchOwner[propertyName] = patch
+
+            patch.CustomReadWrite = {
+                Read =
+                    if idx % 131 == 0 then
+                        function(_instance)
+                            error("synthetic unreadable property")
+                        end
+                    else
+                        function(instance)
+                            return instance[propertyName]
+                        end
+            }
+        end
     end
 
     return reflection
@@ -165,7 +195,9 @@ end
 local function BuildInstances(
     classNames: { string }
 ): { SyntheticInstance }
-    local instances = table.create(#classNames * InstancesPerClass)
+    local instances = table.create(
+        #classNames * InstancesPerClass
+    ) :: { SyntheticInstance }
 
     for _, className in classNames do
         RegisterClass(className)
@@ -289,20 +321,45 @@ local function BaselineGetProperties(
     return properties
 end
 
-local preparedPropertiesByClass: { [string]: { ReflectionItem } } = {}
+type PropertyPlan = {
+    Name: string,
+    Read: ((instance: { [string]: any }) -> any)?
+}
 
-local function GetPreparedProperties(
-    className: string
-): { ReflectionItem }
-    local cachedProperties = preparedPropertiesByClass[className]
-    if cachedProperties then return cachedProperties end
+type CategoryPlan = {
+    Name: string,
+    Properties: { PropertyPlan }
+}
 
+type ClassPlan = { CategoryPlan }
+
+local classPlansByName: { [string]: ClassPlan } = {}
+
+local function CreateOrGetCategoryPlan(
+    categories: ClassPlan,
+    categoriesByName: { [string]: CategoryPlan },
+    categoryName: string
+): CategoryPlan
+    local category = categoriesByName[categoryName]
+    if category then return category end
+
+    local category = {
+        Name = categoryName,
+        Properties = {}
+    }
+
+    categoriesByName[categoryName] = category
+    table.insert(categories, category)
+
+    return category
+end
+
+local function BuildClassPlan(className: string): ClassPlan
     local reflection = MockReflectionService:GetPropertiesOfClass(className)
     if not reflection then error(`unknown class {className}`) end
 
-    local preparedProperties =
-        table.create(#reflection) :: { ReflectionItem }
-    local preparedPropertyCount = 0
+    local categoriesByName: { [string]: CategoryPlan } = {}
+    local categories: ClassPlan = {}
 
     for _, reflectedItem in reflection do
         local item = ApplyPatches(reflectedItem)
@@ -311,43 +368,85 @@ local function GetPreparedProperties(
         if not display then continue end
         if display.DeprecationMessage then continue end
 
-        preparedPropertyCount += 1
-        preparedProperties[preparedPropertyCount] = item
+        local category = CreateOrGetCategoryPlan(
+            categories,
+            categoriesByName,
+            display.Category
+        )
+
+        local customReadWrite = item.CustomReadWrite
+
+        table.insert(category.Properties, {
+            Name = item.Name,
+            Read =
+                if customReadWrite then customReadWrite.Read
+                else nil
+        })
     end
 
-    preparedPropertiesByClass[className] = preparedProperties
-    return preparedProperties
+    for _, category in categories do
+        table.sort(category.Properties, function(a: PropertyPlan, b: PropertyPlan)
+            return a.Name < b.Name
+        end)
+    end
+
+    return categories
 end
 
-local function CachedGetProperties(
+local function GetClassPlan(className: string): ClassPlan
+    local classPlan = classPlansByName[className]
+    if classPlan then return classPlan end
+
+    local builtClassPlan = BuildClassPlan(className)
+    classPlansByName[className] = builtClassPlan
+    return builtClassPlan
+end
+
+local function ReadProperty(
+    instance: SyntheticInstance,
+    name: string
+): any
+    return instance[name]
+end
+
+local function OptimizedGetProperties(
     instance: SyntheticInstance
 ): Properties
-    local preparedProperties = GetPreparedProperties(instance.ClassName)
     local properties: Properties = {}
 
-    for _, item in preparedProperties do
-        local display = item.Display
-        if not display then continue end
+    for _, categoryPlan in GetClassPlan(instance.ClassName) do
+        local propertyPlans = categoryPlan.Properties
+        local items = table.create(#propertyPlans) :: {{
+            Key: string,
+            Value: any
+        }}
+        local itemCount = 0
 
-        local name = item.Name
-        local ok, value = pcall(function()
-            local customReadWrite = item.CustomReadWrite
-            if customReadWrite then
-                return customReadWrite.Read(instance)
+        for _, propertyPlan in propertyPlans do
+            local name = propertyPlan.Name
+            local read = propertyPlan.Read
+            local ok, value
+
+            if read then
+                ok, value = pcall(read, instance)
+            else
+                ok, value = pcall(ReadProperty, instance, name)
             end
 
-            return instance[name]
-        end)
+            if not ok then continue end
 
-        if not ok then continue end
-
-        table.insert(
-            CreateOrGetCategory(properties, display.Category).Properties,
-            {
+            itemCount += 1
+            items[itemCount] = {
                 Key = name,
                 Value = value
             }
-        )
+        end
+
+        if itemCount > 0 then
+            properties[categoryPlan.Name] = {
+                Properties = items
+            }
+        end
     end
 
     return properties
@@ -440,6 +539,47 @@ for _, item in propertiesWithoutDisplay do
     assert(item.Display == nil, "ExcludeDisplay should omit display metadata")
 end
 
+local function ValidateEquivalent(instance: SyntheticInstance)
+    local baseline = BaselineGetProperties(instance)
+    local optimized = OptimizedGetProperties(instance)
+
+    for categoryName, baselineCategory in baseline do
+        local optimizedCategory = optimized[categoryName]
+        assert(optimizedCategory, `missing category {categoryName}`)
+        assert(
+            #optimizedCategory.Properties == #baselineCategory.Properties,
+            `property count changed in {categoryName}`
+        )
+
+        local baselineValues: { [string]: any } = {}
+        for _, item in baselineCategory.Properties do
+            baselineValues[item.Key] = item.Value
+        end
+
+        local previousKey: string? = nil
+        for _, item in optimizedCategory.Properties do
+            if previousKey then
+                assert(previousKey < item.Key, "optimized properties not sorted")
+            end
+
+            assert(
+                baselineValues[item.Key] == item.Value,
+                `property changed: {item.Key}`
+            )
+            baselineValues[item.Key] = nil
+            previousKey = item.Key
+        end
+
+        assert(next(baselineValues) == nil, `properties missing in {categoryName}`)
+    end
+
+    for categoryName in optimized do
+        assert(baseline[categoryName], `unexpected category {categoryName}`)
+    end
+end
+
+ValidateEquivalent(sameClassInstances[1])
+
 print(string.format(
     "getProperties synthetic benchmark (%d properties, %d categories)",
     PropertyCount,
@@ -460,26 +600,26 @@ local _, baselineMixedClassChecksum = Benchmark(
     400
 )
 
-local _, cachedSameClassChecksum = Benchmark(
-    "cached/same-class",
-    CachedGetProperties,
+local _, optimizedSameClassChecksum = Benchmark(
+    "optimized/same-class",
+    OptimizedGetProperties,
     sameClassInstances,
     400
 )
 
-local _, cachedMixedClassChecksum = Benchmark(
-    "cached/mixed-class",
-    CachedGetProperties,
+local _, optimizedMixedClassChecksum = Benchmark(
+    "optimized/mixed-class",
+    OptimizedGetProperties,
     mixedClassInstances,
     400
 )
 
 assert(
-    cachedSameClassChecksum == baselineSameClassChecksum,
+    optimizedSameClassChecksum == baselineSameClassChecksum,
     "same-class result changed"
 )
 
 assert(
-    cachedMixedClassChecksum == baselineMixedClassChecksum,
+    optimizedMixedClassChecksum == baselineMixedClassChecksum,
     "mixed-class result changed"
 )

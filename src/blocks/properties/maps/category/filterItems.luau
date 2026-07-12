@@ -11,6 +11,7 @@ type PreparedQuery = {
 }
 
 type Candidate = {
+    LowerKey: string,
     Compact: string,
     CompactBytes: { number },
     BoundaryCharacters: string,
@@ -43,6 +44,8 @@ local ConsecutiveBonus = 10
 local GapPenalty = 1
 local MinLooseMatchLength = 3
 local NegativeInfinity = -math.huge
+
+local CandidateCache: { [string]: Candidate } = {}
 
 local function IsWhitespaceByte(byte: number): boolean
     return byte == 32 or byte >= 9 and byte <= 13
@@ -110,6 +113,7 @@ local function PrepareCandidate(input: string): Candidate
     end
 
     return {
+        LowerKey = lowerInput,
         Compact = table.concat(compactCharacters),
         CompactBytes = compactBytes,
         BoundaryCharacters = table.concat(boundaryCharacters),
@@ -117,13 +121,24 @@ local function PrepareCandidate(input: string): Candidate
     }
 end
 
+local function GetCandidate(key: string): Candidate
+    local candidate = CandidateCache[key]
+    if candidate then return candidate end
+
+    local preparedCandidate = PrepareCandidate(key)
+    CandidateCache[key] = preparedCandidate
+    return preparedCandidate
+end
+
 local function PrepareItem(item: Item, index: number): PreparedItem
     local key = item.Key
+    local candidate = GetCandidate(key)
+
     return {
         Item = item,
         Key = key,
-        Candidate = PrepareCandidate(key),
-        LowerKey = key:lower(),
+        Candidate = candidate,
+        LowerKey = candidate.LowerKey,
         Index = index
     }
 end
@@ -132,9 +147,10 @@ local function RefreshPreparedItem(preparedItem: PreparedItem)
     local key = preparedItem.Item.Key
     if preparedItem.Key == key then return end
 
+    local candidate = GetCandidate(key)
     preparedItem.Key = key
-    preparedItem.Candidate = PrepareCandidate(key)
-    preparedItem.LowerKey = key:lower()
+    preparedItem.Candidate = candidate
+    preparedItem.LowerKey = candidate.LowerKey
 end
 
 local function PrepareQuery(query: string?): PreparedQuery
@@ -299,7 +315,7 @@ local function CreateItemFilter(items: { Item }): ItemFilter
 
     return function(query: string?): { Item }
         local preparedQuery = PrepareQuery(query)
-        if preparedQuery.Length == 0 then return table.clone(items) end
+        if preparedQuery.Length == 0 then return items end
 
         local scoredItems = table.create(#items) :: { ScoredItem }
         local scoredItemCount = 0

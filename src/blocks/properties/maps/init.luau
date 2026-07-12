@@ -78,7 +78,8 @@ return function(
         for categoryName, categoryData in properties do
             table.insert(categories, Category(scope, outerScope, {
                 Name = categoryName,
-                Items = categoryData.Properties
+                Items = categoryData.Properties,
+                Presorted = true
             }))
         end
 

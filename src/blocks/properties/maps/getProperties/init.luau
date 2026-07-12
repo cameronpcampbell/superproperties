@@ -6,22 +6,32 @@ local ReflectionService = game:GetService("ReflectionService")
 local Patches = require(script.patches)
 local Types = require(script.types)
 
+type PropertyItem = {
+    Key: string,
+    Value: any
+}
+
 type Category = {
-    Properties: {{
-        Key: string,
-        Value: any
-    }},
+    Properties: { PropertyItem },
 }
 
 type Properties = {
     [string]: Category
 }
 
-type PreparedProperties = {
-    Types.PatchedReflectionPropertiesItem
+type PropertyPlan = {
+    Name: string,
+    Read: ((Instance) -> any)?
 }
 
-local PreparedPropertiesByClass: { [string]: PreparedProperties } = {}
+type CategoryPlan = {
+    Name: string,
+    Properties: { PropertyPlan }
+}
+
+type ClassPlan = { CategoryPlan }
+
+local ClassPlansByName: { [string]: ClassPlan } = {}
 
 local function TableMergeFrozen(
     tbleA: { [any]: any },
@@ -72,14 +82,30 @@ local function ApplyPatches(
     return item
 end
 
-local function GetPreparedProperties(className: string): PreparedProperties
-    local cachedProperties = PreparedPropertiesByClass[className]
-    if cachedProperties then return cachedProperties end
+local function CreateOrGetCategoryPlan(
+    categories: ClassPlan,
+    categoriesByName: { [string]: CategoryPlan },
+    categoryName: string
+): CategoryPlan
+    local category = categoriesByName[categoryName]
+    if category then return category end
+
+    local category = {
+        Name = categoryName,
+        Properties = {}
+    }
+
+    categoriesByName[categoryName] = category
+    table.insert(categories, category)
+
+    return category
+end
+
+local function BuildClassPlan(className: string): ClassPlan
+    local categoriesByName: { [string]: CategoryPlan } = {}
+    local categories: ClassPlan = {}
 
     local reflection = ReflectionService:GetPropertiesOfClass(className)
-    local preparedProperties =
-        table.create(#reflection) :: PreparedProperties
-    local preparedPropertyCount = 0
 
     for _, reflectedItem in reflection do
         local item = ApplyPatches(reflectedItem)
@@ -88,58 +114,79 @@ local function GetPreparedProperties(className: string): PreparedProperties
         if not itemDisplay then continue end
         if itemDisplay.DeprecationMessage then continue end
 
-        preparedPropertyCount += 1
-        preparedProperties[preparedPropertyCount] = item
+        local category = CreateOrGetCategoryPlan(
+            categories,
+            categoriesByName,
+            itemDisplay.Category
+        )
+
+        local customReadWrite = item.CustomReadWrite
+
+        table.insert(category.Properties, {
+            Name = item.Name,
+            Read =
+                if customReadWrite then customReadWrite.Read
+                else nil
+        })
     end
 
-    PreparedPropertiesByClass[className] = preparedProperties
-    return preparedProperties
+    for _, category in categories do
+        table.sort(category.Properties, function(a: PropertyPlan, b: PropertyPlan)
+            return a.Name < b.Name
+        end)
+    end
+
+    return categories
 end
 
-local function CreateOrGetCategory(
-    properties: Properties,
-    categoryName: string
-): Category
-    local category = properties[categoryName]
-    if category then return category end
+local function GetClassPlan(className: string): ClassPlan
+    local classPlan = ClassPlansByName[className]
+    if classPlan then return classPlan end
 
-    local category = {
-        Properties = {}
-    }
+    local classPlan = BuildClassPlan(className)
+    ClassPlansByName[className] = classPlan
 
-    properties[categoryName] = category
+    return classPlan
+end
 
-    return category
+local function ReadProperty(instance: Instance, name: string): any
+    return (instance :: any)[name]
 end
 
 local function GetProperties(instance: Instance): Properties
-    local preparedProperties = GetPreparedProperties(instance.ClassName)
     local properties: Properties = {}
 
-    for _, item in preparedProperties do
-        local itemDisplay = item.Display
-        if not itemDisplay then continue end
-        local name = item.Name
+    for _, categoryPlan in GetClassPlan(instance.ClassName) do
+        local propertyPlans = categoryPlan.Properties
+        local items =
+            table.create(#propertyPlans) :: { PropertyItem }
+        local itemCount = 0
 
-        local ok, value = pcall(function()
-            local customReadWrite = item.CustomReadWrite
-            if customReadWrite then
-                return customReadWrite.Read(instance)
+        for _, propertyPlan in propertyPlans do
+            local name = propertyPlan.Name
+            local read = propertyPlan.Read
+            local ok, value
 
+            if read then
+                ok, value = pcall(read, instance)
             else
-                return (instance :: any)[name]
+                ok, value = pcall(ReadProperty, instance, name)
             end
-        end)
 
-        if not ok then continue end
+            if not ok then continue end
 
-        table.insert(
-            CreateOrGetCategory(properties, itemDisplay.Category).Properties,
-            {
+            itemCount += 1
+            items[itemCount] = {
                 Key = name,
                 Value = value
             }
-        )
+        end
+
+        if itemCount > 0 then
+            properties[categoryPlan.Name] = {
+                Properties = items
+            }
+        end
     end
 
     return properties
