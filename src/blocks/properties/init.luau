@@ -13,6 +13,10 @@ local Category = require(script.category)
 local GetProperties = require(script.getProperties)
 local ExtraCategories = require(script.extraCategories)
 
+local function TableBulkInsert<T>(target: { T }, source: { T })
+    table.move(source, 1, #source, #target + 1, target)
+end
+
 local function NoInstanceSelected(scope: Fusion.Scope): Fusion.Child
     return Text(scope, {
         Text = "No Instance selected.",
@@ -95,9 +99,7 @@ return function(
             ExtraCategories[usedSelectedInstance.ClassName]
 
         if extraCategories then
-            for _, category in extraCategories(scope, outerScope) do
-                table.insert(categories, category)
-            end
+            TableBulkInsert(categories, extraCategories(scope, outerScope))
         end
 
         return categories :: Fusion.Child
