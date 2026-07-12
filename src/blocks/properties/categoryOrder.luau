@@ -15,6 +15,7 @@ return IntoHashSet({
     "Data",
     "Listening",
     "Material Overrides",
+    "Fog",
     "Exposure",
     "Transform",
     "Pivot",
@@ -38,7 +39,5 @@ return IntoHashSet({
     "Part",
     "Forcefield",
     "Teams",
-    "Assembly",
-    "Tags",
-    "Attributes"
+    "Assembly"
 })

@@ -5,15 +5,16 @@ local Packages = script.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local Peek, New, Children, Value, Computed, Tween =
+local Peek, New, Children, Computed, Tween =
     Fusion.peek, Fusion.New, Fusion.Children,
-    Fusion.Value, Fusion.Computed, Fusion.Tween
+    Fusion.Computed, Fusion.Tween
 
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CombineProps =
-    FusionUtils.Component, FusionUtils.CombineProps
+local Component, CombineProps, CoerceToValue =
+    FusionUtils.Component, FusionUtils.CombineProps,
+    FusionUtils.CoerceToValue
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope, GetNextVariant =
@@ -38,6 +39,7 @@ type MapProps = {
 	Items: Items?,
 	HideValues: boolean?,
 	EmptyText: string?,
+	Collapsed: Fusion.UsedAs<boolean>?
 }
 
 local function CalcRowCount(
@@ -67,7 +69,7 @@ local function ItemsToInstances(
     rowCount: number,
     hideValues: boolean,
     emptyText: string?,
-    mapCollapsedState: Fusion.Value<boolean>,
+    collapsedState: Fusion.Value<boolean>,
     tweenComputeMapSize: Fusion.Tween<UDim2>
 ): Fusion.Child?
     local baseIdx, instances = 0, table.create(rowCount) :: { Instance }
@@ -80,7 +82,7 @@ local function ItemsToInstances(
             Variant = variant,
             RowCount = rowCount,
             RowIdx = 1,
-            MapCollapsedState = mapCollapsedState,
+            CollapsedState = collapsedState,
             TweenComputeMapSize = tweenComputeMapSize
         })
     end
@@ -131,20 +133,21 @@ return Component<<MapProps>>(function(scope, props)
     local props, items = TableExtract(props, "Items")
     local props, emptyText = TableExtract(props, "EmptyText")
     local props, hideValues = TableExtract(props, "HideValues", false)
-
-    local mapCollapsedState = Value(scope, false)
+    local props, collapsed = TableExtract(props, "Collapsed", false)
 
     local strokeVariant = GetNextVariant(variant)
     local rowCount = CalcRowCount(header, items, emptyText)
     local mapUncollapsedHeight = CalcMapHeight(rowCount, lgHeight)
 
+    local collapsedState = CoerceToValue<<boolean>>(scope, collapsed)
+
     local tweenComputeMapSize = Tween<<UDim2>>(
         scope,
         Computed(scope, function(use, scope)
-            local usedMapCollapsed = use<<boolean>>(mapCollapsedState)
+            local usedCollapsed = use<<boolean>>(collapsedState)
 
             local height =
-                if usedMapCollapsed then lgHeight else mapUncollapsedHeight
+                if usedCollapsed then lgHeight else mapUncollapsedHeight
 
             return UDim2.new(width, UDim.new(0, height))
         end) :: any,
@@ -156,7 +159,7 @@ return Component<<MapProps>>(function(scope, props)
     local itemInstances = ItemsToInstances(
         scope, variant, header, items,
         rowCount, hideValues, emptyText,
-        mapCollapsedState, tweenComputeMapSize
+        collapsedState, tweenComputeMapSize
     )
 
     return Supercorner.new(scope :: any, CombineProps({

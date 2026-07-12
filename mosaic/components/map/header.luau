@@ -25,7 +25,7 @@ local Types = require(script.Parent.types)
 type MapHeaderProps = Typeforge.Flatten<
     Types.BaseMapProps & {
         Header: string,
-        MapCollapsedState: Fusion.Value<boolean>,
+        CollapsedState: Fusion.Value<boolean>,
         TweenComputeMapSize: Fusion.Tween<UDim2>
     }
 >
@@ -75,7 +75,7 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
 
     local rowCount, rowIdx = props.RowCount, props.RowIdx
     local variant = props.Variant
-    local mapCollapsedState = props.MapCollapsedState
+    local collapsedState = props.CollapsedState
     local tweenComputeMapSize = props.TweenComputeMapSize
 
     -- We subtract 1 as this squircle is inset by 1px.
@@ -104,7 +104,7 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
                 Rotation = Tween<<number>>(
                     scope,
                     Computed(scope, function(use, scope)
-                        return if use(mapCollapsedState) then -90 else 0
+                        return if use(collapsedState) then -90 else 0
                     end) :: any,
                     TweenInfo.new(
                         .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
@@ -112,7 +112,7 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
                 ),
 
                 [OnEvent "MouseButton1Click"] = function()
-                    mapCollapsedState:set(not Peek<<bool>>(mapCollapsedState))
+                    collapsedState:set(not Peek<<bool>>(collapsedState))
                 end
             }),
 

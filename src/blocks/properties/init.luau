@@ -1,7 +1,5 @@
 --!strict
 
-local SelectionService = game:GetService("Selection")
-
 local Packages = script.Parent.Parent.packages
 
 local Fusion = require(Packages.fusion)
@@ -14,15 +12,9 @@ local GetProperties = require(script.getProperties)
 
 local CategoryOrder = require(script.categoryOrder)
 
-local function SelectedValue(scope: Fusion.Scope)
-    local selectedValue = Value(scope, SelectionService:Get()[1])
-
-    SelectionService.SelectionChanged:Connect(function()
-        selectedValue:set(SelectionService:Get()[1])
-    end)
-
-    return selectedValue
-end
+local DefaultCategoryLayoutOrder = 999997
+local TagsCategoryLayoutOrder = 999998
+local AttributesCategoryLayoutOrder = 999999
 
 local function NoInstanceSelected(scope: Fusion.Scope): Fusion.Child
     return Text(scope, {
@@ -80,14 +72,30 @@ local function SortProperties(
     return properties
 end
 
-return function(scope: Fusion.Scope)
-    local selectedInstValue = SelectedValue(scope)
+local MapCollapsedStates: { [string]: Fusion.Value<boolean> } = {}
+
+local function GetCollapsedState(scope: Fusion.Scope, categoryName: string)
+    local collapsedState = MapCollapsedStates[categoryName]
+
+    if not collapsedState then
+        collapsedState = Value(scope, false)
+        MapCollapsedStates[categoryName] = collapsedState
+    end
+
+    return collapsedState
+end
+
+return function(
+    scope: Fusion.Scope,
+    selectedInstanceValue: Fusion.Value<Instance>
+)
+    local outerScope = scope
 
     return Computed(scope, function(use, scope: Fusion.Scope): Fusion.Child?
-        local usedSelectedInst = use<<Instance>>(selectedInstValue)
-        if not usedSelectedInst then return NoInstanceSelected(scope) end
+        local usedSelectedInstance = use<<Instance>>(selectedInstanceValue)
+        if not usedSelectedInstance then return NoInstanceSelected(scope) end
 
-        local properties = GetProperties(usedSelectedInst)
+        local properties = GetProperties(usedSelectedInstance)
 
         local maps: { Fusion.Child } = {}
 
@@ -95,23 +103,30 @@ return function(scope: Fusion.Scope)
             table.insert(maps, Map(scope, {
                 Header = categoryName,
                 Items = SortProperties(categoryData.Properties),
-                LayoutOrder = CategoryOrder[categoryName] or 999999,
+                LayoutOrder =
+                    CategoryOrder[categoryName] or DefaultCategoryLayoutOrder,
+                -- We want this state to outlive this computed's inner scope.
+                Collapsed = GetCollapsedState(outerScope, categoryName)
             }))
         end
 
         table.insert(maps, Map(scope, {
             Header = "Tags",
-            Items = GetTags(usedSelectedInst),
+            Items = GetTags(usedSelectedInstance),
             HideValues = true,
-            LayoutOrder = CategoryOrder["Tags"] or 999999,
-            EmptyText = "No Tags have been added yet."
+            LayoutOrder = TagsCategoryLayoutOrder,
+            EmptyText = "No Tags have been added yet.",
+            -- We want this state to outlive this computed's inner scope.
+            Collapsed = GetCollapsedState(outerScope, "Tags"),
         }))
 
         table.insert(maps, Map(scope, {
             Header = "Attributes",
-            Items = GetAttributes(usedSelectedInst),
-            LayoutOrder = CategoryOrder["Attributes"] or 999999,
-            EmptyText = "No Attributes have been added yet."
+            Items = GetAttributes(usedSelectedInstance),
+            LayoutOrder = AttributesCategoryLayoutOrder,
+            EmptyText = "No Attributes have been added yet.",
+            -- We want this state to outlive this computed's inner scope.
+            Collapsed = GetCollapsedState(outerScope, "Attributes"),
         }))
 
         return maps :: Fusion.Child
