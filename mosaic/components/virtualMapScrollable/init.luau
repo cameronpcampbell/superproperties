@@ -86,7 +86,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
         end
     )
 
-    local computeCanvasSize = Computed(scope, function(use): UDim2
+    local computeCanvasSize = Computed(scope, function(use: Fusion.Use): UDim2
         return UDim2.fromOffset(0, use<<number>>(canvasHeightState))
     end)
 
@@ -131,7 +131,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
             if previousBottom then
                 local priorBottom = previousBottom
 
-                mapTop = Computed(scope, function(use): number
+                mapTop = Computed(scope, function(use: Fusion.Use): number
                     local usedPadding =
                         math.max(use<<number>>(paddingState), 0)
 
@@ -139,17 +139,17 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                 end)
             end
 
-            local mapPosition = Computed(scope, function(use): UDim2
+            local mapPosition = Computed(scope, function(use: Fusion.Use): UDim2
                 return UDim2.fromOffset(0, use<<number>>(mapTop))
             end)
 
-            local mapBottom = Computed(scope, function(use): number
+            local mapBottom = Computed(scope, function(use: Fusion.Use): number
                 local usedMapSize = use<<UDim2>>(animatedMapSize)
 
                 return use<<number>>(mapTop) + usedMapSize.Height.Offset
             end)
 
-            local mapOccluded = Computed(scope, function(use): boolean
+            local mapOccluded = Computed(scope, function(use: Fusion.Use): boolean
                 local usedViewportSize =
                     use<<Vector2>>(viewportAbsoluteSizeState)
 
@@ -178,7 +178,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
             end)
 
             mapChildren[idx] = Computed(scope, function(
-                use,
+                use: Fusion.Use,
                 mapScope: Fusion.Scope
             ): Fusion.Child
                 if use<<boolean>>(mapOccluded) then return {} end
@@ -190,7 +190,10 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                 local mapAbsoluteSizeState =
                     Fusion.Value<<Vector2>>(mapScope, Vector2.new(0, 0))
 
-                local mapInstance = Map(mapScope, mapProps, {
+                -- Component overrides include Fusion special keys and values
+                -- created in a different inner scope. Keep that polymorphism
+                -- isolated at the component boundary.
+                local mapOverrides: any = {
                     Position = mapPosition,
                     AnchorPoint = Vector2.new(0, 0),
                     Collapsed = collapsedState,
@@ -209,7 +212,12 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                         MapCanvasTop = mapTop,
                         Overdraw = overdrawState
                     }
-                }) :: GuiObject
+                }
+                local mapInstance = Map(
+                    mapScope,
+                    mapProps,
+                    mapOverrides
+                ) :: GuiObject
 
                 local function commitGeometry()
                     if Peek<<boolean>>(geometryReadyState) then return end

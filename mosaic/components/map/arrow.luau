@@ -1,3 +1,5 @@
+--!strict
+
 local Packages = script.Parent.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)

@@ -42,7 +42,7 @@ local function ComputeCornerRadii(
     local lgHeight = theme:GetHeight("Lg")
 
     local function cornerRadius(roundFirst: boolean, roundLast: boolean)
-        return Computed(scope, function(use): number
+        return Computed(scope, function(use: Fusion.Use): number
             local usedTweenComputeMapSize = use<<UDim2>>(tweenComputeMapSize)
             local usedTweenComputeMapHeightOffset = usedTweenComputeMapSize.Height.Offset
             local usedRowCount = use<<number>>(rowCount)

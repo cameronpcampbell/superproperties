@@ -31,12 +31,12 @@ local HeaderRowDescriptor: "Header" = "Header"
 local EmptyRowDescriptor: "Empty" = "Empty"
 
 export type MapLayout = {
-    RootItems: Fusion.Computed<{ ItemLayout }>,
-    RootRows: Fusion.Computed<RootRowDescriptors>,
-    AnimatedExpandedHeight: Fusion.Computed<number>,
-    Metadata: Fusion.Computed<RowMetadata>,
-    CornerRowCount: Fusion.Computed<number>,
-    RowCount: Fusion.Computed<number>
+    RootItems: Fusion.UsedAs<{ ItemLayout }>,
+    RootRows: Fusion.UsedAs<RootRowDescriptors>,
+    AnimatedExpandedHeight: Fusion.UsedAs<number>,
+    Metadata: Fusion.UsedAs<RowMetadata>,
+    CornerRowCount: Fusion.UsedAs<number>,
+    RowCount: Fusion.UsedAs<number>
 }
 
 export type VirtualListData = {
@@ -72,6 +72,19 @@ local function CalculateMapHeight(rowCount: number, lgHeight: number): number
     return rowHeight * rowCount + rowCount + 1
 end
 
+local function CreateCollapseRevealTween(
+    scope: Fusion.Scope,
+    collapsed: Fusion.UsedAs<boolean>
+): Fusion.Tween<number>
+    return Tween<<number>>(
+        scope,
+        Computed(scope, function(use: Fusion.Use): number
+            return if use<<boolean>>(collapsed) then 0 else 1
+        end),
+        MapTweenInfo
+    )
+end
+
 local function CreateItemLayout(
     scope: Fusion.Scope,
     item: Item,
@@ -92,7 +105,7 @@ local function CreateItemLayout(
         )
     end
 
-    local childrenContentHeight = Computed(scope, function(use): number
+    local childrenContentHeight = Computed(scope, function(use: Fusion.Use): number
         local height = 0
 
         for childIdx, child in children do
@@ -108,21 +121,11 @@ local function CreateItemLayout(
         collapsedState = item.Collapsed or Value(scope, true)
     end
 
-    local reveal =
-        if collapsedState then
-            Tween<<number>>(
-                scope,
-                Computed(scope, function(use): number
-                    return
-                        if use<<boolean>>(collapsedState :: Fusion.Value<boolean>)
-                        then 0
-                        else 1
-                end),
-                MapTweenInfo
-            )
+    local reveal = if collapsedState
+        then CreateCollapseRevealTween(scope, collapsedState)
         else nil
 
-    local animatedChildrenHeight = Computed(scope, function(use): number
+    local animatedChildrenHeight = Computed(scope, function(use: Fusion.Use): number
         if not reveal then return 0 end
 
         return use<<number>>(reveal)
@@ -132,12 +135,12 @@ local function CreateItemLayout(
     local cornersCollapsed: Fusion.Computed<boolean>? = nil
     if reveal then
         local animatedReveal = reveal
-        cornersCollapsed = Computed(scope, function(use): boolean
+        cornersCollapsed = Computed(scope, function(use: Fusion.Use): boolean
             return use<<number>>(animatedReveal) == 0
         end)
     end
 
-    local animatedHeight = Computed(scope, function(use): number
+    local animatedHeight = Computed(scope, function(use: Fusion.Use): number
         return rowHeight + use<<number>>(animatedChildrenHeight)
     end)
 
@@ -161,7 +164,7 @@ local function ComputeRowMetadata(
     emptyText: string?,
     useAnimatedCollapse: boolean
 ): Fusion.Computed<RowMetadata>
-    return Computed(scope, function(use): RowMetadata
+    return Computed(scope, function(use: Fusion.Use): RowMetadata
         local usedRootItems = use<<{ ItemLayout }>>(rootItems)
         local rowIndices = {} :: { [ItemLayout]: number }
         local rowCount = if header then 1 else 0
@@ -221,7 +224,7 @@ local function CreateMapLayout(
         return layouts
     end)
 
-    local rootRows = Computed(scope, function(use): RootRowDescriptors
+    local rootRows = Computed(scope, function(use: Fusion.Use): RootRowDescriptors
         local usedRootItems = use<<{ ItemLayout }>>(rootItems)
         local rows = {} :: RootRowDescriptors
 
@@ -236,7 +239,7 @@ local function CreateMapLayout(
         return rows
     end)
 
-    local animatedExpandedHeight = Computed(scope, function(use): number
+    local animatedExpandedHeight = Computed(scope, function(use: Fusion.Use): number
         local rows = use<<RootRowDescriptors>>(rootRows)
         local height = MapContentPadding
 
@@ -272,10 +275,10 @@ local function CreateMapLayout(
         true
     )
 
-    local rowCount = Computed(scope, function(use): number
+    local rowCount = Computed(scope, function(use: Fusion.Use): number
         return use<<RowMetadata>>(targetMetadata).RowCount
     end)
-    local cornerRowCount = Computed(scope, function(use): number
+    local cornerRowCount = Computed(scope, function(use: Fusion.Use): number
         return use<<RowMetadata>>(metadata).RowCount
     end)
 
@@ -296,13 +299,7 @@ local function CreateMapSizeTween(
     animatedExpandedHeight: Fusion.UsedAs<number>,
     lgHeight: number
 ): Fusion.Computed<UDim2>
-    local reveal = Tween<<number>>(
-        scope,
-        Computed(scope, function(use): number
-            return if use<<boolean>>(collapsed) then 0 else 1
-        end),
-        MapTweenInfo
-    )
+    local reveal = CreateCollapseRevealTween(scope, collapsed)
 
     return Computed(scope, function(use: Fusion.Use): UDim2
         local height = lgHeight
@@ -421,7 +418,7 @@ local function ComputeVisibleRootDescriptors(
     scope: Fusion.Scope,
     config: VirtualRowsConfig
 ): Fusion.Computed<RootRowDescriptors>
-    return Computed(scope, function(use): RootRowDescriptors
+    return Computed(scope, function(use: Fusion.Use): RootRowDescriptors
         local rootRows = use<<RootRowDescriptors>>(config.Layout.RootRows)
         local firstRow, lastRow = 1, #rootRows
 
@@ -499,7 +496,7 @@ local function ComputeTopSpacerHeight(
     scope: Fusion.Scope,
     config: VirtualRowsConfig
 ): Fusion.Computed<number>
-    return Computed(scope, function(use): number
+    return Computed(scope, function(use: Fusion.Use): number
         if not config.VisibleRootRange then return 0 end
 
         local visibleRange = use<<Vector2>>(config.VisibleRootRange)
@@ -526,15 +523,15 @@ local function CreateTopSpacer(
     height: Fusion.Computed<number>
 ): Instance
     return New(scope, "Frame") {
-        Size = Computed(scope, function(use): UDim2
+        Size = Computed(scope, function(use: Fusion.Use): UDim2
             return UDim2.new(1, 0, 0, use<<number>>(height))
         end),
         BackgroundTransparency = 1,
-        LayoutOrder = Computed(scope, function(use): number
+        LayoutOrder = Computed(scope, function(use: Fusion.Use): number
             if not config.VisibleRootRange then return 0 end
             return use<<Vector2>>(config.VisibleRootRange).X - 1
         end),
-        Visible = Computed(scope, function(use): boolean
+        Visible = Computed(scope, function(use: Fusion.Use): boolean
             return use<<number>>(height) > 0
         end),
         Name = "CulledMapRowsSpacer"
@@ -565,7 +562,7 @@ local function ComputeVirtualizedRows(
 ): Fusion.Computed<Fusion.Child>
     local rowChildren, renderedRows = ComputeRows(scope, config)
 
-    return Computed(scope, function(use): Fusion.Child
+    return Computed(scope, function(use: Fusion.Use): Fusion.Child
         local isFullyCollapsed =
             use<<boolean>>(config.CollapsedState)
             and use<<UDim2>>(config.AnimatedMapSize).Height.Offset

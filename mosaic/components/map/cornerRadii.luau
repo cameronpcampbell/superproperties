@@ -17,10 +17,10 @@ local function CalculateRowCornerRadii(
     Fusion.UsedAs<number>, Fusion.UsedAs<number>,
     Fusion.UsedAs<number>, Fusion.UsedAs<number>
 )
-    local topRadius = Computed(scope, function(use): number
+    local topRadius = Computed(scope, function(use: Fusion.Use): number
         return if use<<number>>(rowIdx) == 1 then radius else 0
     end)
-    local bottomRadius = Computed(scope, function(use): number
+    local bottomRadius = Computed(scope, function(use: Fusion.Use): number
         return
             if use<<number>>(rowIdx) == use<<number>>(rowCount)
             then radius

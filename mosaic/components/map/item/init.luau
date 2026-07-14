@@ -36,7 +36,7 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
     local hasSubItems = #children > 0
     local redrawable = layout.CanBecomeMapBottom
 
-    local rowIdx = Computed(scope, function(use): number
+    local rowIdx = Computed(scope, function(use: Fusion.Use): number
         local metadata = use<<Types.RowMetadata>>(props.RowMetadata)
         return metadata.RowIndices[layout] or 0
     end)
@@ -101,7 +101,7 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
     if hasSubItems then
         subItemsClip = New(scope, "Frame") {
             Position = UDim2.fromOffset(0, rowHeight),
-            Size = Computed(scope, function(use): UDim2
+            Size = Computed(scope, function(use: Fusion.Use): UDim2
                 return UDim2.new(
                     1,
                     0,
@@ -115,7 +115,7 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
 
             [Children] = New(scope, "Frame") {
                 Position = UDim2.fromOffset(0, 1),
-                Size = Computed(scope, function(use): UDim2
+                Size = Computed(scope, function(use: Fusion.Use): UDim2
                     return UDim2.new(
                         1,
                         0,
@@ -136,7 +136,7 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
 
     return New(scope, "Frame") {
         BackgroundTransparency = 1,
-        Size = Computed(scope, function(use): UDim2
+        Size = Computed(scope, function(use: Fusion.Use): UDim2
             return UDim2.new(
                 1,
                 0,

@@ -47,7 +47,7 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
     local leftPadding = IndicatorGap
         + math.max(nestedness - 1, 0) * (IndicatorSize + IndicatorGap)
 
-    local indicator: Instance
+    local indicator: Fusion.Child
     if hasSubItems then
         indicator = Arrow(scope, {
             CollapsedState = props.CollapsedState :: Fusion.Value<boolean>

@@ -1,3 +1,3 @@
 --!strict
 
-return TweenInfo.new(0.18, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut)
+return TweenInfo.new(0.135, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut)

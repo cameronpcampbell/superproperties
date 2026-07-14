@@ -55,7 +55,7 @@ local function MapEmptyItem(scope: Fusion.Scope, props: MapEmptyItemProps)
 
         Name = "MapEmptyItem",
 
-        [Children] = {
+        [Children] = ({
             New(scope, "ImageLabel") {
                 Image = Assets.Dot,
                 Size = UDim2.fromOffset(9, 9),
@@ -84,7 +84,7 @@ local function MapEmptyItem(scope: Fusion.Scope, props: MapEmptyItemProps)
                 PaddingLeft = UDim.new(0, 6),
                 PaddingRight = UDim.new(0, 6)
             }
-        }
+        } :: { Fusion.Child })
     })
 end
 

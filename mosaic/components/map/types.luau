@@ -26,11 +26,11 @@ export type ItemLayout = {
     Depth: number,
     CanBecomeMapBottom: boolean,
     CollapsedState: Fusion.Value<boolean>?,
-	CornersCollapsed: Fusion.Computed<boolean>?,
+	CornersCollapsed: Fusion.UsedAs<boolean>?,
 	Children: { ItemLayout },
-	ChildrenContentHeight: Fusion.Computed<number>,
-	AnimatedChildrenHeight: Fusion.Computed<number>,
-	AnimatedHeight: Fusion.Computed<number>,
+	ChildrenContentHeight: Fusion.UsedAs<number>,
+	AnimatedChildrenHeight: Fusion.UsedAs<number>,
+	AnimatedHeight: Fusion.UsedAs<number>,
 }
 
 export type RowMetadata = {
