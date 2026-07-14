@@ -48,7 +48,7 @@ return Component<<FocusRingProps>>(function(scope, props)
             return if use<<boolean>>(isFocus) then 1 else 0
         end),
         TweenInfo.new(
-            .35, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut
+            .18, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut
         )
     )
 

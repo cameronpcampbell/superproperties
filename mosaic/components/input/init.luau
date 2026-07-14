@@ -59,7 +59,7 @@ return Component<<InputProps>>(function(scope, props)
                     use<<Color3>>(theme:GetBg(scope, GetNextVariant(variant), themeColorModifier))
         end),
         TweenInfo.new(
-            .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
+            .18, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
         )
     )
 
