@@ -38,32 +38,67 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps)
 
     return New(scope, "Frame") {
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, 0, 0, rowHeight),
+        Size = UDim2.fromScale(1, 0),
+        AutomaticSize = Enum.AutomaticSize.Y,
         LayoutOrder = props.RowIdx,
 
         Name = `MapItem [{key}]`,
 
         [Children] = {
-            MapItemKey(scope, {
-                Key = key,
-                Variant = variant,
-                RowCount = rowCount,
-                RowIdx = rowIdx,
-                HasSubItems = if subItems and #subItems ~= 0 then true else false,
-                Nestedness = nestedness
-            }),
+            New(scope, "Frame") {
+                Size = UDim2.new(1, 0, 0, rowHeight),
+                BackgroundTransparency = 1,
+                Name = "ItemContent",
 
-            if hideValue then nil else MapItemValue(scope, {
-                Value = value,
-                Variant = variant,
-                RowCount = rowCount,
-                RowIdx = rowIdx,
-            }),
+                [Children] = {
+                    MapItemKey(scope, {
+                        Key = key,
+                        Variant = variant,
+                        RowCount = rowCount,
+                        RowIdx = rowIdx,
+                        HasSubItems = if subItems and #subItems ~= 0 then true else false,
+                        Nestedness = nestedness
+                    }),
+
+                    if hideValue then nil else MapItemValue(scope, {
+                        Value = value,
+                        Variant = variant,
+                        RowCount = rowCount,
+                        RowIdx = rowIdx,
+                    }),
+
+                    New(scope, "UIListLayout") {
+                        Padding = UDim.new(0, 1),
+                        FillDirection = Enum.FillDirection.Horizontal,
+                        HorizontalFlex = Enum.UIFlexAlignment.Fill,
+                        SortOrder = Enum.SortOrder.LayoutOrder
+                    },
+                }
+            },
+
+            if subItems and #subItems ~= 0 then
+                New(scope, "Frame") {
+                    Size = UDim2.fromScale(1, 0),
+                    AutomaticSize = Enum.AutomaticSize.Y,
+                    BackgroundTransparency = 1,
+                    Name = "SubItemsContent",
+
+                    [Children] = {
+                        -- render sub items here.
+
+                        New(scope, "UIListLayout") {
+                            Padding = UDim.new(0, 1),
+                            FillDirection = Enum.FillDirection.Horizontal,
+                            HorizontalFlex = Enum.UIFlexAlignment.Fill,
+                            SortOrder = Enum.SortOrder.LayoutOrder
+                        },
+                    }
+                }
+            else nil,
 
             New(scope, "UIListLayout") {
                 Padding = UDim.new(0, 1),
-                FillDirection = Enum.FillDirection.Horizontal,
-                HorizontalFlex = Enum.UIFlexAlignment.Fill,
+                FillDirection = Enum.FillDirection.Vertical,
                 SortOrder = Enum.SortOrder.LayoutOrder
             },
         }

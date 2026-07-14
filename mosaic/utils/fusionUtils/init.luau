@@ -7,5 +7,6 @@ return {
     ComputeTransforms = require(script.computeTransforms),
     CoerceToValue = require(script.coerceToValue),
     CreateOutProxy = require(script.createOutProxy),
+    ForCount = require(script.forCount),
     IsValue = require(script.isValue)
 }

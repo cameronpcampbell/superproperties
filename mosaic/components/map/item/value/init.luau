@@ -29,10 +29,11 @@ type MapItemValueProps = Typeforge.Flatten<
 
 local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
     local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
+    local rowHeight = theme:GetHeight("Lg") - 2
+    local innerCornerRadius = theme:GetCornerRadius("Md") - 1
 
     local rowCount, rowIdx = props.RowCount, props.RowIdx
     local variant = props.Variant
-    local innerCornerRadius = theme:GetCornerRadius("Md") - 1
 
     local topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius =
         CalculateRowCornerRadii(
@@ -44,7 +45,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
 
     return Supercorner.new(scope, {
         BackgroundColor3 = theme:GetBg(scope, variant),
-        Size = UDim2.fromScale(1, 1),
+        Size = UDim2.new(1, 0, 0, rowHeight),
         TopLeftRadius = topLeftRadius,
         TopRightRadius = topRightRadius,
         BottomLeftRadius = bottomLeftRadius,

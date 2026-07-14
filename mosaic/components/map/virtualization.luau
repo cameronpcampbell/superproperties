@@ -218,7 +218,7 @@ local function CreateRow(
         Key = item.Key,
         Value = item.Value,
         SubItems = item.SubItems,
-        Nestedness = 0,
+        Nestedness = 1,
         HideValue = config.HideValues,
         Variant = config.Variant,
         RowCount = rowCount,

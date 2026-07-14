@@ -6,9 +6,8 @@ local Supercorner = require(Packages.supercorner)
 local Typeforge = require(Packages.typeforge)
 
 local Fusion = require(Packages.fusion)
-local Peek, New, Children, OnEvent, Computed, Tween =
-    Fusion.peek, Fusion.New, Fusion.Children,
-    Fusion.OnEvent, Fusion.Computed, Fusion.Tween
+local Peek, New, Children, Computed =
+    Fusion.peek, Fusion.New, Fusion.Children, Fusion.Computed
 
 local Utils = script.Parent.Parent.Parent.utils
 
@@ -17,10 +16,9 @@ local GetThemeForScope = ThemeUtils.GetThemeForScope
 
 local Components = script.Parent.Parent
 local Text = require(Components.text)
-local IconButton = require(Components.iconButton)
 
-local Assets = require(script.Parent.Parent.Parent.assets)
 local Types = require(script.Parent.types)
+local Arrow = require(script.Parent.arrow)
 
 type MapHeaderProps = Typeforge.Flatten<
     Types.BaseMapProps & {
@@ -104,23 +102,8 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
         Name = "MapHeader",
 
         [Children] = {
-            IconButton(scope, {
-                Image = Assets.Arrow,
-                Rotation = Tween<<number>>(
-                    scope,
-                    Computed(scope, function(use: Fusion.Use): number
-                        return
-                            if use<<boolean>>(collapsedState) then -90
-                            else 0
-                    end),
-                    TweenInfo.new(
-                        .18, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
-                    )
-                ),
-
-                [OnEvent "MouseButton1Click"] = function()
-                    collapsedState:set(not Peek<<boolean>>(collapsedState))
-                end
+            Arrow(scope, {
+                CollapsedState = collapsedState
             }),
 
             Text(scope, {
