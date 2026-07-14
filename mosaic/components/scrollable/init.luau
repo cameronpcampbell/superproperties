@@ -4,6 +4,7 @@
 local Packages = script.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
+local Typeforge = require(Packages.typeforge)
 local Peek, New, Children, Out =
     Fusion.peek, Fusion.New, Fusion.Children, Fusion.Out
 
@@ -21,13 +22,17 @@ local TableExtract = TableUtils.Extract
 
 local Assets = require(script.Parent.Parent.assets)
 
-type ScrollableProps = {
+export type ScrollableProps = {
     OutCanvasPosition: Fusion.Value<Vector2>?,
     OutAbsolutePosition: Fusion.Value<Vector2>?,
     OutAbsoluteSize: Fusion.Value<Vector2>?,
     CanvasSize: Fusion.UsedAs<UDim2>?,
     AutomaticCanvasSize: Fusion.UsedAs<Enum.AutomaticSize>?,
 }
+
+export type ScrollableOverrides = Typeforge.FlattenTable<
+    Typeforge.Partial<ScrollableProps> & Fusion.PropertyTable
+>
 
 return Component<<ScrollableProps>>(function(scope, props)
     local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))

@@ -4,8 +4,8 @@
 local Packages = script.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
-local Children, Computed, Observer, Peek, Tween =
-    Fusion.Children, Fusion.Computed, Fusion.Observer, Fusion.peek, Fusion.Tween
+local Children, Computed, Observer, Peek =
+    Fusion.Children, Fusion.Computed, Fusion.Observer, Fusion.peek
 
 local Utils = script.Parent.Parent.utils
 
@@ -23,12 +23,16 @@ local Components = script.Parent
 local Scrollable = require(Components.scrollable)
 local Map = require(Components.map)
 
-local VirtualListHelpers = require(Components.map.virtualListHelpers)
-local CalculateMapRowCount, CalculateMapHeight =
-    VirtualListHelpers.CalculateMapRowCount,
-    VirtualListHelpers.CalculateMapHeight
+local Virtualization = require(Components.map.virtualization)
+local ComputeMapRowCount, CreateMapSizeTween =
+    Virtualization.ComputeMapRowCount,
+    Virtualization.CreateMapSizeTween
 
 type MapProps = Map.MapProps
+
+type LayoutOrdered = {
+    LayoutOrder: number?
+}
 
 type VirtualMapScrollableProps = {
     Maps: Fusion.UsedAs<{ MapProps }>,
@@ -38,9 +42,23 @@ type VirtualMapScrollableProps = {
 
 local DefaultPadding = 4
 local DefaultOverdraw = 200
-local MapTweenInfo = TweenInfo.new(
-    .18, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
-)
+
+local function GetLayoutOrder(mapProps: MapProps): number
+    -- Component props also carry Roblox instance properties, but MapProps only
+    -- describes Map's named API. Narrow that extra property at this boundary.
+    local layoutOrdered = (mapProps :: unknown) :: LayoutOrdered
+    return layoutOrdered.LayoutOrder or 0
+end
+
+local function SortMapProps(mapProps: { MapProps }): { MapProps }
+    local sortedMapProps = table.clone(mapProps)
+
+    table.sort(sortedMapProps, function(a: MapProps, b: MapProps): boolean
+        return GetLayoutOrder(a) < GetLayoutOrder(b)
+    end)
+
+    return sortedMapProps
+end
 
 return Component<<VirtualMapScrollableProps>>(function(scope, props)
     local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
@@ -61,25 +79,21 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
     local overdrawState: Fusion.UsedAs<number> = overdraw or DefaultOverdraw
     local paddingState: Fusion.UsedAs<number> = padding
 
-    local computeSortedMapsProps = Computed(scope, function(use, scope)
-        local usedMapsProps =
-            table.clone(use<<{ MapProps }>>(mapsProps :: any))
-
-        table.sort(usedMapsProps, function(a: MapProps, b: MapProps): boolean
-            return ((a :: any).LayoutOrder or 0) < ((b :: any).LayoutOrder or 0)
-        end)
-
-        return usedMapsProps
-    end)
+    local computeSortedMapsProps: Fusion.Computed<{ MapProps }> = Computed(
+        scope,
+        function(use: Fusion.Use): { MapProps }
+            return SortMapProps(use<<{ MapProps }>>(mapsProps :: any))
+        end
+    )
 
     local computeCanvasSize = Computed(scope, function(use): UDim2
         return UDim2.fromOffset(0, use<<number>>(canvasHeightState))
     end)
 
     local computeMapInstances = Computed(scope, function(
-        use,
+        use: Fusion.Use,
         scope: Fusion.Scope
-    )
+    ): { Fusion.Child }
         local usedMapsProps = use<<{ MapProps }>>(computeSortedMapsProps)
         local mapChildren = table.create(#usedMapsProps) :: { Fusion.Child }
 
@@ -97,29 +111,19 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                 scope, mapProps.Collapsed or false
             )
 
-            local computeRowCount = Computed(scope, function(use): number
-                local usedItems =
-                    if items then use<<Map.Items>>(items) else nil
+            local rowCount = ComputeMapRowCount(
+                scope,
+                header,
+                items,
+                emptyText
+            )
 
-                return CalculateMapRowCount(
-                    if usedItems then #usedItems else 0,
-                    header ~= nil,
-                    emptyText ~= nil
-                )
-            end)
-
-            local computeTargetMapSize = Computed(scope, function(use): UDim2
-                local usedCollapsed = use<<boolean>>(collapsedState)
-                local usedRowCount = use<<number>>(computeRowCount)
-                local height =
-                    if usedCollapsed then lgHeight
-                    else CalculateMapHeight(usedRowCount, lgHeight)
-
-                return UDim2.new(width, UDim.new(0, height))
-            end)
-
-            local animatedMapSize = Tween<<UDim2>>(
-                scope, computeTargetMapSize :: any, MapTweenInfo
+            local animatedMapSize = CreateMapSizeTween(
+                scope,
+                width,
+                collapsedState,
+                rowCount,
+                lgHeight
             )
 
             local mapTop: Fusion.UsedAs<number> = 0
@@ -176,8 +180,8 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
             mapChildren[idx] = Computed(scope, function(
                 use,
                 mapScope: Fusion.Scope
-            ): Fusion.Child?
-                if use<<boolean>>(mapOccluded) then return nil end
+            ): Fusion.Child
+                if use<<boolean>>(mapOccluded) then return {} end
 
                 local geometryReadyState =
                     Fusion.Value<<boolean>>(mapScope, false)
@@ -197,6 +201,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
 
                     VirtualListData = {
                         AnimatedMapSize = animatedMapSize,
+                        RowCount = rowCount,
                         GeometryReady = geometryReadyState,
                         ViewportAbsolutePosition =
                             viewportAbsolutePositionState,
@@ -244,7 +249,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                     :onChange(commitGeometry)
 
                 return mapInstance
-            end) :: any
+            end)
 
             previousBottom = mapBottom
         end
@@ -275,5 +280,5 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
         OutCanvasPosition = viewportCanvasPositionState,
 
         [Children] = computeMapInstances
-    }, props :: any)
+    }, (props :: unknown) :: Scrollable.ScrollableOverrides)
 end)

@@ -5,9 +5,7 @@ local Packages = script.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local Peek, New, Children, Computed, Tween, ForPairs =
-    Fusion.peek, Fusion.New, Fusion.Children,
-    Fusion.Computed, Fusion.Tween, Fusion.ForPairs
+local Peek, New, Children = Fusion.peek, Fusion.New, Fusion.Children
 
 local Utils = script.Parent.Parent.utils
 
@@ -23,260 +21,29 @@ local GetThemeForScope, GetNextVariant =
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
-local MapHeader = require(script.header)
-local MapItem = require(script.item)
-local MapEmptyItem = require(script.emptyItem)
+local Virtualization = require(script.virtualization)
+local ComputeMapRowCount, CreateMapSizeTween,
+    ComputeVirtualListVisibleRowRange, ComputeVirtualListOccludesMap,
+    ComputeVirtualizedRows =
+    Virtualization.ComputeMapRowCount,
+    Virtualization.CreateMapSizeTween,
+    Virtualization.ComputeVirtualListVisibleRowRange,
+    Virtualization.ComputeVirtualListOccludesMap,
+    Virtualization.ComputeVirtualizedRows
 
-local VirtualListHelpers = require(script.virtualListHelpers)
-local CalculateMapRowCount, CalculateMapHeight, CalculateMapTopSpacerHeight,
-    ComputeVirtualListVisibleRowRange, ComputeVirtualListOccludesMap =
-    VirtualListHelpers.CalculateMapRowCount,
-    VirtualListHelpers.CalculateMapHeight,
-    VirtualListHelpers.CalculateMapTopSpacerHeight,
-    VirtualListHelpers.ComputeVirtualListVisibleRowRange,
-    VirtualListHelpers.ComputeVirtualListOccludesMap
-
-type Item = {
-    Key: string,
-	Value: any
-}
-
-export type Items = { Item }
-
-type RowDescriptor = Item | string
-
-local HeaderRowDescriptor: "Header" = "Header"
-local EmptyRowDescriptor: "Empty" = "Empty"
-
-export type VirtualListData = VirtualListHelpers.VirtualListData
+export type Items = Virtualization.Items
+export type VirtualListData = Virtualization.VirtualListData
 
 export type MapProps = {
-	Variant: ThemeUtils.BgVariantLayer?,
-	Width: UDim?,
-	Header: string?,
-	Items: Fusion.UsedAs<Items>?,
-	HideValues: boolean?,
-	EmptyText: string?,
-	Collapsed: Fusion.UsedAs<boolean>?,
-	VirtualListData: VirtualListData?,
+    Variant: ThemeUtils.BgVariantLayer?,
+    Width: UDim?,
+    Header: string?,
+    Items: Fusion.UsedAs<Items>?,
+    HideValues: boolean?,
+    EmptyText: string?,
+    Collapsed: Fusion.UsedAs<boolean>?,
+    VirtualListData: VirtualListData?,
 }
-
-local function ComputeRowCount(
-    scope: Fusion.Scope,
-    header: string?,
-    items: Fusion.UsedAs<Items>?,
-    emptyText: string?
-)
-    return Computed(scope, function(use, scope)
-        local usedItems = if items then use<<Items>>(items) else nil
-
-        return CalculateMapRowCount(
-            if usedItems then #usedItems else 0,
-            header ~= nil,
-            emptyText ~= nil
-        )
-    end)
-end
-
-local function ComputeRows(
-    scope: Fusion.Scope,
-    variant: ThemeUtils.BgVariantLayer,
-    header: string?,
-    items: Fusion.UsedAs<Items>?,
-    computeRowCount: Fusion.Computed<number>,
-    hideValues: boolean,
-    emptyText: string?,
-    collapsedState: Fusion.Value<boolean>,
-    tweenComputeMapSize: Fusion.Tween<UDim2>,
-    visibleRowRange: Fusion.UsedAs<Vector2>?,
-    lgHeight: number
-): (Fusion.Child, Fusion.For<number, Instance>)
-    local computeVisibleRowDescriptors = Computed(scope, function(use)
-        local usedRowCount = use<<number>>(computeRowCount)
-        local usedItems = if items then use<<Items>>(items) else nil
-        local firstRow, lastRow = 1, usedRowCount
-
-        if visibleRowRange then
-            local usedVisibleRowRange = use<<Vector2>>(visibleRowRange)
-            firstRow, lastRow = usedVisibleRowRange.X, usedVisibleRowRange.Y
-        end
-
-        local descriptors = {} :: { [number]: RowDescriptor }
-        if firstRow > lastRow then return descriptors end
-
-        local baseIdx = if header then 1 else 0
-
-        if header and firstRow <= 1 and lastRow >= 1 then
-            descriptors[1] = HeaderRowDescriptor
-        end
-
-        if not usedItems or #usedItems == 0 then
-            if not emptyText then return descriptors end
-
-            local rowIdx = baseIdx + 1
-            if rowIdx < firstRow or rowIdx > lastRow then
-                return descriptors
-            end
-
-            descriptors[rowIdx] = EmptyRowDescriptor
-
-            return descriptors
-        end
-
-        local firstItemIdx = math.max(firstRow - baseIdx, 1)
-        local lastItemIdx = math.min(lastRow - baseIdx, #usedItems)
-
-        for itemIdx = firstItemIdx, lastItemIdx do
-            local rowIdx = baseIdx + itemIdx
-            -- Preserve the source table reference so scrolling doesn't
-            -- invalidate rows that remain inside the visible range.
-            descriptors[rowIdx] = usedItems[itemIdx]
-        end
-
-        return descriptors
-    end)
-
-    -- Every row has its own keyed scope. Range changes can therefore recycle
-    -- only the rows that enter or leave instead of rebuilding the whole map.
-    local renderedRows = ForPairs(scope, computeVisibleRowDescriptors, function(
-        use,
-        rowScope: Fusion.Scope,
-        rowIdx: number,
-        descriptor: RowDescriptor
-    ): (number, Instance)
-        local usedRowCount = use<<number>>(computeRowCount)
-
-        if descriptor == HeaderRowDescriptor then
-            return rowIdx, MapHeader(rowScope, {
-                Header = header :: string,
-                Variant = variant,
-                RowCount = usedRowCount,
-                RowIdx = rowIdx,
-                CollapsedState = collapsedState,
-                TweenComputeMapSize = tweenComputeMapSize
-            })
-        elseif descriptor == EmptyRowDescriptor then
-            return rowIdx, MapEmptyItem(rowScope, {
-                Text = emptyText :: string,
-                Variant = variant,
-                RowCount = usedRowCount,
-                RowIdx = rowIdx,
-            })
-        else
-            local item = descriptor :: Item
-
-            return rowIdx, MapItem(rowScope, {
-                Key = item.Key,
-                Value = item.Value,
-                HideValue = hideValues,
-                Variant = variant,
-                RowCount = usedRowCount,
-                RowIdx = rowIdx
-            })
-        end
-    end)
-
-    local computeSkippedRowCount = Computed(scope, function(use): number
-        if not visibleRowRange then return 0 end
-
-        local usedVisibleRowRange = use<<Vector2>>(visibleRowRange)
-        if usedVisibleRowRange.X > usedVisibleRowRange.Y then return 0 end
-
-        return math.max(usedVisibleRowRange.X - 1, 0)
-    end)
-
-    local topSpacer = New(scope, "Frame") {
-        Size = Computed(scope, function(use: Fusion.Use): UDim2
-            local skippedRowCount = use<<number>>(computeSkippedRowCount)
-
-            return UDim2.new(
-                1, 0, 0,
-                CalculateMapTopSpacerHeight(skippedRowCount, lgHeight)
-            )
-        end),
-        BackgroundTransparency = 1,
-        LayoutOrder = Computed(scope, function(use: Fusion.Use): number
-            return use<<number>>(computeSkippedRowCount)
-        end),
-        Visible = Computed(scope, function(use: Fusion.Use): boolean
-            return use<<number>>(computeSkippedRowCount) > 0
-        end),
-
-        Name = "CulledMapRowsSpacer"
-    }
-
-    -- Fusion's recursive Child type cannot directly express a keyed For state,
-    -- even though Children handles it at runtime. Keep that widening isolated
-    -- to this boundary and retain the concrete For type everywhere else.
-    local renderedRowsChild = (renderedRows :: unknown) :: Fusion.Child
-    local rowChildren: { [unknown]: Fusion.Child } = {
-        topSpacer,
-        renderedRowsChild
-    }
-
-    return rowChildren, renderedRows
-end
-
-local function ComputeUncollapsedMapHeight(
-    scope: Fusion.Scope,
-    computeRowCount: Fusion.Computed<number>,
-    lgHeight: number
-)
-    return Computed(scope, function(use, scope)
-        local usedRowCount = use<<number>>(computeRowCount)
-
-        return CalculateMapHeight(usedRowCount, lgHeight)
-    end)
-end
-
-local function ComputeVisibleRows(
-    scope: Fusion.Scope,
-    variant: ThemeUtils.BgVariantLayer,
-    header: string?,
-    items: Fusion.UsedAs<Items>?,
-    computeRowCount: Fusion.Computed<number>,
-    hideValues: boolean,
-    emptyText: string?,
-    collapsedState: Fusion.Value<boolean>,
-    tweenComputeMapSize: Fusion.Tween<UDim2>,
-    lgHeight: number,
-    visibleRowRange: Fusion.UsedAs<Vector2>?,
-    virtualListOccludesMap: Fusion.UsedAs<boolean>
-)
-    return Computed(scope, function(
-        use,
-        scope: Fusion.Scope
-    ): Fusion.Child
-        if use<<boolean>>(virtualListOccludesMap) then return {} end
-
-        local rowChildren, renderedRows = ComputeRows(
-            scope, variant, header, items,
-            computeRowCount, hideValues, emptyText,
-            collapsedState, tweenComputeMapSize,
-            visibleRowRange, lgHeight
-        )
-
-        return Computed(scope, function(use: Fusion.Use): Fusion.Child
-            local usedCollapsedState = use<<boolean>>(collapsedState)
-            local usedTweenComputeMapSize = use<<UDim2>>(tweenComputeMapSize)
-
-            local isFullyCollapsed =
-                usedCollapsedState and
-                usedTweenComputeMapSize.Height.Offset == lgHeight
-
-            if isFullyCollapsed then
-                local usedRenderedRows =
-                    use<<{ [number]: Instance }>>(renderedRows)
-                local headerRow = usedRenderedRows[1]
-
-                return if header and headerRow then headerRow else {}
-
-            else
-                return rowChildren
-            end
-        end)
-    end)
-end
 
 return Component<<MapProps>>(function(scope, props)
     local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
@@ -292,54 +59,53 @@ return Component<<MapProps>>(function(scope, props)
     local props, virtualListData = TableExtract(props, "VirtualListData")
 
     local strokeVariant: ThemeUtils.BgVariant = GetNextVariant(variant)
-    local computeRowCount = ComputeRowCount(scope, header, items, emptyText)
-    local computeUncollapsedHeight =
-        ComputeUncollapsedMapHeight(scope, computeRowCount, lgHeight)
-
     local collapsedState = CoerceToValue<<boolean>>(scope, collapsed)
+    local rowCount =
+        if virtualListData and virtualListData.RowCount
+        then virtualListData.RowCount
+        else ComputeMapRowCount(scope, header, items, emptyText)
 
-    local computeVirtualListOccludesMap = ComputeVirtualListOccludesMap(
-        scope, virtualListData
+    local visibleRowRange = ComputeVirtualListVisibleRowRange(
+        scope,
+        virtualListData,
+        rowCount,
+        lgHeight
     )
 
-    local computeVisibleRowRange = ComputeVirtualListVisibleRowRange(
-        scope, virtualListData, computeRowCount, lgHeight
+    local mapOccluded = ComputeVirtualListOccludesMap(
+        scope,
+        virtualListData
     )
 
     -- VirtualMapScrollable owns this tween when maps can be unmounted. That
-    -- keeps layout animation progressing while the map instance is absent and
-    -- lets a remounted map resume at the current animated size.
-    local tweenComputeMapSize =
+    -- lets an absent map continue animating and resume at its current size.
+    local animatedMapSize =
         if virtualListData and virtualListData.AnimatedMapSize
         then virtualListData.AnimatedMapSize
-        else Tween<<UDim2>>(
+        else CreateMapSizeTween(
             scope,
-            Computed(scope, function(use: Fusion.Use): UDim2
-                local usedCollapsed = use<<boolean>>(collapsedState)
-                local usedUncollapsedMapHeight =
-                    use<<number>>(computeUncollapsedHeight)
-
-                local height =
-                    if usedCollapsed then lgHeight
-                    else usedUncollapsedMapHeight
-
-                return UDim2.new(width, UDim.new(0, height))
-            end),
-            TweenInfo.new(
-                .18, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
-            )
+            width,
+            collapsedState,
+            rowCount,
+            lgHeight
         )
 
-    local computeVisibleRows = ComputeVisibleRows(
-        scope, variant, header, items,
-        computeRowCount, hideValues, emptyText,
-        collapsedState, tweenComputeMapSize,
-        lgHeight, computeVisibleRowRange,
-        computeVirtualListOccludesMap
-    )
+    local visibleRows = ComputeVirtualizedRows(scope, {
+        Variant = variant,
+        Header = header,
+        Items = items,
+        HideValues = hideValues,
+        EmptyText = emptyText,
+        RowCount = rowCount,
+        CollapsedState = collapsedState,
+        AnimatedMapSize = animatedMapSize,
+        VisibleRowRange = visibleRowRange,
+        Occluded = mapOccluded,
+        RowHeight = lgHeight
+    })
 
     local mapChildren: { Fusion.Child } = {
-        computeVisibleRows,
+        visibleRows,
 
         New(scope, "UIListLayout") {
             Padding = UDim.new(0, 1),
@@ -358,7 +124,7 @@ return Component<<MapProps>>(function(scope, props)
         BackgroundColor3 = theme:GetBg(scope, strokeVariant, nil),
         StrokeColor = theme:GetBg(scope, strokeVariant, nil),
         StrokeThickness = 1,
-        Size = tweenComputeMapSize,
+        Size = animatedMapSize,
         ClipsDescendants = true,
         CornerRadius = theme:GetCornerRadius("Md"),
         CornerSmoothing = 1,
