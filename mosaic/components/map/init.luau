@@ -29,6 +29,7 @@ local ComputeMapRowCount, CreateMapSizeTween,
     Virtualization.ComputeVirtualListVisibleRowRange,
     Virtualization.ComputeVirtualizedRows
 
+export type Item = Virtualization.Item
 export type Items = Virtualization.Items
 export type VirtualListData = Virtualization.VirtualListData
 

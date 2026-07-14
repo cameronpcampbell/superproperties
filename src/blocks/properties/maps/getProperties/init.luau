@@ -3,16 +3,17 @@
 
 local ReflectionService = game:GetService("ReflectionService")
 
+local Packages = script.Parent.Parent.Parent.Parent.packages
+
+local Map = require(Packages.mosaic.components.map)
+
 local Patches = require(script.patches)
 local Types = require(script.types)
 
-type PropertyItem = {
-    Key: string,
-    Value: any
-}
+type Item = Map.Item
 
 type Category = {
-    Properties: { PropertyItem },
+    Properties: { Item },
 }
 
 type Properties = {
@@ -172,7 +173,7 @@ local function GetProperties(instance: Instance): Properties
 
     for _, categoryPlan in GetClassPlan(instance.ClassName) do
         local propertyPlans = categoryPlan.Properties
-        local items = table.create(#propertyPlans) :: { PropertyItem }
+        local items = table.create(#propertyPlans) :: { Item }
         local itemCount = 0
 
         for _, propertyPlan in propertyPlans do

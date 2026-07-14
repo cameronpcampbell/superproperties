@@ -1,7 +1,9 @@
 --!strict
 --!native
 
-type Item = { Key: string, Value: any }
+local Packages = script.Parent.Parent.Parent.Parent.Parent.packages
+
+local Map = require(Packages.mosaic.components.map)
 
 type PreparedQuery = {
     Text: string,
@@ -31,6 +33,7 @@ type ScoredItem = {
     Score: number
 }
 
+type Item = Map.Item
 type ItemFilter = (query: string?) -> { Item }
 
 local ExactScore = 1_000_000

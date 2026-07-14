@@ -23,7 +23,8 @@ local MapTweenInfo = TweenInfo.new(
 
 export type Item = {
     Key: string,
-    Value: any
+    Value: any,
+    SubItem: Item?
 }
 
 export type Items = { Item }

@@ -9,17 +9,15 @@ local Mosaic = require(Packages.mosaic)
 local Text, VirtualMapScrollable =
     Mosaic.Text, Mosaic.VirtualMapScrollable
 
+local Map = require(Packages.mosaic.components.map)
+type Item = Map.Item
+
 local Category = require(script.category)
 type CategoryState = Category.State
 type MapProps = Category.MapProps
 
 local GetProperties = require(script.getProperties)
 local ExtraCategories = require(script.extraCategories)
-
-type Item = {
-    Key: string,
-    Value: any
-}
 
 local function TableBulkInsert<T>(target: { T }, source: { T })
     table.move(source, 1, #source, #target + 1, target)

@@ -14,7 +14,7 @@ local GetFilterState = require(script.Parent.Parent.getFilterState)
 
 local DefaultCategoryLayoutOrder = 999997
 
-type Item = { Key: string, Value: any }
+type Item = Map.Item
 type ItemFilter = (query: string?) -> { Item }
 
 export type MapProps = Map.MapProps
