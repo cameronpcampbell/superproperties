@@ -27,7 +27,7 @@ export type ScrollableProps = {
     OutAbsolutePosition: Fusion.Value<Vector2>?,
     OutAbsoluteSize: Fusion.Value<Vector2>?,
     CanvasSize: Fusion.UsedAs<UDim2>?,
-    AutomaticCanvasSize: Fusion.UsedAs<Enum.AutomaticSize>?,
+    AutomaticCanvasSize: Fusion.UsedAs<Enum.AutomaticSize>?
 }
 
 export type ScrollableOverrides = Typeforge.FlattenTable<

@@ -63,7 +63,9 @@ Scope:Widget {
                     PaddingLeft = UDim.new(0, 4),
                     PaddingRight = UDim.new(0, 4),
                     PaddingTop = UDim.new(0, 4),
-                    PaddingBottom = UDim.new(0, 4),
+                    -- For some reason plugin gui's are
+                    -- clipped 1 pixel at the bottom.
+                    PaddingBottom = UDim.new(0, 5),
                 },
 
                 Scope:New "UIListLayout" {
