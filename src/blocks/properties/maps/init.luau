@@ -34,8 +34,7 @@ type CurrentPropertyRead = {
 
 local GetProperties = require(script.getProperties)
 local ExtraCategories = require(script.extraCategories)
-
-local RbxAttributePrefix = "RBX_"
+local InstanceMaps = require(script.instanceMaps)
 
 local function TableBulkInsert<T>(target: { T }, source: { T })
     table.move(source, 1, #source, #target + 1, target)
@@ -66,33 +65,6 @@ local function GetTags(
     return tagItems
 end
 
-local function GetAttributes(
-    instance: Instance,
-    omitRbxAttributes: boolean
-): { Item }
-    local attributes = instance:GetAttributes()
-    local attributeItems = {} :: { Item }
-
-    local attributeIdx = 1
-    for attributeName, attributeValue in attributes do
-        if omitRbxAttributes
-            and string.sub(attributeName, 1, #RbxAttributePrefix)
-                == RbxAttributePrefix
-        then
-            continue
-        end
-
-        attributeItems[attributeIdx] = {
-            Key = attributeName,
-            Value = attributeValue
-        }
-
-        attributeIdx += 1
-    end
-
-    return attributeItems
-end
-
 local function GetCategoryStates(
     scope: Fusion.Scope,
     outerScope: Fusion.Scope,
@@ -118,11 +90,15 @@ local function GetCategoryStates(
         EmptyText = "No Tags have been added yet.",
     }))
 
-    table.insert(categories, Category(scope, outerScope, collapsedStateScope, {
-        Name = "Attributes",
-        Items = GetAttributes(instance, omitRbxAttributes),
-        EmptyText = "No Attributes have been added yet.",
-    }))
+    table.insert(categories, InstanceMaps.Attributes(
+        scope,
+        outerScope,
+        collapsedStateScope,
+        instance,
+        {
+            OmitRbxAttributes = omitRbxAttributes
+        }
+    ))
 
     local extraCategories = ExtraCategories[instance.ClassName]
     if not extraCategories then return categories end
