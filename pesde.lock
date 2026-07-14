@@ -21,15 +21,15 @@ ref_ty = "pesde"
 index_url = "https://github.com/pesde-pkg/index"
 
 [graph."cameronpcampbell/supercorner_fusion03@0.1.2 roblox"]
-direct = ["supercorner", { path = "/Volumes/T7/supercorner/supercorner_fusion03" }, "standard"]
+direct = ["supercorner", { name = "cameronpcampbell/supercorner_fusion03", version = "^0.1.2", index = "default" }, "standard"]
 
 [graph."cameronpcampbell/supercorner_fusion03@0.1.2 roblox".dependencies]
 fusion = ["wally#elttob/fusion@0.3.0 roblox", "standard"]
 supercorner = ["cameronpcampbell/supercorner@0.1.2 roblox", "standard"]
 
 [graph."cameronpcampbell/supercorner_fusion03@0.1.2 roblox".pkg_ref]
-ref_ty = "path"
-path = "/Volumes/T7/supercorner/supercorner_fusion03"
+ref_ty = "pesde"
+index_url = "https://github.com/pesde-pkg/index"
 
 [graph."cameronpcampbell/supercorner_fusion03@0.1.2 roblox".pkg_ref.dependencies]
 fusion = [{ wally = "wally#elttob/fusion", version = "^0.3.0", index = "https://github.com/UpliftGames/wally-index" }, "standard"]
