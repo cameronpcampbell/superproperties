@@ -4,9 +4,9 @@
 local Packages = script.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
-local Children, Computed, New, Observer, OnChange, Peek =
-    Fusion.Children, Fusion.Computed, Fusion.New,
-    Fusion.Observer, Fusion.OnChange, Fusion.peek
+local Children, Computed, Observer, Peek =
+    Fusion.Children, Fusion.Computed,
+    Fusion.Observer, Fusion.peek
 
 local Utils = script.Parent.Parent.utils
 
@@ -30,24 +30,26 @@ type MapMeasurement = {
 
 type VirtualMapScrollableProps = {
     Maps: Fusion.UsedAs<{ MapProps }>,
-    Overdraw: Fusion.UsedAs<number>?
+    Overdraw: Fusion.UsedAs<number>?,
+    Padding: Fusion.UsedAs<number>?
 }
 
-local MapPadding = 4
+local DefaultPadding = 4
 local DefaultOverdraw = 200
 
 return Component<<VirtualMapScrollableProps>>(function(scope, props)
     local props, mapsProps = TableExtract(props, "Maps")
     local props, overdraw = TableExtract(props, "Overdraw")
+    local props, padding = TableExtract(props, "Padding", DefaultPadding)
 
     local viewportAbsolutePositionState =
         Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
     local viewportAbsoluteSizeState =
         Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
-    local canvasContentSizeState =
-        Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
+    local canvasHeightState = Fusion.Value<<number>>(scope, 0)
 
     local overdrawState: Fusion.UsedAs<number> = overdraw or DefaultOverdraw
+    local paddingState: Fusion.UsedAs<number> = padding
 
     local computeSortedMapsProps = Computed(scope, function(use, scope)
         local usedMapsProps =
@@ -61,13 +63,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
     end)
 
     local computeCanvasSize = Computed(scope, function(use): UDim2
-        local usedMapsProps = use<<{ MapProps }>>(computeSortedMapsProps)
-        if #usedMapsProps == 0 then return UDim2.new() end
-
-        local usedCanvasContentSize =
-            use<<Vector2>>(canvasContentSizeState)
-
-        return UDim2.fromOffset(0, usedCanvasContentSize.Y)
+        return UDim2.fromOffset(0, use<<number>>(canvasHeightState))
     end)
 
     local computeMapInstances = Computed(scope, function(
@@ -75,13 +71,15 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
         scope: Fusion.Scope
     )
         local usedMapsProps = use<<{ MapProps }>>(computeSortedMapsProps)
-        local mapChildren =
-            table.create(#usedMapsProps + 1) :: { Fusion.Child }
+        local mapChildren = table.create(#usedMapsProps) :: { Fusion.Child }
         local measurements =
             table.create(#usedMapsProps) :: { MapMeasurement }
 
         local geometryReadyState =
             Fusion.Value<<boolean>>(scope, false)
+        local commitGeometry: () -> () = function() end
+        -- Each map is positioned from the previous map's live tweened bottom.
+        local previousBottom: Fusion.UsedAs<number>? = nil
 
         for idx, mapProps in usedMapsProps do
             local mapAbsolutePositionState =
@@ -89,7 +87,27 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
             local mapAbsoluteSizeState =
                 Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
 
+            local mapTop: Fusion.UsedAs<number> = 0
+
+            if previousBottom then
+                local priorBottom = previousBottom
+
+                mapTop = Computed(scope, function(use): number
+                    local usedPadding =
+                        math.max(use<<number>>(paddingState), 0)
+
+                    return use<<number>>(priorBottom) + usedPadding
+                end)
+            end
+
+            local mapPosition = Computed(scope, function(use): UDim2
+                return UDim2.fromOffset(0, use<<number>>(mapTop))
+            end)
+
             local mapInstance = Map(scope, mapProps, {
+                Position = mapPosition,
+                AnchorPoint = Vector2.new(0, 0),
+
                 [Fusion.Out "AbsolutePosition"] = mapAbsolutePositionState,
                 [Fusion.Out "AbsoluteSize"] = mapAbsoluteSizeState,
 
@@ -109,14 +127,40 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                 Position = mapAbsolutePositionState,
                 Size = mapAbsoluteSizeState
             }
+
+            table.insert(
+                scope,
+                mapInstance:GetPropertyChangedSignal("Parent"):Connect(
+                    function()
+                        commitGeometry()
+                    end
+                )
+            )
+
+            previousBottom = Computed(scope, function(use): number
+                local usedMapSize = use<<Vector2>>(mapAbsoluteSizeState)
+
+                return use<<number>>(mapTop) + usedMapSize.Y
+            end)
         end
 
-        local layoutHasRun = false
+        local finalBottom = previousBottom
 
-        local function commitGeometry()
-            if not layoutHasRun or Peek<<boolean>>(geometryReadyState) then
-                return
+        if finalBottom then
+            -- The last bottom is the complete canvas height without trailing
+            -- padding, and changes throughout collapse/expand tweens.
+            local function publishCanvasHeight()
+                canvasHeightState:set(Peek<<number>>(finalBottom))
             end
+
+            Observer(scope, finalBottom):onChange(publishCanvasHeight)
+            publishCanvasHeight()
+        else
+            canvasHeightState:set(0)
+        end
+
+        commitGeometry = function()
+            if Peek<<boolean>>(geometryReadyState) then return end
 
             local viewportAbsoluteSize =
                 Peek<<Vector2>>(viewportAbsoluteSizeState)
@@ -147,20 +191,6 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
 
         Observer(scope, viewportAbsoluteSizeState):onChange(commitGeometry)
         Observer(scope, viewportAbsolutePositionState):onChange(commitGeometry)
-
-        mapChildren[#usedMapsProps + 1] = New(scope, "UIListLayout") {
-            FillDirection = Enum.FillDirection.Vertical,
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            Padding = UDim.new(0, MapPadding),
-
-            [OnChange "AbsoluteContentSize"] = function(
-                absoluteContentSize: Vector2
-            )
-                canvasContentSizeState:set(absoluteContentSize)
-                layoutHasRun = true
-                commitGeometry()
-            end
-        }
 
         return mapChildren
     end)
