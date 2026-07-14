@@ -50,21 +50,6 @@ local function CreateNoInstanceSelected(scope: Fusion.Scope): Fusion.Child
     })
 end
 
-local function GetTags(
-    instance: Instance
-): { Item }
-    local tags = instance:GetTags()
-    local tagItems = table.create(#tags) :: { Item }
-
-    for idx, tag in tags do
-        tagItems[idx] = {
-            Key = tag
-        }
-    end
-
-    return tagItems
-end
-
 local function GetCategoryStates(
     scope: Fusion.Scope,
     outerScope: Fusion.Scope,
@@ -83,12 +68,12 @@ local function GetCategoryStates(
         }))
     end
 
-    table.insert(categories, Category(scope, outerScope, collapsedStateScope, {
-        Name = "Tags",
-        Items = GetTags(instance),
-        HideValues = true,
-        EmptyText = "No Tags have been added yet.",
-    }))
+    table.insert(categories, InstanceMaps.Tags(
+        scope,
+        outerScope,
+        collapsedStateScope,
+        instance
+    ))
 
     table.insert(categories, InstanceMaps.Attributes(
         scope,

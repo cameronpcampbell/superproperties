@@ -6,14 +6,14 @@ local RunService = game:GetService("RunService")
 local function TagChanged(
     instance: Instance,
     callback: (tag: string, removed: boolean) -> ()
-)
+): RBXScriptConnection
     local previousTags: { [string]: boolean } = {}
     for _, tag in CollectionService:GetTags(instance) do
         previousTags[tag] = true
     end
 
     return RunService.Heartbeat:Connect(function()
-        local currentTags = {}
+        local currentTags: { [string]: boolean } = {}
         for _, tag in CollectionService:GetTags(instance) do
             currentTags[tag] = true
 

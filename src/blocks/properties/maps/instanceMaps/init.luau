@@ -1,5 +1,6 @@
 --!strict
 
 return {
-    Attributes = require(script.attributes)
+    Attributes = require(script.attributes),
+    Tags = require(script.tags)
 }
