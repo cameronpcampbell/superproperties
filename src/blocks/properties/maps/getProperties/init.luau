@@ -33,22 +33,22 @@ type ClassPlan = { CategoryPlan }
 
 local ClassPlansByName: { [string]: ClassPlan } = {}
 
-local function TableMergeFrozen(
-    tbleA: { [any]: any },
-    tbleB:  { [any]: any }
+local function MergeTables(
+    target: { [any]: any },
+    source: { [any]: any }
 )
-    for keyB, valueB in tbleB do
-        local valueA = tbleA[keyB]
+    for sourceKey, sourceValue in source do
+        local targetValue = target[sourceKey]
 
-		if type(valueA) == "table" and type(valueB) == "table" then
-		    tbleA[keyB] = TableMergeFrozen(table.clone(valueA), valueB)
+        if type(targetValue) ~= "table" or type(sourceValue) ~= "table" then
+            target[sourceKey] = sourceValue
+            continue
+        end
 
-		else
-		    tbleA[keyB] = valueB
-		end
-	end
+        target[sourceKey] = MergeTables(table.clone(targetValue), sourceValue)
+    end
 
-	return tbleA
+    return target
 end
 
 local function ApplyOwnerPatches(
@@ -64,7 +64,7 @@ local function ApplyOwnerPatches(
     local patchProperty = patchOwner[item.Name]
     if not patchProperty then return item :: Types.PatchedReflectionPropertiesItem end
 
-    return TableMergeFrozen(table.clone(item) :: any, patchProperty)
+    return MergeTables(table.clone(item) :: any, patchProperty)
 end
 
 local function ApplyPatches(
@@ -76,10 +76,10 @@ local function ApplyPatches(
     local patchCategory = Patches[itemDisplay.Category]
     if not patchCategory then return item :: Types.PatchedReflectionPropertiesItem end
 
-    local item = ApplyOwnerPatches(item, patchCategory, item.Owner)
-    local item = ApplyOwnerPatches(item, patchCategory, "*")
+    local patchedItem = ApplyOwnerPatches(item, patchCategory, item.Owner)
+    patchedItem = ApplyOwnerPatches(patchedItem, patchCategory, "*")
 
-    return item
+    return patchedItem
 end
 
 local function CreateOrGetCategoryPlan(
@@ -87,8 +87,8 @@ local function CreateOrGetCategoryPlan(
     categoriesByName: { [string]: CategoryPlan },
     categoryName: string
 ): CategoryPlan
-    local category = categoriesByName[categoryName]
-    if category then return category end
+    local existingCategory = categoriesByName[categoryName]
+    if existingCategory then return existingCategory end
 
     local category = {
         Name = categoryName,
@@ -105,9 +105,9 @@ local function BuildClassPlan(className: string): ClassPlan
     local categoriesByName: { [string]: CategoryPlan } = {}
     local categories: ClassPlan = {}
 
-    local reflection = ReflectionService:GetPropertiesOfClass(className)
+    local reflectedProperties = ReflectionService:GetPropertiesOfClass(className)
 
-    for _, reflectedItem in reflection do
+    for _, reflectedItem in reflectedProperties do
         local item = ApplyPatches(reflectedItem)
         local itemDisplay = item.Display
 
@@ -131,8 +131,11 @@ local function BuildClassPlan(className: string): ClassPlan
     end
 
     for _, category in categories do
-        table.sort(category.Properties, function(a: PropertyPlan, b: PropertyPlan)
-            return a.Name < b.Name
+        table.sort(category.Properties, function(
+            leftProperty: PropertyPlan,
+            rightProperty: PropertyPlan
+        )
+            return leftProperty.Name < rightProperty.Name
         end)
     end
 
@@ -153,27 +156,30 @@ local function ReadProperty(instance: Instance, name: string): any
     return (instance :: any)[name]
 end
 
+local function ReadPlannedProperty(
+    instance: Instance,
+    propertyPlan: PropertyPlan
+): (boolean, any)
+    if propertyPlan.Read then
+        return pcall(propertyPlan.Read, instance)
+    end
+
+    return pcall(ReadProperty, instance, propertyPlan.Name)
+end
+
 local function GetProperties(instance: Instance): Properties
     local properties: Properties = {}
 
     for _, categoryPlan in GetClassPlan(instance.ClassName) do
         local propertyPlans = categoryPlan.Properties
-        local items =
-            table.create(#propertyPlans) :: { PropertyItem }
+        local items = table.create(#propertyPlans) :: { PropertyItem }
         local itemCount = 0
 
         for _, propertyPlan in propertyPlans do
             local name = propertyPlan.Name
-            local read = propertyPlan.Read
-            local ok, value
-
-            if read then
-                ok, value = pcall(read, instance)
-            else
-                ok, value = pcall(ReadProperty, instance, name)
-            end
-
-            if not ok then continue end
+            local readSuccess, value =
+                ReadPlannedProperty(instance, propertyPlan)
+            if not readSuccess then continue end
 
             itemCount += 1
             items[itemCount] = {
@@ -182,11 +188,11 @@ local function GetProperties(instance: Instance): Properties
             }
         end
 
-        if itemCount > 0 then
-            properties[categoryPlan.Name] = {
-                Properties = items
-            }
-        end
+        if itemCount == 0 then continue end
+
+        properties[categoryPlan.Name] = {
+            Properties = items
+        }
     end
 
     return properties

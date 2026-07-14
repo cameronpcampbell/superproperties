@@ -30,11 +30,11 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps)
     local rowCount, rowIdx = props.RowCount, props.RowIdx
     local variant = props.Variant
     local key, value, hideValue = props.Key, props.Value, props.HideValue
+    local rowHeight = theme:GetHeight("Lg") - 2
 
     return New(scope, "Frame") {
         BackgroundTransparency = 1,
-        -- We subtract 2 to account for the for the extra stroke that will be added.
-        Size = UDim2.new(1, 0, 0, theme:GetHeight("Lg") - 2),
+        Size = UDim2.new(1, 0, 0, rowHeight),
         LayoutOrder = props.RowIdx,
 
         Name = `MapItem [{key}]`,

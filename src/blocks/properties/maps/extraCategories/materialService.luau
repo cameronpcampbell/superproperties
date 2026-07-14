@@ -11,11 +11,11 @@ local function GetIncludedMaterials()
     local includedMaterials = {}
 
     for _, enumItem in Enum.Material:GetEnumItems() do
-        local ok = pcall(
+        local success = pcall(
             MaterialService.GetBaseMaterialOverride,
             MaterialService, enumItem
         )
-        if not ok then continue end
+        if not success then continue end
 
         table.insert(includedMaterials, enumItem)
     end
@@ -24,11 +24,11 @@ local function GetIncludedMaterials()
 end
 
 local IncludedMaterials = GetIncludedMaterials()
-local IncludedMaterialsLen = #IncludedMaterials
+local IncludedMaterialCount = #IncludedMaterials
 
 local function GetMaterials(): {{ Key: string, Value: string }}
     local materials =
-        table.create(IncludedMaterialsLen) :: {{ Key: string, Value: string }}
+        table.create(IncludedMaterialCount) :: {{ Key: string, Value: string }}
 
     for idx, enumItem in IncludedMaterials do
         materials[idx] = {

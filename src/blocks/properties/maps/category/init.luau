@@ -32,11 +32,11 @@ local function SortItems(
     scope: Fusion.Scope,
     items: Fusion.UsedAs<{ Item }>
 ): Fusion.Computed<{ Item }>
-    return Computed(scope, function(use, scope)
+    return Computed(scope, function(use)
         local sortedItems = table.clone(use<<{ Item }>>(items))
 
-        table.sort(sortedItems, function(a: Item, b: Item)
-            return a.Key < b.Key
+        table.sort(sortedItems, function(leftItem: Item, rightItem: Item)
+            return leftItem.Key < rightItem.Key
         end)
 
         return sortedItems
@@ -47,19 +47,19 @@ local function PrepareItemFilter(
     scope: Fusion.Scope,
     items: Fusion.UsedAs<{ Item }>
 ): Fusion.Computed<ItemFilter>
-    return Computed(scope, function(use, scope)
+    return Computed(scope, function(use)
         return CreateItemFilter(use<<{ Item }>>(items))
     end)
 end
 
 local function FilterItems(
     scope: Fusion.Scope,
-    filter: Fusion.Value<string?>,
+    filterState: Fusion.Value<string?>,
     itemFilter: Fusion.Computed<ItemFilter>
 ): Fusion.Computed<{ Item }>
-    return Computed(scope, function(use, scope)
+    return Computed(scope, function(use)
         local usedItemFilter = use<<ItemFilter>>(itemFilter)
-        local usedFilter = use<<string?>>(filter)
+        local usedFilter = use<<string?>>(filterState)
         return usedItemFilter(usedFilter)
     end)
 end

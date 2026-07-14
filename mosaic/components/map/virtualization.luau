@@ -29,6 +29,8 @@ export type Item = {
 export type Items = { Item }
 
 type RowDescriptor = Item | string
+type RowDescriptors = { [number]: RowDescriptor }
+type RenderedRows = { [number]: Instance }
 
 local HeaderRowDescriptor: "Header" = "Header"
 local EmptyRowDescriptor: "Empty" = "Empty"
@@ -81,8 +83,6 @@ local function CalculateMapRowCount(
 end
 
 local function CalculateMapHeight(rowCount: number, lgHeight: number): number
-    -- Each row is inset by the map's one-pixel stroke. The remaining pixels
-    -- account for the gaps between rows and the map's outer padding.
     local rowHeight = lgHeight - 2
 
     return rowHeight * rowCount + rowCount + 1
@@ -96,8 +96,7 @@ local function CalculateMapTopSpacerHeight(
 
     local rowHeight = lgHeight - 2
 
-    return rowHeight * skippedRowCount
-        + RowGap * (skippedRowCount - 1)
+    return rowHeight * skippedRowCount + RowGap * (skippedRowCount - 1)
 end
 
 local function ComputeMapRowCount(
@@ -206,40 +205,42 @@ local function CreateRow(
             CollapsedState = config.CollapsedState,
             TweenComputeMapSize = config.AnimatedMapSize
         })
-    elseif descriptor == EmptyRowDescriptor then
+    end
+
+    if descriptor == EmptyRowDescriptor then
         return MapEmptyItem(scope, {
             Text = config.EmptyText :: string,
             Variant = config.Variant,
             RowCount = rowCount,
             RowIdx = rowIdx,
         })
-    else
-        local item = descriptor :: Item
-
-        return MapItem(scope, {
-            Key = item.Key,
-            Value = item.Value,
-            HideValue = config.HideValues,
-            Variant = config.Variant,
-            RowCount = rowCount,
-            RowIdx = rowIdx
-        })
     end
+
+    local item = descriptor :: Item
+
+    return MapItem(scope, {
+        Key = item.Key,
+        Value = item.Value,
+        HideValue = config.HideValues,
+        Variant = config.Variant,
+        RowCount = rowCount,
+        RowIdx = rowIdx
+    })
 end
 
-local function ComputeRows(
+local function ComputeVisibleRowDescriptors(
     scope: Fusion.Scope,
     config: VirtualRowsConfig
-): (Fusion.Child, Fusion.Value<{ [number]: Instance }>)
+): Fusion.Computed<RowDescriptors>
     local header = config.Header
     local items = config.Items
     local emptyText = config.EmptyText
     local rowCount = config.RowCount
     local visibleRowRange = config.VisibleRowRange
 
-    local visibleRowDescriptors = Computed(
+    return Computed(
         scope,
-        function(use: Fusion.Use): { [number]: RowDescriptor }
+        function(use: Fusion.Use): RowDescriptors
             local usedRowCount = use<<number>>(rowCount)
             local usedItems = if items then use<<Items>>(items) else nil
             local firstRow, lastRow = 1, usedRowCount
@@ -251,7 +252,7 @@ local function ComputeRows(
                 lastRow = usedVisibleRowRange.Y
             end
 
-            local descriptors = {} :: { [number]: RowDescriptor }
+            local descriptors = {} :: RowDescriptors
             if firstRow > lastRow then return descriptors end
 
             local baseIdx = if header then 1 else 0
@@ -277,24 +278,29 @@ local function ComputeRows(
 
             for itemIdx = firstItemIdx, lastItemIdx do
                 local rowIdx = baseIdx + itemIdx
-                -- Preserve the source reference so rows inside the range are
-                -- not invalidated as adjacent rows enter or leave.
+                -- Stable item references preserve rows as the range moves.
                 descriptors[rowIdx] = usedItems[itemIdx]
             end
 
             return descriptors
         end
     )
+end
 
-    local renderedRows = Fusion.Value<<{ [number]: Instance }>>(scope, {})
+local function CreateRenderedRows(
+    scope: Fusion.Scope,
+    config: VirtualRowsConfig,
+    visibleRowDescriptors: Fusion.Computed<RowDescriptors>
+): Fusion.Value<RenderedRows>
+    local rowCount = config.RowCount
+    local renderedRows = Fusion.Value<<RenderedRows>>(scope, {})
     local mountedRows = {} :: { [number]: MountedRow }
 
     local function reconcileRows()
-        local descriptors =
-            Peek<<{ [number]: RowDescriptor }>>(visibleRowDescriptors)
+        local descriptors = Peek<<RowDescriptors>>(visibleRowDescriptors)
         local usedRowCount = Peek<<number>>(rowCount)
         local nextMountedRows = {} :: { [number]: MountedRow }
-        local nextRenderedRows = {} :: { [number]: Instance }
+        local nextRenderedRows = {} :: RenderedRows
 
         for rowIdx, descriptor in descriptors do
             local mountedRow = mountedRows[rowIdx]
@@ -305,30 +311,29 @@ local function ComputeRows(
             then
                 nextMountedRows[rowIdx] = mountedRow
                 nextRenderedRows[rowIdx] = mountedRow.Instance
-            else
-                local rowScope = Fusion.innerScope(scope)
-                local rowInstance = CreateRow(
-                    rowScope,
-                    config,
-                    rowIdx,
-                    descriptor,
-                    usedRowCount
-                )
-                local nextMountedRow: MountedRow = {
-                    Scope = rowScope,
-                    Descriptor = descriptor,
-                    RowCount = usedRowCount,
-                    Instance = rowInstance
-                }
-
-                nextMountedRows[rowIdx] = nextMountedRow
-                nextRenderedRows[rowIdx] = rowInstance
+                continue
             end
+
+            local rowScope = Fusion.innerScope(scope)
+            local rowInstance = CreateRow(
+                rowScope,
+                config,
+                rowIdx,
+                descriptor,
+                usedRowCount
+            )
+            local nextMountedRow: MountedRow = {
+                Scope = rowScope,
+                Descriptor = descriptor,
+                RowCount = usedRowCount,
+                Instance = rowInstance
+            }
+
+            nextMountedRows[rowIdx] = nextMountedRow
+            nextRenderedRows[rowIdx] = rowInstance
         end
 
-        -- Publish fully constructed replacements first. Fusion's Children
-        -- handler parents them before unparenting instances absent from this
-        -- table, so a visible row never has an empty hand-off frame.
+        -- Publish replacements before cleaning old scopes to avoid empty rows.
         renderedRows:set(nextRenderedRows)
 
         for rowIdx, mountedRow in mountedRows do
@@ -342,7 +347,14 @@ local function ComputeRows(
 
     Observer(scope, visibleRowDescriptors):onBind(reconcileRows)
 
-    local skippedRowCount = Computed(scope, function(use: Fusion.Use): number
+    return renderedRows
+end
+
+local function ComputeSkippedRowCount(
+    scope: Fusion.Scope,
+    visibleRowRange: Fusion.UsedAs<Vector2>?
+): Fusion.Computed<number>
+    return Computed(scope, function(use: Fusion.Use): number
         if not visibleRowRange then return 0 end
 
         local usedVisibleRowRange = use<<Vector2>>(visibleRowRange)
@@ -350,16 +362,24 @@ local function ComputeRows(
 
         return math.max(usedVisibleRowRange.X - 1, 0)
     end)
+end
 
-    local topSpacer = New(scope, "Frame") {
+local function CreateTopSpacer(
+    scope: Fusion.Scope,
+    skippedRowCount: Fusion.Computed<number>,
+    rowHeight: number
+): Instance
+    return New(scope, "Frame") {
         Size = Computed(scope, function(use: Fusion.Use): UDim2
+            local usedSkippedRowCount = use<<number>>(skippedRowCount)
+
             return UDim2.new(
                 1,
                 0,
                 0,
                 CalculateMapTopSpacerHeight(
-                    use<<number>>(skippedRowCount),
-                    config.RowHeight
+                    usedSkippedRowCount,
+                    rowHeight
                 )
             )
         end),
@@ -373,9 +393,22 @@ local function ComputeRows(
 
         Name = "CulledMapRowsSpacer"
     }
+end
 
-    -- Fusion's recursive Child type cannot directly express a state containing
-    -- an instance dictionary. Keep the widening isolated to this boundary.
+local function ComputeRows(
+    scope: Fusion.Scope,
+    config: VirtualRowsConfig
+): (Fusion.Child, Fusion.Value<RenderedRows>)
+    local visibleRowDescriptors =
+        ComputeVisibleRowDescriptors(scope, config)
+    local renderedRows =
+        CreateRenderedRows(scope, config, visibleRowDescriptors)
+    local skippedRowCount =
+        ComputeSkippedRowCount(scope, config.VisibleRowRange)
+    local topSpacer =
+        CreateTopSpacer(scope, skippedRowCount, config.RowHeight)
+
+    -- Fusion.Child cannot express an instance dictionary state.
     local renderedRowsChild = (renderedRows :: unknown) :: Fusion.Child
     local rowChildren: { [unknown]: Fusion.Child } = {
         topSpacer,

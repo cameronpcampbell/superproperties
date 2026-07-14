@@ -18,6 +18,7 @@ local Text = require(Components.text)
 
 local Assets = require(script.Parent.Parent.Parent.Parent.assets)
 local Types = require(script.Parent.Parent.types)
+local CalculateRowCornerRadii = require(script.Parent.Parent.cornerRadii)
 
 type MapItemKeyProps = Typeforge.Flatten<
     Types.BaseMapProps & {
@@ -25,34 +26,20 @@ type MapItemKeyProps = Typeforge.Flatten<
     }
 >
 
-local function CalcKeyCornerRadii(
-    rowCount: number,
-    rowIdx: number,
-    baseRadius: number
-): (number, number, number, number)
-    local topLeftRadius = 0
-    local bottomLeftRadius = 0
-
-    if rowIdx == 1 then
-        topLeftRadius = baseRadius
-    end
-
-    if rowIdx == rowCount then
-        bottomLeftRadius = baseRadius
-    end
-
-    return topLeftRadius, 0, bottomLeftRadius, 0
-end
-
 local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
     local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
 
     local rowCount, rowIdx = props.RowCount, props.RowIdx
     local variant = props.Variant
+    local innerCornerRadius = theme:GetCornerRadius("Md") - 1
 
     local topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius =
-        -- We subtract 1 as we this squircle is inset by 1px.
-        CalcKeyCornerRadii(rowCount, rowIdx, theme:GetCornerRadius("Md") - 1)
+        CalculateRowCornerRadii(
+            "Left",
+            rowCount,
+            rowIdx,
+            innerCornerRadius
+        )
 
     return Supercorner.new(scope, {
         BackgroundColor3 = theme:GetBg(scope, variant),

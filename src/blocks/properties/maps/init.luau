@@ -16,11 +16,16 @@ type MapProps = Category.MapProps
 local GetProperties = require(script.getProperties)
 local ExtraCategories = require(script.extraCategories)
 
+type Item = {
+    Key: string,
+    Value: any
+}
+
 local function TableBulkInsert<T>(target: { T }, source: { T })
     table.move(source, 1, #source, #target + 1, target)
 end
 
-local function NoInstanceSelected(scope: Fusion.Scope): Fusion.Child
+local function CreateNoInstanceSelected(scope: Fusion.Scope): Fusion.Child
     return Text(scope, {
         Text = "No Instance selected.",
         Variant = "Secondary",
@@ -31,10 +36,9 @@ end
 
 local function GetTags(
     instance: Instance
-): {{ Key: string, Value: nil }}
+): { Item }
     local tags = instance:GetTags()
-    local tagItems =
-        table.create(#tags) :: {{ Key: string, Value: nil }}
+    local tagItems = table.create(#tags) :: { Item }
 
     for idx, tag in tags do
         tagItems[idx] = {
@@ -47,18 +51,18 @@ end
 
 local function GetAttributes(
     instance: Instance
-): {{ Key: string, Value: any }}
+): { Item }
     local attributes = instance:GetAttributes()
-    local attributeItems ={} :: {{ Key: string, Value: any }}
+    local attributeItems = {} :: { Item }
 
-    local idx = 1
+    local attributeIdx = 1
     for attributeName, attributeValue in attributes do
-        attributeItems[idx] = {
+        attributeItems[attributeIdx] = {
             Key = attributeName,
             Value = attributeValue
         }
 
-        idx += 1
+        attributeIdx += 1
     end
 
     return attributeItems
@@ -95,13 +99,12 @@ local function GetCategoryStates(
     }))
 
     local extraCategories = ExtraCategories[instance.ClassName]
+    if not extraCategories then return categories end
 
-    if extraCategories then
-        TableBulkInsert(
-            categories,
-            extraCategories(scope, outerScope, collapsedStateScope)
-        )
-    end
+    TableBulkInsert(
+        categories,
+        extraCategories(scope, outerScope, collapsedStateScope)
+    )
 
     return categories
 end
@@ -132,7 +135,7 @@ return function(
     local computeMapProps = Computed(mapsScope, function(use): { MapProps }
         local categoryStates =
             use<<{ CategoryState }>>(computeCategoryStates)
-        local maps = table.create(#categoryStates) :: { MapProps }
+        local mapPropsList = table.create(#categoryStates) :: { MapProps }
         local mapCount = 0
 
         for _, categoryState in categoryStates do
@@ -140,10 +143,10 @@ return function(
             if not mapProps then continue end
 
             mapCount += 1
-            maps[mapCount] = mapProps
+            mapPropsList[mapCount] = mapProps
         end
 
-        return maps
+        return mapPropsList
     end)
 
     local computeNoInstanceSelected = Computed(mapsScope, function(
@@ -151,7 +154,7 @@ return function(
         scope: Fusion.Scope
     ): Fusion.Child?
         if use<<Instance>>(selectedInstanceValue) then return nil end
-        return NoInstanceSelected(scope)
+        return CreateNoInstanceSelected(scope)
     end)
 
     return VirtualMapScrollable(mapsScope, {

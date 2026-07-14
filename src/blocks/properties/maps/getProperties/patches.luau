@@ -4,110 +4,85 @@
 local Packages = script.Parent.Parent.Parent.Parent.Parent.packages
 local Typeforge = require(Packages.typeforge)
 
-
 local Types = require(script.Parent.types)
 
+type DisplayPatch = {
+    Category: string?,
+    DeprecationMessage: string?,
+    LayoutOrder: number?
+}
+
+type PropertyPatch = Typeforge.Flatten<
+    Typeforge.Omit<
+        Typeforge.Partial<Types.PatchedReflectionPropertiesItem>,
+        "Display"
+    > & {
+        Display: DisplayPatch?
+    }
+>
+
 type Patches = {
-    -- Category
     [string]: {
-        -- Owner
         [string]: {
-            -- Property Name
-            [string]: {
-                [string]: Typeforge.Partial<Types.PatchedReflectionPropertiesItem>
-            }
+            [string]: PropertyPatch
         }
     }
 }
 
+local function CreateDeprecationPatch(replacement: string): PropertyPatch
+    return {
+        Display = {
+            DeprecationMessage = `Use '{replacement}' instead.`
+        }
+    }
+end
+
+local TextColorPatch = CreateDeprecationPatch("TextColor3")
+
 local Patches: Patches = {
     Behavior = {
         ["*"] = {
-
             Archivable = {
                 Display = {
                     Category = "Data"
                 }
             }
-
         },
         BaseScript = {
-
-            Disabled = {
-                Display = {
-                    DeprecationMessage = "Use 'Enabled' instead."
-                }
-            }
-
+            Disabled = CreateDeprecationPatch("Enabled")
         },
     },
     Data = {
         GuiObject = {
-
-            BackgroundColor = {
-                Display = {
-                    DeprecationMessage = "Use 'BackgroundColor3' instead."
-                }
-            },
-
-            BorderColor = {
-                Display = {
-                    DeprecationMessage = "Use 'BorderColor3' instead."
-                }
-            },
-
-            Transparency = {
-                Display = {
-                    DeprecationMessage = "Use 'BackgroundTransparency' instead."
-                }
-            }
-
+            BackgroundColor = CreateDeprecationPatch("BackgroundColor3"),
+            BorderColor = CreateDeprecationPatch("BorderColor3"),
+            Transparency = CreateDeprecationPatch("BackgroundTransparency")
         }
     },
     Text = {
         TextLabel = {
-
-            TextColor = {
-                Display = {
-                    DeprecationMessage = "Use 'TextColor3' instead."
-                }
-            }
-
+            TextColor = TextColorPatch
         },
         TextButton = {
-
-            TextColor = {
-                Display = {
-                    DeprecationMessage = "Use 'TextColor3' instead."
-                }
-            }
-
+            TextColor = TextColorPatch
         },
         TextBox = {
-
-            TextColor = {
-                Display = {
-                    DeprecationMessage = "Use 'TextColor3' instead."
-                }
-            }
-
+            TextColor = TextColorPatch
         }
     },
     Transform = {
         PVInstance = {
-
             Origin = {
                 CustomReadWrite = {
-                    Read = function(inst: PVInstance)
-                        return inst:GetPivot()
+                    Read = function(instance: PVInstance)
+                        return instance:GetPivot()
                     end,
 
-                    Write = function(inst: PVInstance, write: CFrame)
-                        inst:PivotTo(write)
+                    Write = function(instance: PVInstance, value: CFrame)
+                        instance:PivotTo(value)
                     end
                 }
             }
-
         }
     }
 }

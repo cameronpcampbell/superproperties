@@ -70,8 +70,7 @@ return Component<<MapProps>>(function(scope, props)
         lgHeight
     )
 
-    -- VirtualMapScrollable owns this tween when maps can be unmounted. That
-    -- lets an absent map continue animating and resume at its current size.
+    -- The parent supplies this tween so unmounted maps continue animating.
     local animatedMapSize =
         if virtualListData and virtualListData.AnimatedMapSize
         then virtualListData.AnimatedMapSize

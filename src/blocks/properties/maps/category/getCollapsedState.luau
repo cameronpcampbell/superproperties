@@ -5,31 +5,28 @@ local Packages = script.Parent.Parent.Parent.Parent.Parent.packages
 local Fusion = require(Packages.fusion)
 local Value = Fusion.Value
 
-local MapCollapsedStates:
+local CollapsedStatesByScope:
     { [Fusion.Scope]: { [string]: Fusion.Value<boolean> } } = {}
 
 local function GetCollapsedState(scope: Fusion.Scope, categoryName: string)
-    local collapsedStatesForScope = MapCollapsedStates[scope]
+    local collapsedStates = CollapsedStatesByScope[scope]
 
-    if not collapsedStatesForScope then
-        collapsedStatesForScope = {}
-        MapCollapsedStates[scope] = collapsedStatesForScope
+    if not collapsedStates then
+        collapsedStates = {}
+        CollapsedStatesByScope[scope] = collapsedStates
 
-        local collapsedState = Value(scope, false)
-        collapsedStatesForScope[categoryName] = collapsedState
-
-        return collapsedState
-
-    else
-        local collapsedState = collapsedStatesForScope[categoryName]
-
-        if not collapsedState then
-            collapsedState = Value(scope, false)
-            collapsedStatesForScope[categoryName] = collapsedState
-        end
-
-        return collapsedState
+        table.insert(scope, function()
+            CollapsedStatesByScope[scope] = nil
+        end)
     end
+
+    local collapsedState = collapsedStates[categoryName]
+    if collapsedState then return collapsedState end
+
+    collapsedState = Value(scope, false)
+    collapsedStates[categoryName] = collapsedState
+
+    return collapsedState
 end
 
 return GetCollapsedState

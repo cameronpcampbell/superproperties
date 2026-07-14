@@ -1,25 +1,23 @@
 --!strict
 
-local function Combine(
-    array: { string },
-    hashmap: { [string]: number }
+local function CreateCategoryOrder(
+    categoryNames: { string },
+    overrides: { [string]: number }
 ): { [string]: number }
-    local outputHashMap = {}
+    local categoryOrder = {}
 
-    for idx, value in array do
-        outputHashMap[value] = idx
+    for categoryIdx, categoryName in categoryNames do
+        categoryOrder[categoryName] = categoryIdx
     end
 
-    if hashmap then
-        for key, value in hashmap do
-            outputHashMap[key] = value
-        end
+    for categoryName, layoutOrder in overrides do
+        categoryOrder[categoryName] = layoutOrder
     end
 
-    return outputHashMap
+    return categoryOrder
 end
 
-return Combine({
+return CreateCategoryOrder({
     "Appearance",
     "Data",
     "Listening",

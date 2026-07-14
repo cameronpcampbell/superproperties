@@ -30,7 +30,7 @@ type MapHeaderProps = Typeforge.Flatten<
     }
 >
 
-local function CalcCornerRadii(
+local function ComputeCornerRadii(
     scope: Fusion.Scope,
     rowCount: number,
     rowIdx: number,
@@ -44,7 +44,7 @@ local function CalcCornerRadii(
     local lgHeight = theme:GetHeight("Lg")
 
     local function cornerRadius(roundFirst: boolean, roundLast: boolean)
-        return Computed(scope, function(use, scope): number
+        return Computed(scope, function(use): number
             local usedTweenComputeMapSize = use<<UDim2>>(tweenComputeMapSize)
             local usedTweenComputeMapHeightOffset = usedTweenComputeMapSize.Height.Offset
 
@@ -78,22 +78,27 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
     local collapsedState = props.CollapsedState
     local tweenComputeMapSize = props.TweenComputeMapSize
 
-    -- We subtract 1 as this squircle is inset by 1px.
-    local maxCornerRadius = theme:GetCornerRadius("Md") - 1
+    local innerCornerRadius = theme:GetCornerRadius("Md") - 1
+    local rowHeight = theme:GetHeight("Lg") - 2
 
     local topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius =
-        CalcCornerRadii(scope, rowCount, rowIdx, maxCornerRadius, tweenComputeMapSize)
+        ComputeCornerRadii(
+            scope,
+            rowCount,
+            rowIdx,
+            innerCornerRadius,
+            tweenComputeMapSize
+        )
 
     return Supercorner.new(scope, {
         BackgroundColor3 = theme:GetBgHighlight(scope, variant),
-        -- We subtract 2 to account for the for the extra stroke that will be added.
-        Size = UDim2.new(1, 0, 0, theme:GetHeight("Lg") - 2),
+        Size = UDim2.new(1, 0, 0, rowHeight),
         LayoutOrder = rowIdx,
         TopLeftRadius = topLeftRadius,
         TopRightRadius = topRightRadius,
         BottomLeftRadius = bottomLeftRadius,
         BottomRightRadius = bottomRightRadius,
-        MaxCornerRadius = maxCornerRadius,
+        MaxCornerRadius = innerCornerRadius,
         Redrawable = true,
 
         Name = "MapHeader",
@@ -103,16 +108,18 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
                 Image = Assets.Arrow,
                 Rotation = Tween<<number>>(
                     scope,
-                    Computed(scope, function(use, scope)
-                        return if use(collapsedState) then -90 else 0
-                    end) :: any,
+                    Computed(scope, function(use: Fusion.Use): number
+                        return
+                            if use<<boolean>>(collapsedState) then -90
+                            else 0
+                    end),
                     TweenInfo.new(
                         .18, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
                     )
                 ),
 
                 [OnEvent "MouseButton1Click"] = function()
-                    collapsedState:set(not Peek<<bool>>(collapsedState))
+                    collapsedState:set(not Peek<<boolean>>(collapsedState))
                 end
             }),
 

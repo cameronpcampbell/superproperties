@@ -23,7 +23,7 @@ type PreparedItem = {
     Key: string,
     Candidate: Candidate,
     LowerKey: string,
-    Index: number
+    Idx: number
 }
 
 type ScoredItem = {
@@ -130,7 +130,7 @@ local function GetCandidate(key: string): Candidate
     return preparedCandidate
 end
 
-local function PrepareItem(item: Item, index: number): PreparedItem
+local function PrepareItem(item: Item, itemIdx: number): PreparedItem
     local key = item.Key
     local candidate = GetCandidate(key)
 
@@ -139,7 +139,7 @@ local function PrepareItem(item: Item, index: number): PreparedItem
         Key = key,
         Candidate = candidate,
         LowerKey = candidate.LowerKey,
-        Index = index
+        Idx = itemIdx
     }
 end
 
@@ -177,7 +177,7 @@ local function PrepareQuery(query: string?): PreparedQuery
 end
 
 -- Scores an ordered subsequence in O(query length * candidate length).
--- Consecutive and word-boundary matches are preferred while gaps are penalised.
+-- Consecutive and word-boundary matches are preferred, while gaps are penalised.
 local function ScoreSubsequence(
     candidate: Candidate,
     query: PreparedQuery
@@ -192,8 +192,7 @@ local function ScoreSubsequence(
     local scores = table.create(candidateLength, NegativeInfinity)
     local firstQueryByte = query.Bytes[1]
 
-    -- Loose subsequences need a strong first match. Internal contiguous
-    -- matches have already been accepted by the substring tier.
+    -- Require a boundary for the first loose subsequence match.
     for candidateIdx = 1, candidateLength do
         if
             candidateBytes[candidateIdx] == firstQueryByte and
@@ -296,14 +295,35 @@ local function ScoreCandidate(
         substringStart = candidateText:find(queryText, substringStart + 1, true)
     end
 
-    -- Very short fuzzy matches are usually noise. They still match prefixes,
-    -- camel-case initials, and boundary substrings through the tiers above.
+    -- Short queries only use the stronger match tiers above.
     if query.IsShortWord then return nil end
 
     local subsequence = ScoreSubsequence(candidate, query)
     if not subsequence then return nil end
 
     return SubsequenceScore + subsequence * 10 - lengthPenalty
+end
+
+local function CompareScoredItems(
+    leftScoredItem: ScoredItem,
+    rightScoredItem: ScoredItem
+): boolean
+    if leftScoredItem.Score ~= rightScoredItem.Score then
+        return leftScoredItem.Score > rightScoredItem.Score
+    end
+
+    local leftPreparedItem = leftScoredItem.PreparedItem
+    local rightPreparedItem = rightScoredItem.PreparedItem
+
+    if leftPreparedItem.LowerKey ~= rightPreparedItem.LowerKey then
+        return leftPreparedItem.LowerKey < rightPreparedItem.LowerKey
+    end
+
+    if leftPreparedItem.Key ~= rightPreparedItem.Key then
+        return leftPreparedItem.Key < rightPreparedItem.Key
+    end
+
+    return leftPreparedItem.Idx < rightPreparedItem.Idx
 end
 
 local function CreateItemFilter(items: { Item }): ItemFilter
@@ -334,22 +354,7 @@ local function CreateItemFilter(items: { Item }): ItemFilter
             }
         end
 
-        table.sort(scoredItems, function(a: ScoredItem, b: ScoredItem): boolean
-            if a.Score ~= b.Score then return a.Score > b.Score end
-
-            local preparedItemA = a.PreparedItem
-            local preparedItemB = b.PreparedItem
-
-            if preparedItemA.LowerKey ~= preparedItemB.LowerKey then
-                return preparedItemA.LowerKey < preparedItemB.LowerKey
-            end
-
-            if preparedItemA.Key ~= preparedItemB.Key then
-                return preparedItemA.Key < preparedItemB.Key
-            end
-
-            return preparedItemA.Index < preparedItemB.Index
-        end)
+        table.sort(scoredItems, CompareScoredItems)
 
         local filteredItems = table.create(scoredItemCount) :: { Item }
         for idx, scoredItem in scoredItems do

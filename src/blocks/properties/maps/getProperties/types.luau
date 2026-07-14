@@ -12,8 +12,8 @@ export type ReflectionPropertiesItem = index<ReflectedProperties, number>
 export type PatchedReflectionPropertiesItem = Typeforge.Flatten<
     ReflectionPropertiesItem & {
         CustomReadWrite: {
-            Read: (inst: Instance) -> Instance,
-            Write: (inst: Instance, write: any) -> ()
+            Read: (instance: any) -> any,
+            Write: (instance: any, value: any) -> ()
         }?
     }
 >
