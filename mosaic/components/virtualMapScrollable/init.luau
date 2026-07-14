@@ -4,14 +4,17 @@
 local Packages = script.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
-local Children, Computed, Observer, Peek =
-    Fusion.Children, Fusion.Computed,
-    Fusion.Observer, Fusion.peek
+local Children, Computed, Observer, Peek, Tween =
+    Fusion.Children, Fusion.Computed, Fusion.Observer, Fusion.peek, Fusion.Tween
 
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component = FusionUtils.Component
+local Component, CoerceToValue =
+    FusionUtils.Component, FusionUtils.CoerceToValue
+
+local ThemeUtils = require(Utils.themeUtils)
+local GetThemeForScope = ThemeUtils.GetThemeForScope
 
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
@@ -20,13 +23,12 @@ local Components = script.Parent
 local Scrollable = require(Components.scrollable)
 local Map = require(Components.map)
 
-type MapProps = Map.MapProps
+local VirtualListHelpers = require(Components.map.virtualListHelpers)
+local CalculateMapRowCount, CalculateMapHeight =
+    VirtualListHelpers.CalculateMapRowCount,
+    VirtualListHelpers.CalculateMapHeight
 
-type MapMeasurement = {
-    Root: GuiObject,
-    Position: Fusion.Value<Vector2>,
-    Size: Fusion.Value<Vector2>
-}
+type MapProps = Map.MapProps
 
 type VirtualMapScrollableProps = {
     Maps: Fusion.UsedAs<{ MapProps }>,
@@ -36,8 +38,14 @@ type VirtualMapScrollableProps = {
 
 local DefaultPadding = 4
 local DefaultOverdraw = 200
+local MapTweenInfo = TweenInfo.new(
+    .18, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
+)
 
 return Component<<VirtualMapScrollableProps>>(function(scope, props)
+    local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
+    local lgHeight = theme:GetHeight("Lg")
+
     local props, mapsProps = TableExtract(props, "Maps")
     local props, overdraw = TableExtract(props, "Overdraw")
     local props, padding = TableExtract(props, "Padding", DefaultPadding)
@@ -45,6 +53,8 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
     local viewportAbsolutePositionState =
         Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
     local viewportAbsoluteSizeState =
+        Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
+    local viewportCanvasPositionState =
         Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
     local canvasHeightState = Fusion.Value<<number>>(scope, 0)
 
@@ -72,20 +82,45 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
     )
         local usedMapsProps = use<<{ MapProps }>>(computeSortedMapsProps)
         local mapChildren = table.create(#usedMapsProps) :: { Fusion.Child }
-        local measurements =
-            table.create(#usedMapsProps) :: { MapMeasurement }
 
-        local geometryReadyState =
-            Fusion.Value<<boolean>>(scope, false)
-        local commitGeometry: () -> () = function() end
-        -- Each map is positioned from the previous map's live tweened bottom.
+        -- Layout records live in this persistent scope, rather than inside the
+        -- mounted Map scopes. An off-screen map can therefore keep animating
+        -- its height and continue positioning every map below it.
         local previousBottom: Fusion.UsedAs<number>? = nil
 
         for idx, mapProps in usedMapsProps do
-            local mapAbsolutePositionState =
-                Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
-            local mapAbsoluteSizeState =
-                Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
+            local items = mapProps.Items
+            local header = mapProps.Header
+            local emptyText = mapProps.EmptyText
+            local width = mapProps.Width or UDim.new(1, 0)
+            local collapsedState = CoerceToValue<<boolean>>(
+                scope, mapProps.Collapsed or false
+            )
+
+            local computeRowCount = Computed(scope, function(use): number
+                local usedItems =
+                    if items then use<<Map.Items>>(items) else nil
+
+                return CalculateMapRowCount(
+                    if usedItems then #usedItems else 0,
+                    header ~= nil,
+                    emptyText ~= nil
+                )
+            end)
+
+            local computeTargetMapSize = Computed(scope, function(use): UDim2
+                local usedCollapsed = use<<boolean>>(collapsedState)
+                local usedRowCount = use<<number>>(computeRowCount)
+                local height =
+                    if usedCollapsed then lgHeight
+                    else CalculateMapHeight(usedRowCount, lgHeight)
+
+                return UDim2.new(width, UDim.new(0, height))
+            end)
+
+            local animatedMapSize = Tween<<UDim2>>(
+                scope, computeTargetMapSize :: any, MapTweenInfo
+            )
 
             local mapTop: Fusion.UsedAs<number> = 0
 
@@ -104,51 +139,121 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                 return UDim2.fromOffset(0, use<<number>>(mapTop))
             end)
 
-            local mapInstance = Map(scope, mapProps, {
-                Position = mapPosition,
-                AnchorPoint = Vector2.new(0, 0),
+            local mapBottom = Computed(scope, function(use): number
+                local usedMapSize = use<<UDim2>>(animatedMapSize)
 
-                [Fusion.Out "AbsolutePosition"] = mapAbsolutePositionState,
-                [Fusion.Out "AbsoluteSize"] = mapAbsoluteSizeState,
-
-                VirtualListData = {
-                    GeometryReady = geometryReadyState,
-                    ViewportAbsolutePosition = viewportAbsolutePositionState,
-                    ViewportAbsoluteSize = viewportAbsoluteSizeState,
-                    MapAbsolutePosition = mapAbsolutePositionState,
-                    MapAbsoluteSize = mapAbsoluteSizeState,
-                    Overdraw = overdrawState
-                }
-            }) :: GuiObject
-
-            mapChildren[idx] = mapInstance
-            measurements[idx] = {
-                Root = mapInstance,
-                Position = mapAbsolutePositionState,
-                Size = mapAbsoluteSizeState
-            }
-
-            table.insert(
-                scope,
-                mapInstance:GetPropertyChangedSignal("Parent"):Connect(
-                    function()
-                        commitGeometry()
-                    end
-                )
-            )
-
-            previousBottom = Computed(scope, function(use): number
-                local usedMapSize = use<<Vector2>>(mapAbsoluteSizeState)
-
-                return use<<number>>(mapTop) + usedMapSize.Y
+                return use<<number>>(mapTop) + usedMapSize.Height.Offset
             end)
+
+            local mapOccluded = Computed(scope, function(use): boolean
+                local usedViewportSize =
+                    use<<Vector2>>(viewportAbsoluteSizeState)
+
+                -- There is no trustworthy viewport on the first evaluation.
+                -- Keep maps unmounted until the ScrollingFrame reports one.
+                if usedViewportSize.X <= 0 or usedViewportSize.Y <= 0 then
+                    return true
+                end
+
+                local usedCanvasPosition =
+                    use<<Vector2>>(viewportCanvasPositionState)
+                local usedOverdraw =
+                    math.max(use<<number>>(overdrawState), 0)
+                local usedMapTop = use<<number>>(mapTop)
+                local usedMapBottom = use<<number>>(mapBottom)
+
+                local viewportTop = usedCanvasPosition.Y - usedOverdraw
+                local viewportBottom = usedCanvasPosition.Y
+                    + usedViewportSize.Y
+                    + usedOverdraw
+
+                -- Partially intersecting maps remain mounted. Only maps whose
+                -- complete bounds are outside the overdraw window are culled.
+                return usedMapBottom <= viewportTop
+                    or usedMapTop >= viewportBottom
+            end)
+
+            mapChildren[idx] = Computed(scope, function(
+                use,
+                mapScope: Fusion.Scope
+            ): Fusion.Child?
+                if use<<boolean>>(mapOccluded) then return nil end
+
+                local geometryReadyState =
+                    Fusion.Value<<boolean>>(mapScope, false)
+                local mapAbsolutePositionState =
+                    Fusion.Value<<Vector2>>(mapScope, Vector2.new(0, 0))
+                local mapAbsoluteSizeState =
+                    Fusion.Value<<Vector2>>(mapScope, Vector2.new(0, 0))
+
+                local mapInstance = Map(mapScope, mapProps, {
+                    Position = mapPosition,
+                    AnchorPoint = Vector2.new(0, 0),
+                    Collapsed = collapsedState,
+
+                    [Fusion.Out "AbsolutePosition"] =
+                        mapAbsolutePositionState,
+                    [Fusion.Out "AbsoluteSize"] = mapAbsoluteSizeState,
+
+                    VirtualListData = {
+                        AnimatedMapSize = animatedMapSize,
+                        GeometryReady = geometryReadyState,
+                        ViewportAbsolutePosition =
+                            viewportAbsolutePositionState,
+                        ViewportAbsoluteSize = viewportAbsoluteSizeState,
+                        MapAbsolutePosition = mapAbsolutePositionState,
+                        MapAbsoluteSize = mapAbsoluteSizeState,
+                        Overdraw = overdrawState
+                    }
+                }) :: GuiObject
+
+                local function commitGeometry()
+                    if Peek<<boolean>>(geometryReadyState) then return end
+
+                    local viewportAbsoluteSize =
+                        Peek<<Vector2>>(viewportAbsoluteSizeState)
+
+                    if viewportAbsoluteSize.X <= 0
+                        or viewportAbsoluteSize.Y <= 0
+                        or mapInstance.Parent == nil
+                        or mapInstance:FindFirstAncestorWhichIsA(
+                            "LayerCollector"
+                        ) == nil
+                    then
+                        return
+                    end
+
+                    -- Out keeps these values current after this initial pass.
+                    -- Opening the gate here prevents rows from evaluating
+                    -- against the root's pre-parent zero rectangle.
+                    mapAbsolutePositionState:set(mapInstance.AbsolutePosition)
+                    mapAbsoluteSizeState:set(mapInstance.AbsoluteSize)
+                    geometryReadyState:set(true)
+                end
+
+                table.insert(
+                    mapScope,
+                    mapInstance:GetPropertyChangedSignal("Parent"):Connect(
+                        commitGeometry
+                    )
+                )
+
+                Observer(mapScope, viewportAbsoluteSizeState)
+                    :onChange(commitGeometry)
+                Observer(mapScope, viewportAbsolutePositionState)
+                    :onChange(commitGeometry)
+
+                return mapInstance
+            end) :: any
+
+            previousBottom = mapBottom
         end
 
         local finalBottom = previousBottom
 
         if finalBottom then
-            -- The last bottom is the complete canvas height without trailing
-            -- padding, and changes throughout collapse/expand tweens.
+            -- The last animated bottom drives the canvas even if that map is
+            -- unmounted, so the scrollbar and collapse tween remain smooth.
             local function publishCanvasHeight()
                 canvasHeightState:set(Peek<<number>>(finalBottom))
             end
@@ -159,39 +264,6 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
             canvasHeightState:set(0)
         end
 
-        commitGeometry = function()
-            if Peek<<boolean>>(geometryReadyState) then return end
-
-            local viewportAbsoluteSize =
-                Peek<<Vector2>>(viewportAbsoluteSizeState)
-
-            if viewportAbsoluteSize.X <= 0 or viewportAbsoluteSize.Y <= 0 then
-                return
-            end
-
-            for _, measurement in measurements do
-                if measurement.Root.Parent == nil
-                    or measurement.Root:FindFirstAncestorWhichIsA(
-                        "LayerCollector"
-                    ) == nil
-                then
-                    return
-                end
-            end
-
-            -- Commit every rectangle before opening the gate so no map can
-            -- evaluate against a mixture of pre- and post-layout geometry.
-            for _, measurement in measurements do
-                measurement.Position:set(measurement.Root.AbsolutePosition)
-                measurement.Size:set(measurement.Root.AbsoluteSize)
-            end
-
-            geometryReadyState:set(true)
-        end
-
-        Observer(scope, viewportAbsoluteSizeState):onChange(commitGeometry)
-        Observer(scope, viewportAbsolutePositionState):onChange(commitGeometry)
-
         return mapChildren
     end)
 
@@ -200,6 +272,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
         AutomaticCanvasSize = Enum.AutomaticSize.None,
         OutAbsolutePosition = viewportAbsolutePositionState,
         OutAbsoluteSize = viewportAbsoluteSizeState,
+        OutCanvasPosition = viewportCanvasPositionState,
 
         [Children] = computeMapInstances
     }, props :: any)

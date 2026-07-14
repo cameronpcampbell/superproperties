@@ -9,6 +9,7 @@ local RowGap = 1
 local MapContentPadding = 1
 
 export type VirtualListData = {
+    AnimatedMapSize: Fusion.Tween<UDim2>?,
     GeometryReady: Fusion.UsedAs<boolean>,
     ViewportAbsolutePosition: Fusion.UsedAs<Vector2>,
     ViewportAbsoluteSize: Fusion.UsedAs<Vector2>,

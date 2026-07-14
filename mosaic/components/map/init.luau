@@ -298,22 +298,29 @@ return Component<<MapProps>>(function(scope, props)
         scope, virtualListData, computeRowCount, lgHeight
     )
 
-    local tweenComputeMapSize = Tween<<UDim2>>(
-        scope,
-        Computed(scope, function(use, scope)
-            local usedCollapsed = use<<boolean>>(collapsedState)
-            local usedUncollapsedMapHeight =
-                use<<number>>(computeUncollapsedHeight)
+    -- VirtualMapScrollable owns this tween when maps can be unmounted. That
+    -- keeps layout animation progressing while the map instance is absent and
+    -- lets a remounted map resume at the current animated size.
+    local tweenComputeMapSize =
+        if virtualListData and virtualListData.AnimatedMapSize
+        then virtualListData.AnimatedMapSize
+        else Tween<<UDim2>>(
+            scope,
+            Computed(scope, function(use, scope)
+                local usedCollapsed = use<<boolean>>(collapsedState)
+                local usedUncollapsedMapHeight =
+                    use<<number>>(computeUncollapsedHeight)
 
-            local height =
-                if usedCollapsed then lgHeight else usedUncollapsedMapHeight
+                local height =
+                    if usedCollapsed then lgHeight
+                    else usedUncollapsedMapHeight
 
-            return UDim2.new(width, UDim.new(0, height))
-        end) :: any,
-        TweenInfo.new(
-            .18, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
+                return UDim2.new(width, UDim.new(0, height))
+            end) :: any,
+            TweenInfo.new(
+                .18, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
+            )
         )
-    )
 
     local computeVisibleRows = ComputeVisibleRows(
         scope, variant, header, items,
