@@ -12,7 +12,7 @@ local function TagChanged(
         previousTags[tag] = true
     end
 
-    RunService.Heartbeat:Connect(function()
+    return RunService.Heartbeat:Connect(function()
         local currentTags = {}
         for _, tag in CollectionService:GetTags(instance) do
             currentTags[tag] = true
