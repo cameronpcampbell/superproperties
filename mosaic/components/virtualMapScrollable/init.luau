@@ -24,8 +24,8 @@ local Scrollable = require(Components.scrollable)
 local Map = require(Components.map)
 
 local Virtualization = require(Components.map.virtualization)
-local ComputeMapRowCount, CreateMapSizeTween =
-    Virtualization.ComputeMapRowCount,
+local CreateMapLayout, CreateMapSizeTween =
+    Virtualization.CreateMapLayout,
     Virtualization.CreateMapSizeTween
 
 type MapProps = Map.MapProps
@@ -111,12 +111,14 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                 scope, mapProps.Collapsed or false
             )
 
-            local rowCount = ComputeMapRowCount(
+            local layout = CreateMapLayout(
                 scope,
                 header,
                 items,
-                emptyText
+                emptyText,
+                lgHeight
             )
+            local rowCount = layout.RowCount
 
             local animatedMapSize = CreateMapSizeTween(
                 scope,
@@ -200,8 +202,8 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                     [Fusion.Out "AbsoluteSize"] = mapAbsoluteSizeState,
 
                     VirtualListData = {
+                        Layout = layout,
                         AnimatedMapSize = animatedMapSize,
-                        RowCount = rowCount,
                         GeometryReady = geometryReadyState,
                         ViewportCanvasPosition =
                             viewportCanvasPositionState,

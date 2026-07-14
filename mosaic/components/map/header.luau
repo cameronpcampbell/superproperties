@@ -24,16 +24,16 @@ type MapHeaderProps = Typeforge.Flatten<
     Types.BaseMapProps & {
         Header: string,
         CollapsedState: Fusion.Value<boolean>,
-        TweenComputeMapSize: Fusion.Tween<UDim2>
+        TweenComputeMapSize: Fusion.UsedAs<UDim2>
     }
 >
 
 local function ComputeCornerRadii(
     scope: Fusion.Scope,
-    rowCount: number,
-    rowIdx: number,
+    rowCount: Fusion.UsedAs<number>,
+    rowIdx: Fusion.UsedAs<number>,
     baseRadius: number,
-    tweenComputeMapSize: Fusion.Tween<UDim2>
+    tweenComputeMapSize: Fusion.UsedAs<UDim2>
 ): (
     Fusion.Computed<number>, Fusion.Computed<number>,
     Fusion.Computed<number>, Fusion.Computed<number>
@@ -45,15 +45,18 @@ local function ComputeCornerRadii(
         return Computed(scope, function(use): number
             local usedTweenComputeMapSize = use<<UDim2>>(tweenComputeMapSize)
             local usedTweenComputeMapHeightOffset = usedTweenComputeMapSize.Height.Offset
+            local usedRowCount = use<<number>>(rowCount)
+            local usedRowIdx = use<<number>>(rowIdx)
 
             local itemCount =
-                if usedTweenComputeMapHeightOffset == lgHeight then 1 else rowCount
+                if usedTweenComputeMapHeightOffset == lgHeight then 1
+                else usedRowCount
 
-            if roundFirst and rowIdx == 1 then
+            if roundFirst and usedRowIdx == 1 then
                 return baseRadius
             end
 
-            if roundLast and rowIdx == itemCount then
+            if roundLast and usedRowIdx == itemCount then
                 return baseRadius
             end
 

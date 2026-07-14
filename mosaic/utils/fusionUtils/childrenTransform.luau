@@ -57,7 +57,7 @@ local function ChildrenTransform(
 		elseif childType == "table" then
 			local transformedChildren: {[unknown]: Types.Child} = {}
 
-			for key, subChild in pairs(child :: {[unknown]: unknown}) do
+			for key, subChild in child :: {[unknown]: unknown} do
 				local transformedChild = processTransformedChild(subChild, typeof(subChild))
 
 				if transformedChild ~= nil then
@@ -90,7 +90,7 @@ local function ChildrenTransform(
 		elseif childType == "table" then
 			local transformedChildren: {[unknown]: Types.Child} = {}
 
-			for key, subChild in pairs(child :: {[unknown]: unknown}) do
+			for key, subChild in child :: {[unknown]: unknown} do
 				local transformedChild = processChild(subChild)
 
 				if transformedChild ~= nil then

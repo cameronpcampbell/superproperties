@@ -8,6 +8,7 @@ local Components = script.Parent.Parent
 local IconButton = require(Components.iconButton)
 
 local Assets = require(script.Parent.Parent.Parent.assets)
+local MapTweenInfo = require(script.Parent.animation)
 
 export type ArrowProps = {
     CollapsedState: Fusion.Value<boolean>
@@ -25,9 +26,7 @@ return function(scope: Fusion.Scope, props: ArrowProps)
                     if use<<boolean>>(collapsedState) then -90
                     else 0
             end),
-            TweenInfo.new(
-                .18, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
-            )
+            MapTweenInfo
         ),
 
         [OnEvent "MouseButton1Click"] = function()

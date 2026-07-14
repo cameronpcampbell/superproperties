@@ -24,11 +24,11 @@ local TableExtract = TableUtils.Extract
 local Types = require(script.types)
 
 local Virtualization = require(script.virtualization)
-local ComputeMapRowCount, CreateMapSizeTween,
-    ComputeVirtualListVisibleRowRange, ComputeVirtualizedRows =
-    Virtualization.ComputeMapRowCount,
+local CreateMapLayout, CreateMapSizeTween,
+    ComputeVirtualListVisibleRootRange, ComputeVirtualizedRows =
+    Virtualization.CreateMapLayout,
     Virtualization.CreateMapSizeTween,
-    Virtualization.ComputeVirtualListVisibleRowRange,
+    Virtualization.ComputeVirtualListVisibleRootRange,
     Virtualization.ComputeVirtualizedRows
 
 export type Item = Types.Item
@@ -61,15 +61,15 @@ return Component<<MapProps>>(function(scope, props)
 
     local strokeVariant: ThemeUtils.BgVariant = GetNextVariant(variant)
     local collapsedState = CoerceToValue<<boolean>>(scope, collapsed)
-    local rowCount =
-        if virtualListData and virtualListData.RowCount
-        then virtualListData.RowCount
-        else ComputeMapRowCount(scope, header, items, emptyText)
+    local layout =
+        if virtualListData then virtualListData.Layout
+        else CreateMapLayout(scope, header, items, emptyText, lgHeight)
+    local rowCount = layout.RowCount
 
-    local visibleRowRange = ComputeVirtualListVisibleRowRange(
+    local visibleRootRange = ComputeVirtualListVisibleRootRange(
         scope,
         virtualListData,
-        rowCount,
+        layout,
         lgHeight
     )
 
@@ -88,13 +88,12 @@ return Component<<MapProps>>(function(scope, props)
     local visibleRows = ComputeVirtualizedRows(scope, {
         Variant = variant,
         Header = header,
-        Items = items,
         HideValues = hideValues,
         EmptyText = emptyText,
-        RowCount = rowCount,
+        Layout = layout,
         CollapsedState = collapsedState,
         AnimatedMapSize = animatedMapSize,
-        VisibleRowRange = visibleRowRange,
+        VisibleRootRange = visibleRootRange,
         RowHeight = lgHeight
     })
 

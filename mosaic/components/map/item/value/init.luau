@@ -37,6 +37,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
 
     local topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius =
         CalculateRowCornerRadii(
+            scope,
             "Right",
             rowCount,
             rowIdx,

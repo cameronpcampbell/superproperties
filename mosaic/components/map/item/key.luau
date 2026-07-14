@@ -28,7 +28,8 @@ type MapItemKeyProps = Typeforge.Flatten<
     Types.BaseMapProps & {
         Key: string,
         HasSubItems: boolean,
-        Nestedness: number
+        Nestedness: number,
+        CollapsedState: Fusion.Value<boolean>?
     }
 >
 
@@ -39,12 +40,14 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
 
     local rowCount, rowIdx = props.RowCount, props.RowIdx
     local variant = props.Variant
-    local hasSubItems, nestedness = props.HasSubItems, props.Nestedness
+    local hasSubItems: boolean = props.HasSubItems
+    local nestedness: number = props.Nestedness
 
     local dotsAmount = if hasSubItems then nestedness - 1 else nestedness
 
     local topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius =
         CalculateRowCornerRadii(
+            scope,
             "Left",
             rowCount,
             rowIdx,
@@ -75,7 +78,7 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
 
             if hasSubItems then
                 Arrow(scope, {
-                    CollapsedState = Fusion.Value(scope, true)
+                    CollapsedState = props.CollapsedState :: Fusion.Value<boolean>
                 })
             else nil,
 
