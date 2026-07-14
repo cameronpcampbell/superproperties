@@ -65,7 +65,7 @@ local function ComputeRowCount(
     end)
 end
 
-local function ItemsToInstances(
+local function ComputeRows(
     scope: Fusion.Scope,
     variant: ThemeUtils.BgVariantLayer,
     header: string?,
@@ -175,9 +175,7 @@ return Component<<MapProps>>(function(scope, props)
         )
     )
 
-    -- Rows remain mounted while collapsed so the size tween can reveal and
-    -- conceal them without destroying child state during a graph update.
-    local itemInstances = ItemsToInstances(
+    local computeRows = ComputeRows(
         scope, variant, header, items,
         computeRowCount, hideValues, emptyText,
         collapsedState, tweenComputeMapSize
@@ -197,7 +195,19 @@ return Component<<MapProps>>(function(scope, props)
         RootChildren = New(scope, "UIFlexItem") {},
 
         [Children] = {
-            itemInstances,
+            Computed(scope, function(use, scope): Fusion.Child?
+                local usedTweenComputeMapSize = use(tweenComputeMapSize)
+                local usedComputeRows = use(computeRows :: any) :: { Fusion.Child }?
+
+                if usedTweenComputeMapSize.Height.Offset == lgHeight then
+                    return
+                        if header then (usedComputeRows :: { Fusion.Child })[1]
+                        else nil
+
+                else
+                    return usedComputeRows :: any
+                end
+            end),
 
             New(scope, "UIListLayout") {
                 Padding = UDim.new(0, 1),

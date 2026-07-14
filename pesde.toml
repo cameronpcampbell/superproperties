@@ -24,7 +24,8 @@ rojo = { name = "pesde/rojo", version = "^7.5.1", target = "lune" }
 
 [dependencies]
 fusion = { wally = "elttob/fusion", version = "0.3.0" }
-supercorner = { name = "cameronpcampbell/supercorner_fusion03", version = "^0.1.1", target = "roblox" }
+supercorner = { path = "/Volumes/T7/supercorner/supercorner_fusion03" }
+#supercorner = { name = "cameronpcampbell/supercorner_fusion03", version = "^0.1.1", target = "roblox" }
 typeforge = { wally = "cameronpcampbell/typeforge", version = "3.0.4" }
 
 [engines]

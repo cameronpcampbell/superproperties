@@ -16,26 +16,26 @@ frktest = [{ name = "itsfrank/frktest", version = "^0.0.4", index = "https://git
 luau-lsp = [{ name = "pesde/luau_lsp", version = "=1.53.2", index = "https://github.com/pesde-pkg/index", target = "lune" }, "dev"]
 stylua = [{ name = "pesde/stylua", version = "=2.1.0", index = "https://github.com/pesde-pkg/index", target = "lune" }, "dev"]
 
-[graph."cameronpcampbell/supercorner@0.1.1 roblox".pkg_ref]
+[graph."cameronpcampbell/supercorner@0.1.2 roblox".pkg_ref]
 ref_ty = "pesde"
 index_url = "https://github.com/pesde-pkg/index"
 
-[graph."cameronpcampbell/supercorner_fusion03@0.1.1 roblox"]
-direct = ["supercorner", { name = "cameronpcampbell/supercorner_fusion03", version = "^0.1.1", index = "default", target = "roblox" }, "standard"]
+[graph."cameronpcampbell/supercorner_fusion03@0.1.2 roblox"]
+direct = ["supercorner", { path = "/Volumes/T7/supercorner/supercorner_fusion03" }, "standard"]
 
-[graph."cameronpcampbell/supercorner_fusion03@0.1.1 roblox".dependencies]
+[graph."cameronpcampbell/supercorner_fusion03@0.1.2 roblox".dependencies]
 fusion = ["wally#elttob/fusion@0.3.0 roblox", "standard"]
-supercorner = ["cameronpcampbell/supercorner@0.1.1 roblox", "standard"]
+supercorner = ["cameronpcampbell/supercorner@0.1.2 roblox", "standard"]
 
-[graph."cameronpcampbell/supercorner_fusion03@0.1.1 roblox".pkg_ref]
-ref_ty = "pesde"
-index_url = "https://github.com/pesde-pkg/index"
+[graph."cameronpcampbell/supercorner_fusion03@0.1.2 roblox".pkg_ref]
+ref_ty = "path"
+path = "/Volumes/T7/supercorner/supercorner_fusion03"
 
-[graph."cameronpcampbell/supercorner_fusion03@0.1.1 roblox".pkg_ref.dependencies]
+[graph."cameronpcampbell/supercorner_fusion03@0.1.2 roblox".pkg_ref.dependencies]
 fusion = [{ wally = "wally#elttob/fusion", version = "^0.3.0", index = "https://github.com/UpliftGames/wally-index" }, "standard"]
 rojo = [{ name = "pesde/rojo", version = "^7.5.1", index = "https://github.com/pesde-pkg/index", target = "lune" }, "dev"]
 scripts = [{ name = "pesde/scripts_rojo", version = "^0.2.0", index = "https://github.com/pesde-pkg/index", target = "lune" }, "dev"]
-supercorner = [{ name = "cameronpcampbell/supercorner", version = "^0.1.1", index = "https://github.com/pesde-pkg/index", target = "roblox" }, "standard"]
+supercorner = [{ name = "cameronpcampbell/supercorner", version = "^0.1.2", index = "https://github.com/pesde-pkg/index", target = "roblox" }, "standard"]
 
 [graph."jiwonz/dirs@0.6.0 lune".dependencies]
 greentea = ["jiwonz/greentea_luau@0.2.0 luau", "standard"]

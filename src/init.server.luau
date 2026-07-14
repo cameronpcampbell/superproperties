@@ -5,7 +5,7 @@ local SelectionService = game:GetService("Selection")
 local Packages = script.packages
 
 local Fusion = require(Packages.fusion)
-local Value, Children = Fusion.Value, Fusion.Children
+local Children, Value, Peek = Fusion.Children, Fusion.Value, Fusion.peek
 
 local Mosaic = require(Packages.mosaic)
 
@@ -37,38 +37,63 @@ local ComputeWidgetTitle = Scope:Computed(function(use, scope)
         else `SuperProperties`
 end)
 
+-- Hack as ClipsDescendants doesn't work on rotated elements yet.
+local function BorderRing(scope: Fusion.Scope<typeof(Fusion) & typeof(Mosaic)>)
+    return Scope:New "Frame" {
+        Size = UDim2.fromScale(1, 1),
+        ZIndex = 999999,
+        BackgroundTransparency = 1,
+
+        [Children] = scope:New "UIStroke" {
+            Thickness = 4,
+            BorderStrokePosition = Enum.BorderStrokePosition.Inner,
+            Color = Peek<<Mosaic.Theme>>(scope:GetTheme()):GetBg(scope, "Primary")
+        }
+    }
+end
+
 Scope:Widget {
     Id = "Superproperties",
     Title = ComputeWidgetTitle,
     Debug = Debug,
 
     [Children] = {
-        Properties.Input(Scope),
+        BorderRing(Scope),
 
-        Scope:Scrollable {
+        Scope:New "Frame" {
+            Size = UDim2.fromScale(1, 1),
+            BackgroundTransparency = 1,
+            Name = "Content",
+
             [Children] = {
-                Properties.Maps(Scope, SelectedInstanceValue),
+                Properties.Input(Scope),
+
+                Scope:Scrollable {
+                    [Children] = {
+                        Properties.Maps(Scope, SelectedInstanceValue),
+
+                        Scope:New "UIListLayout" {
+                            FillDirection = Enum.FillDirection.Vertical,
+                            SortOrder = Enum.SortOrder.LayoutOrder,
+                            Padding = UDim.new(0, 4)
+                        }
+                    }
+                },
+
+                Scope:New "UIPadding" {
+                    PaddingLeft = UDim.new(0, 4),
+                    PaddingRight = UDim.new(0, 4),
+                    PaddingTop = UDim.new(0, 4),
+                    PaddingBottom = UDim.new(0, 4),
+                },
 
                 Scope:New "UIListLayout" {
                     FillDirection = Enum.FillDirection.Vertical,
                     SortOrder = Enum.SortOrder.LayoutOrder,
+                    VerticalFlex = Enum.UIFlexAlignment.Fill,
                     Padding = UDim.new(0, 4)
                 }
             }
-        },
-
-        Scope:New "UIPadding" {
-            PaddingLeft = UDim.new(0, 4),
-            PaddingRight = UDim.new(0, 4),
-            PaddingTop = UDim.new(0, 4),
-            PaddingBottom = UDim.new(0, 4),
-        },
-
-        Scope:New "UIListLayout" {
-            FillDirection = Enum.FillDirection.Vertical,
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            VerticalFlex = Enum.UIFlexAlignment.Fill,
-            Padding = UDim.new(0, 4)
         }
     }
 }
