@@ -27,12 +27,12 @@ local MapHeader = require(script.header)
 local MapItem = require(script.item)
 local MapEmptyItem = require(script.emptyItem)
 
-type Items = {{
+export type Items = {{
     Key: string,
 	Value: any
 }}
 
-type MapProps = {
+export type MapProps = {
 	Variant: ThemeUtils.BgVariantLayer?,
 	Width: UDim?,
 	Header: string?,
