@@ -84,6 +84,21 @@ local Patches: Patches = {
                 }
             }
         }
+    },
+    Pivot = {
+        Model = {
+            Scale = {
+                CustomReadWrite = {
+                    Read = function(instance: Model)
+                        return instance:GetScale()
+                    end,
+
+                    Write = function(instance: Model, value: number)
+                        instance:ScaleTo(value)
+                    end
+                }
+            }
+        }
     }
 }
 
