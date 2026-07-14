@@ -5,9 +5,9 @@ local Packages = script.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local Peek, New, Children, Computed, Tween =
+local Peek, New, Children, Computed, Tween, ForPairs =
     Fusion.peek, Fusion.New, Fusion.Children,
-    Fusion.Computed, Fusion.Tween
+    Fusion.Computed, Fusion.Tween, Fusion.ForPairs
 
 local Utils = script.Parent.Parent.utils
 
@@ -36,10 +36,17 @@ local CalculateMapRowCount, CalculateMapHeight, CalculateMapTopSpacerHeight,
     VirtualListHelpers.ComputeVirtualListVisibleRowRange,
     VirtualListHelpers.ComputeVirtualListOccludesMap
 
-export type Items = {{
+type Item = {
     Key: string,
 	Value: any
-}}
+}
+
+export type Items = { Item }
+
+type RowDescriptor = Item | string
+
+local HeaderRowDescriptor: "Header" = "Header"
+local EmptyRowDescriptor: "Empty" = "Empty"
 
 export type VirtualListData = VirtualListHelpers.VirtualListData
 
@@ -83,8 +90,8 @@ local function ComputeRows(
     tweenComputeMapSize: Fusion.Tween<UDim2>,
     visibleRowRange: Fusion.UsedAs<Vector2>?,
     lgHeight: number
-): Fusion.Computed<{ Fusion.Child }?>
-    return Computed(scope, function(use, scope: Fusion.Scope): { Fusion.Child }?
+): ({ Fusion.Child }, Fusion.For<number, Instance>)
+    local computeVisibleRowDescriptors = Computed(scope, function(use)
         local usedRowCount = use<<number>>(computeRowCount)
         local usedItems = if items then use<<Items>>(items) else nil
         local firstRow, lastRow = 1, usedRowCount
@@ -94,62 +101,71 @@ local function ComputeRows(
             firstRow, lastRow = usedVisibleRowRange.X, usedVisibleRowRange.Y
         end
 
-        if firstRow > lastRow then return {} end
+        local descriptors = {} :: { [number]: RowDescriptor }
+        if firstRow > lastRow then return descriptors end
 
-        local visibleRowCount = lastRow - firstRow + 1
-        local instances = table.create(visibleRowCount + 1) :: { Instance }
         local baseIdx = if header then 1 else 0
 
-        if firstRow > 1 then
-            instances[0] = New(scope, "Frame") {
-                Size = UDim2.new(
-                    1, 0, 0,
-                    CalculateMapTopSpacerHeight(firstRow - 1, lgHeight)
-                ),
-                BackgroundTransparency = 1,
-                LayoutOrder = firstRow - 1,
-
-                Name = "CulledMapRowsSpacer"
-            }
-        end
-
         if header and firstRow <= 1 and lastRow >= 1 then
-            instances[1] = MapHeader(scope, {
-                Header = header,
-                Variant = variant,
-                RowCount = usedRowCount,
-                RowIdx = 1,
-                CollapsedState = collapsedState,
-                TweenComputeMapSize = tweenComputeMapSize
-            })
+            descriptors[1] = HeaderRowDescriptor
         end
 
         if not usedItems or #usedItems == 0 then
-            if not emptyText then return instances :: { Fusion.Child } end
+            if not emptyText then return descriptors end
 
             local rowIdx = baseIdx + 1
             if rowIdx < firstRow or rowIdx > lastRow then
-                return instances :: { Fusion.Child }
+                return descriptors
             end
 
-            instances[rowIdx] = MapEmptyItem(scope, {
-                Text = emptyText,
-                Variant = variant,
-                RowCount = usedRowCount,
-                RowIdx = rowIdx,
-            })
+            descriptors[rowIdx] = EmptyRowDescriptor
 
-            return instances :: { Fusion.Child }
+            return descriptors
         end
 
         local firstItemIdx = math.max(firstRow - baseIdx, 1)
         local lastItemIdx = math.min(lastRow - baseIdx, #usedItems)
 
         for itemIdx = firstItemIdx, lastItemIdx do
-            local item = usedItems[itemIdx]
             local rowIdx = baseIdx + itemIdx
+            -- Preserve the source table reference so scrolling doesn't
+            -- invalidate rows that remain inside the visible range.
+            descriptors[rowIdx] = usedItems[itemIdx]
+        end
 
-            instances[rowIdx] = MapItem(scope, {
+        return descriptors
+    end)
+
+    -- Every row has its own keyed scope. Range changes can therefore recycle
+    -- only the rows that enter or leave instead of rebuilding the whole map.
+    local renderedRows = ForPairs(scope, computeVisibleRowDescriptors, function(
+        use,
+        rowScope: Fusion.Scope,
+        rowIdx: number,
+        descriptor: RowDescriptor
+    ): (number, Instance)
+        local usedRowCount = use<<number>>(computeRowCount)
+
+        if descriptor == HeaderRowDescriptor then
+            return rowIdx, MapHeader(rowScope, {
+                Header = header :: string,
+                Variant = variant,
+                RowCount = usedRowCount,
+                RowIdx = rowIdx,
+                CollapsedState = collapsedState,
+                TweenComputeMapSize = tweenComputeMapSize
+            })
+        elseif descriptor == EmptyRowDescriptor then
+            return rowIdx, MapEmptyItem(rowScope, {
+                Text = emptyText :: string,
+                Variant = variant,
+                RowCount = usedRowCount,
+                RowIdx = rowIdx,
+            })
+        else
+            local item = descriptor :: Item
+
+            return rowIdx, MapItem(rowScope, {
                 Key = item.Key,
                 Value = item.Value,
                 HideValue = hideValues,
@@ -158,9 +174,38 @@ local function ComputeRows(
                 RowIdx = rowIdx
             })
         end
-
-        return instances :: { Fusion.Child }
     end)
+
+    local computeSkippedRowCount = Computed(scope, function(use): number
+        if not visibleRowRange then return 0 end
+
+        local usedVisibleRowRange = use<<Vector2>>(visibleRowRange)
+        if usedVisibleRowRange.X > usedVisibleRowRange.Y then return 0 end
+
+        return math.max(usedVisibleRowRange.X - 1, 0)
+    end)
+
+    local topSpacer = New(scope, "Frame") {
+        Size = Computed(scope, function(use): UDim2
+            local skippedRowCount = use<<number>>(computeSkippedRowCount)
+
+            return UDim2.new(
+                1, 0, 0,
+                CalculateMapTopSpacerHeight(skippedRowCount, lgHeight)
+            )
+        end),
+        BackgroundTransparency = 1,
+        LayoutOrder = Computed(scope, function(use): number
+            return use<<number>>(computeSkippedRowCount)
+        end),
+        Visible = Computed(scope, function(use): boolean
+            return use<<number>>(computeSkippedRowCount) > 0
+        end),
+
+        Name = "CulledMapRowsSpacer"
+    }
+
+    return { topSpacer, renderedRows }, renderedRows
 end
 
 local function ComputeUncollapsedMapHeight(
@@ -195,7 +240,7 @@ local function ComputeVisibleRows(
     ): Fusion.Child?
         if use<<boolean>>(virtualListOccludesMap) then return nil end
 
-        local computeRows = ComputeRows(
+        local rowChildren, renderedRows = ComputeRows(
             scope, variant, header, items,
             computeRowCount, hideValues, emptyText,
             collapsedState, tweenComputeMapSize,
@@ -205,20 +250,21 @@ local function ComputeVisibleRows(
         return Computed(scope, function(use): Fusion.Child?
             local usedCollapsedState = use<<boolean>>(collapsedState)
             local usedTweenComputeMapSize = use<<UDim2>>(tweenComputeMapSize)
-            local usedComputeRows =
-                use(computeRows :: any) :: { Fusion.Child }?
 
             local isFullyCollapsed =
                 usedCollapsedState and
                 usedTweenComputeMapSize.Height.Offset == lgHeight
 
             if isFullyCollapsed then
+                local usedRenderedRows =
+                    use(renderedRows :: any) :: { [number]: Instance }
+
                 return
-                    if header then (usedComputeRows :: { Fusion.Child })[1]
+                    if header then usedRenderedRows[1]
                     else nil
 
             else
-                return usedComputeRows :: any
+                return rowChildren
             end
         end) :: any
     end)

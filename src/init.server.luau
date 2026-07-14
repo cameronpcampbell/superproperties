@@ -31,6 +31,8 @@ local SelectedInstanceValue = GetSelectedInstanceValue(Scope)
 local ComputeWidgetTitle = Scope:Computed(function(use, scope)
     local usedSelectedInstance = use<<Instance>>(SelectedInstanceValue)
 
+    game:GetService("PluginGuiService").PluginGui.Background:Clone().Parent = game.StarterGui["CAMERONPCAMPBELL:MOSAIC_DEBUG[Superproperties]"]
+
     return
         if usedSelectedInstance then
             `SuperProperties - {usedSelectedInstance.Name}`
