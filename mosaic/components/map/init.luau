@@ -90,7 +90,7 @@ local function ComputeRows(
     tweenComputeMapSize: Fusion.Tween<UDim2>,
     visibleRowRange: Fusion.UsedAs<Vector2>?,
     lgHeight: number
-): ({ Fusion.Child }, Fusion.For<number, Instance>)
+): (Fusion.Child, Fusion.For<number, Instance>)
     local computeVisibleRowDescriptors = Computed(scope, function(use)
         local usedRowCount = use<<number>>(computeRowCount)
         local usedItems = if items then use<<Items>>(items) else nil
@@ -186,7 +186,7 @@ local function ComputeRows(
     end)
 
     local topSpacer = New(scope, "Frame") {
-        Size = Computed(scope, function(use): UDim2
+        Size = Computed(scope, function(use: Fusion.Use): UDim2
             local skippedRowCount = use<<number>>(computeSkippedRowCount)
 
             return UDim2.new(
@@ -195,17 +195,26 @@ local function ComputeRows(
             )
         end),
         BackgroundTransparency = 1,
-        LayoutOrder = Computed(scope, function(use): number
+        LayoutOrder = Computed(scope, function(use: Fusion.Use): number
             return use<<number>>(computeSkippedRowCount)
         end),
-        Visible = Computed(scope, function(use): boolean
+        Visible = Computed(scope, function(use: Fusion.Use): boolean
             return use<<number>>(computeSkippedRowCount) > 0
         end),
 
         Name = "CulledMapRowsSpacer"
     }
 
-    return { topSpacer, renderedRows }, renderedRows
+    -- Fusion's recursive Child type cannot directly express a keyed For state,
+    -- even though Children handles it at runtime. Keep that widening isolated
+    -- to this boundary and retain the concrete For type everywhere else.
+    local renderedRowsChild = (renderedRows :: unknown) :: Fusion.Child
+    local rowChildren: { [unknown]: Fusion.Child } = {
+        topSpacer,
+        renderedRowsChild
+    }
+
+    return rowChildren, renderedRows
 end
 
 local function ComputeUncollapsedMapHeight(
@@ -237,8 +246,8 @@ local function ComputeVisibleRows(
     return Computed(scope, function(
         use,
         scope: Fusion.Scope
-    ): Fusion.Child?
-        if use<<boolean>>(virtualListOccludesMap) then return nil end
+    ): Fusion.Child
+        if use<<boolean>>(virtualListOccludesMap) then return {} end
 
         local rowChildren, renderedRows = ComputeRows(
             scope, variant, header, items,
@@ -247,7 +256,7 @@ local function ComputeVisibleRows(
             visibleRowRange, lgHeight
         )
 
-        return Computed(scope, function(use): Fusion.Child?
+        return Computed(scope, function(use: Fusion.Use): Fusion.Child
             local usedCollapsedState = use<<boolean>>(collapsedState)
             local usedTweenComputeMapSize = use<<UDim2>>(tweenComputeMapSize)
 
@@ -257,16 +266,15 @@ local function ComputeVisibleRows(
 
             if isFullyCollapsed then
                 local usedRenderedRows =
-                    use(renderedRows :: any) :: { [number]: Instance }
+                    use<<{ [number]: Instance }>>(renderedRows)
+                local headerRow = usedRenderedRows[1]
 
-                return
-                    if header then usedRenderedRows[1]
-                    else nil
+                return if header and headerRow then headerRow else {}
 
             else
                 return rowChildren
             end
-        end) :: any
+        end)
     end)
 end
 
@@ -283,7 +291,7 @@ return Component<<MapProps>>(function(scope, props)
     local props, collapsed = TableExtract(props, "Collapsed", false)
     local props, virtualListData = TableExtract(props, "VirtualListData")
 
-    local strokeVariant = GetNextVariant(variant)
+    local strokeVariant: ThemeUtils.BgVariant = GetNextVariant(variant)
     local computeRowCount = ComputeRowCount(scope, header, items, emptyText)
     local computeUncollapsedHeight =
         ComputeUncollapsedMapHeight(scope, computeRowCount, lgHeight)
@@ -306,7 +314,7 @@ return Component<<MapProps>>(function(scope, props)
         then virtualListData.AnimatedMapSize
         else Tween<<UDim2>>(
             scope,
-            Computed(scope, function(use, scope)
+            Computed(scope, function(use: Fusion.Use): UDim2
                 local usedCollapsed = use<<boolean>>(collapsedState)
                 local usedUncollapsedMapHeight =
                     use<<number>>(computeUncollapsedHeight)
@@ -316,7 +324,7 @@ return Component<<MapProps>>(function(scope, props)
                     else usedUncollapsedMapHeight
 
                 return UDim2.new(width, UDim.new(0, height))
-            end) :: any,
+            end),
             TweenInfo.new(
                 .18, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
             )
@@ -330,9 +338,25 @@ return Component<<MapProps>>(function(scope, props)
         computeVirtualListOccludesMap
     )
 
-    return Supercorner.new(scope :: any, CombineProps({
-        BackgroundColor3 = theme:GetBg(scope, strokeVariant),
-        StrokeColor = theme:GetBg(scope, strokeVariant),
+    local mapChildren: { Fusion.Child } = {
+        computeVisibleRows,
+
+        New(scope, "UIListLayout") {
+            Padding = UDim.new(0, 1),
+            SortOrder = Enum.SortOrder.LayoutOrder
+        },
+
+        New(scope, "UIPadding") {
+            PaddingLeft = UDim.new(0, 1),
+            PaddingRight = UDim.new(0, 1),
+            PaddingTop = UDim.new(0, 1),
+            PaddingBottom = UDim.new(0, 1),
+        },
+    }
+
+    return Supercorner.new(scope, CombineProps({
+        BackgroundColor3 = theme:GetBg(scope, strokeVariant, nil),
+        StrokeColor = theme:GetBg(scope, strokeVariant, nil),
         StrokeThickness = 1,
         Size = tweenComputeMapSize,
         ClipsDescendants = true,
@@ -343,20 +367,6 @@ return Component<<MapProps>>(function(scope, props)
 
         RootChildren = New(scope, "UIFlexItem") {},
 
-        [Children] = {
-            computeVisibleRows,
-
-            New(scope, "UIListLayout") {
-                Padding = UDim.new(0, 1),
-                SortOrder = Enum.SortOrder.LayoutOrder
-            },
-
-            New(scope, "UIPadding") {
-                PaddingLeft = UDim.new(0, 1),
-                PaddingRight = UDim.new(0, 1),
-                PaddingTop = UDim.new(0, 1),
-                PaddingBottom = UDim.new(0, 1),
-            },
-        }
+        [Children] = mapChildren
     }, props))
 end)
