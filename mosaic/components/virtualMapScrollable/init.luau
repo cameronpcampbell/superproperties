@@ -203,11 +203,10 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                         AnimatedMapSize = animatedMapSize,
                         RowCount = rowCount,
                         GeometryReady = geometryReadyState,
-                        ViewportAbsolutePosition =
-                            viewportAbsolutePositionState,
+                        ViewportCanvasPosition =
+                            viewportCanvasPositionState,
                         ViewportAbsoluteSize = viewportAbsoluteSizeState,
-                        MapAbsolutePosition = mapAbsolutePositionState,
-                        MapAbsoluteSize = mapAbsoluteSizeState,
+                        MapCanvasTop = mapTop,
                         Overdraw = overdrawState
                     }
                 }) :: GuiObject
@@ -217,9 +216,12 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
 
                     local viewportAbsoluteSize =
                         Peek<<Vector2>>(viewportAbsoluteSizeState)
+                    local mapAbsoluteSize =
+                        Peek<<Vector2>>(mapAbsoluteSizeState)
 
                     if viewportAbsoluteSize.X <= 0
                         or viewportAbsoluteSize.Y <= 0
+                        or mapAbsoluteSize.Y <= 0
                         or mapInstance.Parent == nil
                         or mapInstance:FindFirstAncestorWhichIsA(
                             "LayerCollector"
@@ -246,6 +248,8 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                 Observer(mapScope, viewportAbsoluteSizeState)
                     :onChange(commitGeometry)
                 Observer(mapScope, viewportAbsolutePositionState)
+                    :onChange(commitGeometry)
+                Observer(mapScope, mapAbsoluteSizeState)
                     :onChange(commitGeometry)
 
                 return mapInstance

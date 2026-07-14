@@ -3,8 +3,8 @@
 local Packages = script.Parent.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
-local Computed, ForPairs, New, Tween =
-    Fusion.Computed, Fusion.ForPairs, Fusion.New, Fusion.Tween
+local Computed, New, Observer, Peek, Tween =
+    Fusion.Computed, Fusion.New, Fusion.Observer, Fusion.peek, Fusion.Tween
 
 local Utils = script.Parent.Parent.Parent.utils
 local ThemeUtils = require(Utils.themeUtils)
@@ -37,10 +37,9 @@ export type VirtualListData = {
     AnimatedMapSize: Fusion.Tween<UDim2>?,
     RowCount: Fusion.Computed<number>?,
     GeometryReady: Fusion.UsedAs<boolean>,
-    ViewportAbsolutePosition: Fusion.UsedAs<Vector2>,
+    ViewportCanvasPosition: Fusion.UsedAs<Vector2>,
     ViewportAbsoluteSize: Fusion.UsedAs<Vector2>,
-    MapAbsolutePosition: Fusion.UsedAs<Vector2>,
-    MapAbsoluteSize: Fusion.UsedAs<Vector2>,
+    MapCanvasTop: Fusion.UsedAs<number>,
     Overdraw: Fusion.UsedAs<number>
 }
 
@@ -54,8 +53,14 @@ export type VirtualRowsConfig = {
     CollapsedState: Fusion.Value<boolean>,
     AnimatedMapSize: Fusion.Tween<UDim2>,
     VisibleRowRange: Fusion.UsedAs<Vector2>?,
-    Occluded: Fusion.UsedAs<boolean>,
     RowHeight: number
+}
+
+type MountedRow = {
+    Scope: Fusion.Scope,
+    Descriptor: RowDescriptor,
+    RowCount: number,
+    Instance: Instance
 }
 
 local function CalculateMapRowCount(
@@ -146,10 +151,10 @@ local function ComputeVirtualListVisibleRowRange(
         local usedRowCount = use<<number>>(rowCount)
         if usedRowCount <= 0 then return Vector2.new(1, 0) end
 
-        local usedMapAbsolutePosition =
-            use<<Vector2>>(virtualListData.MapAbsolutePosition)
-        local usedViewportAbsolutePosition =
-            use<<Vector2>>(virtualListData.ViewportAbsolutePosition)
+        local usedMapCanvasTop =
+            use<<number>>(virtualListData.MapCanvasTop)
+        local usedViewportCanvasPosition =
+            use<<Vector2>>(virtualListData.ViewportCanvasPosition)
         local usedViewportAbsoluteSize =
             use<<Vector2>>(virtualListData.ViewportAbsoluteSize)
         local usedOverdraw = math.max(
@@ -159,10 +164,10 @@ local function ComputeVirtualListVisibleRowRange(
 
         local rowHeight = lgHeight - 2
         local rowStride = rowHeight + RowGap
-        local contentTopY = usedMapAbsolutePosition.Y + MapContentPadding
+        local contentTopY = usedMapCanvasTop + MapContentPadding
 
-        local viewportTopY = usedViewportAbsolutePosition.Y - usedOverdraw
-        local viewportBottomY = usedViewportAbsolutePosition.Y
+        local viewportTopY = usedViewportCanvasPosition.Y - usedOverdraw
+        local viewportBottomY = usedViewportCanvasPosition.Y
             + usedViewportAbsoluteSize.Y
             + usedOverdraw
 
@@ -185,47 +190,47 @@ local function ComputeVirtualListVisibleRowRange(
     end)
 end
 
-local function ComputeVirtualListOccludesMap(
+local function CreateRow(
     scope: Fusion.Scope,
-    virtualListData: VirtualListData?
-): Fusion.Computed<boolean> | boolean
-    if not virtualListData then return false end
+    config: VirtualRowsConfig,
+    rowIdx: number,
+    descriptor: RowDescriptor,
+    rowCount: number
+): Instance
+    if descriptor == HeaderRowDescriptor then
+        return MapHeader(scope, {
+            Header = config.Header :: string,
+            Variant = config.Variant,
+            RowCount = rowCount,
+            RowIdx = rowIdx,
+            CollapsedState = config.CollapsedState,
+            TweenComputeMapSize = config.AnimatedMapSize
+        })
+    elseif descriptor == EmptyRowDescriptor then
+        return MapEmptyItem(scope, {
+            Text = config.EmptyText :: string,
+            Variant = config.Variant,
+            RowCount = rowCount,
+            RowIdx = rowIdx,
+        })
+    else
+        local item = descriptor :: Item
 
-    return Computed(scope, function(use: Fusion.Use): boolean
-        if not use<<boolean>>(virtualListData.GeometryReady) then
-            return true
-        end
-
-        local usedMapAbsolutePosition =
-            use<<Vector2>>(virtualListData.MapAbsolutePosition)
-        local usedMapAbsoluteSize =
-            use<<Vector2>>(virtualListData.MapAbsoluteSize)
-
-        local usedViewportAbsolutePosition =
-            use<<Vector2>>(virtualListData.ViewportAbsolutePosition)
-        local usedViewportAbsoluteSize =
-            use<<Vector2>>(virtualListData.ViewportAbsoluteSize)
-        local usedOverdraw = math.max(
-            use<<number>>(virtualListData.Overdraw),
-            0
-        )
-
-        local mapTopY = usedMapAbsolutePosition.Y
-        local mapBottomY = mapTopY + usedMapAbsoluteSize.Y
-
-        local viewportTopY = usedViewportAbsolutePosition.Y - usedOverdraw
-        local viewportBottomY = usedViewportAbsolutePosition.Y
-            + usedViewportAbsoluteSize.Y
-            + usedOverdraw
-
-        return mapBottomY <= viewportTopY or mapTopY >= viewportBottomY
-    end)
+        return MapItem(scope, {
+            Key = item.Key,
+            Value = item.Value,
+            HideValue = config.HideValues,
+            Variant = config.Variant,
+            RowCount = rowCount,
+            RowIdx = rowIdx
+        })
+    end
 end
 
 local function ComputeRows(
     scope: Fusion.Scope,
     config: VirtualRowsConfig
-): (Fusion.Child, Fusion.For<number, Instance>)
+): (Fusion.Child, Fusion.Value<{ [number]: Instance }>)
     local header = config.Header
     local items = config.Items
     local emptyText = config.EmptyText
@@ -281,45 +286,61 @@ local function ComputeRows(
         end
     )
 
-    -- Every row has a keyed scope, so range changes only create or destroy the
-    -- rows which cross the virtual window.
-    local renderedRows = ForPairs(scope, visibleRowDescriptors, function(
-        use: Fusion.Use,
-        rowScope: Fusion.Scope,
-        rowIdx: number,
-        descriptor: RowDescriptor
-    ): (number, Instance)
-        local usedRowCount = use<<number>>(rowCount)
+    local renderedRows = Fusion.Value<<{ [number]: Instance }>>(scope, {})
+    local mountedRows = {} :: { [number]: MountedRow }
 
-        if descriptor == HeaderRowDescriptor then
-            return rowIdx, MapHeader(rowScope, {
-                Header = header :: string,
-                Variant = config.Variant,
-                RowCount = usedRowCount,
-                RowIdx = rowIdx,
-                CollapsedState = config.CollapsedState,
-                TweenComputeMapSize = config.AnimatedMapSize
-            })
-        elseif descriptor == EmptyRowDescriptor then
-            return rowIdx, MapEmptyItem(rowScope, {
-                Text = emptyText :: string,
-                Variant = config.Variant,
-                RowCount = usedRowCount,
-                RowIdx = rowIdx,
-            })
-        else
-            local item = descriptor :: Item
+    local function reconcileRows()
+        local descriptors =
+            Peek<<{ [number]: RowDescriptor }>>(visibleRowDescriptors)
+        local usedRowCount = Peek<<number>>(rowCount)
+        local nextMountedRows = {} :: { [number]: MountedRow }
+        local nextRenderedRows = {} :: { [number]: Instance }
 
-            return rowIdx, MapItem(rowScope, {
-                Key = item.Key,
-                Value = item.Value,
-                HideValue = config.HideValues,
-                Variant = config.Variant,
-                RowCount = usedRowCount,
-                RowIdx = rowIdx
-            })
+        for rowIdx, descriptor in descriptors do
+            local mountedRow = mountedRows[rowIdx]
+
+            if mountedRow
+                and mountedRow.Descriptor == descriptor
+                and mountedRow.RowCount == usedRowCount
+            then
+                nextMountedRows[rowIdx] = mountedRow
+                nextRenderedRows[rowIdx] = mountedRow.Instance
+            else
+                local rowScope = Fusion.innerScope(scope)
+                local rowInstance = CreateRow(
+                    rowScope,
+                    config,
+                    rowIdx,
+                    descriptor,
+                    usedRowCount
+                )
+                local nextMountedRow: MountedRow = {
+                    Scope = rowScope,
+                    Descriptor = descriptor,
+                    RowCount = usedRowCount,
+                    Instance = rowInstance
+                }
+
+                nextMountedRows[rowIdx] = nextMountedRow
+                nextRenderedRows[rowIdx] = rowInstance
+            end
         end
-    end)
+
+        -- Publish fully constructed replacements first. Fusion's Children
+        -- handler parents them before unparenting instances absent from this
+        -- table, so a visible row never has an empty hand-off frame.
+        renderedRows:set(nextRenderedRows)
+
+        for rowIdx, mountedRow in mountedRows do
+            if nextMountedRows[rowIdx] ~= mountedRow then
+                Fusion.doCleanup(mountedRow.Scope)
+            end
+        end
+
+        mountedRows = nextMountedRows
+    end
+
+    Observer(scope, visibleRowDescriptors):onBind(reconcileRows)
 
     local skippedRowCount = Computed(scope, function(use: Fusion.Use): number
         if not visibleRowRange then return 0 end
@@ -353,8 +374,8 @@ local function ComputeRows(
         Name = "CulledMapRowsSpacer"
     }
 
-    -- Fusion's recursive Child type cannot directly express a keyed For state,
-    -- even though Children handles it at runtime. Keep the widening isolated.
+    -- Fusion's recursive Child type cannot directly express a state containing
+    -- an instance dictionary. Keep the widening isolated to this boundary.
     local renderedRowsChild = (renderedRows :: unknown) :: Fusion.Child
     local rowChildren: { [unknown]: Fusion.Child } = {
         topSpacer,
@@ -368,35 +389,25 @@ local function ComputeVirtualizedRows(
     scope: Fusion.Scope,
     config: VirtualRowsConfig
 ): Fusion.Computed<Fusion.Child>
-    return Computed(scope, function(
-        use: Fusion.Use,
-        rowScope: Fusion.Scope
-    ): Fusion.Child
-        if use<<boolean>>(config.Occluded) then return {} end
+    local rowChildren, renderedRows = ComputeRows(scope, config)
 
-        local rowChildren, renderedRows = ComputeRows(rowScope, config)
+    return Computed(scope, function(use: Fusion.Use): Fusion.Child
+        local isFullyCollapsed =
+            use<<boolean>>(config.CollapsedState)
+            and use<<UDim2>>(config.AnimatedMapSize).Height.Offset
+                == config.RowHeight
 
-        return Computed(
-            rowScope,
-            function(innerUse: Fusion.Use): Fusion.Child
-                local isFullyCollapsed =
-                    innerUse<<boolean>>(config.CollapsedState)
-                    and innerUse<<UDim2>>(config.AnimatedMapSize).Height.Offset
-                        == config.RowHeight
+        if isFullyCollapsed then
+            local usedRenderedRows =
+                use<<{ [number]: Instance }>>(renderedRows)
+            local headerRow = usedRenderedRows[1]
 
-                if isFullyCollapsed then
-                    local usedRenderedRows =
-                        innerUse<<{ [number]: Instance }>>(renderedRows)
-                    local headerRow = usedRenderedRows[1]
+            return
+                if config.Header and headerRow then headerRow
+                else {}
+        end
 
-                    return
-                        if config.Header and headerRow then headerRow
-                        else {}
-                end
-
-                return rowChildren
-            end
-        )
+        return rowChildren
     end)
 end
 
@@ -407,6 +418,5 @@ return {
     ComputeMapRowCount = ComputeMapRowCount,
     CreateMapSizeTween = CreateMapSizeTween,
     ComputeVirtualListVisibleRowRange = ComputeVirtualListVisibleRowRange,
-    ComputeVirtualListOccludesMap = ComputeVirtualListOccludesMap,
     ComputeVirtualizedRows = ComputeVirtualizedRows
 }

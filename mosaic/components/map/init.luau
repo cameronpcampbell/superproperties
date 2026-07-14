@@ -23,12 +23,10 @@ local TableExtract = TableUtils.Extract
 
 local Virtualization = require(script.virtualization)
 local ComputeMapRowCount, CreateMapSizeTween,
-    ComputeVirtualListVisibleRowRange, ComputeVirtualListOccludesMap,
-    ComputeVirtualizedRows =
+    ComputeVirtualListVisibleRowRange, ComputeVirtualizedRows =
     Virtualization.ComputeMapRowCount,
     Virtualization.CreateMapSizeTween,
     Virtualization.ComputeVirtualListVisibleRowRange,
-    Virtualization.ComputeVirtualListOccludesMap,
     Virtualization.ComputeVirtualizedRows
 
 export type Items = Virtualization.Items
@@ -72,11 +70,6 @@ return Component<<MapProps>>(function(scope, props)
         lgHeight
     )
 
-    local mapOccluded = ComputeVirtualListOccludesMap(
-        scope,
-        virtualListData
-    )
-
     -- VirtualMapScrollable owns this tween when maps can be unmounted. That
     -- lets an absent map continue animating and resume at its current size.
     local animatedMapSize =
@@ -100,7 +93,6 @@ return Component<<MapProps>>(function(scope, props)
         CollapsedState = collapsedState,
         AnimatedMapSize = animatedMapSize,
         VisibleRowRange = visibleRowRange,
-        Occluded = mapOccluded,
         RowHeight = lgHeight
     })
 
