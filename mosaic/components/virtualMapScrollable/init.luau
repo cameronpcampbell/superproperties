@@ -30,21 +30,26 @@ local CalculateMapRowCount, CalculateMapHeight =
 type MapProps = Map.MapProps
 
 type VirtualMapScrollableProps = {
-    Maps: Fusion.UsedAs<{ MapProps }>
+    Maps: Fusion.UsedAs<{ MapProps }>,
+    Overdraw: Fusion.UsedAs<number>?
 }
 
 local MapPadding = 4
+local DefaultOverdraw = 200
 
 return Component<<VirtualMapScrollableProps>>(function(scope, props)
     local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
     local lgHeight = theme:GetHeight("Lg")
 
     local props, mapsProps = TableExtract(props, "Maps")
+    local props, overdraw = TableExtract(props, "Overdraw")
 
     local viewportAbsolutePositionState =
         Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
     local viewportAbsoluteSizeState =
         Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
+
+    local overdrawState: Fusion.UsedAs<number> = overdraw or DefaultOverdraw
 
     local computeSortedMapsProps = Computed(scope, function(use, scope)
         local usedMapsProps =
@@ -111,7 +116,8 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                     ViewportAbsolutePosition = viewportAbsolutePositionState,
                     ViewportAbsoluteSize = viewportAbsoluteSizeState,
                     MapAbsolutePosition = mapAbsolutePositionState,
-                    MapAbsoluteSize = mapAbsoluteSizeState
+                    MapAbsoluteSize = mapAbsoluteSizeState,
+                    Overdraw = overdrawState
                 }
             })
         end

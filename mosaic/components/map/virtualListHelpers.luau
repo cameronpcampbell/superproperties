@@ -9,7 +9,8 @@ export type VirtualListData = {
     ViewportAbsolutePosition: Fusion.UsedAs<Vector2>,
     ViewportAbsoluteSize: Fusion.UsedAs<Vector2>,
     MapAbsolutePosition: Fusion.UsedAs<Vector2>,
-    MapAbsoluteSize: Fusion.UsedAs<Vector2>
+    MapAbsoluteSize: Fusion.UsedAs<Vector2>,
+    Overdraw: Fusion.UsedAs<number>
 }
 
 local function CalculateMapRowCount(
@@ -53,12 +54,15 @@ local function ComputeVirtualListOccludesMap(
             use<<Vector2>>(virtualListData.ViewportAbsolutePosition)
         local usedViewportAbsoluteSize =
             use<<Vector2>>(virtualListData.ViewportAbsoluteSize)
+        local usedOverdraw = math.max(use<<number>>(virtualListData.Overdraw), 0)
 
         local mapTopY = usedMapAbsolutePosition.Y
         local mapBottomY = mapTopY + usedMapAbsoluteSize.Y
 
-        local viewportTopY = usedViewportAbsolutePosition.Y
-        local viewportBottomY = viewportTopY + usedViewportAbsoluteSize.Y
+        local viewportTopY = usedViewportAbsolutePosition.Y - usedOverdraw
+        local viewportBottomY = usedViewportAbsolutePosition.Y
+            + usedViewportAbsoluteSize.Y
+            + usedOverdraw
 
         return mapBottomY <= viewportTopY or mapTopY >= viewportBottomY
     end)
