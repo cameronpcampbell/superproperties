@@ -28,9 +28,12 @@ local MapItem = require(script.item)
 local MapEmptyItem = require(script.emptyItem)
 
 local VirtualListHelpers = require(script.virtualListHelpers)
-local CalculateMapRowCount, CalculateMapHeight, ComputeVirtualListOccludesMap =
+local CalculateMapRowCount, CalculateMapHeight, CalculateMapTopSpacerHeight,
+    ComputeVirtualListVisibleRowRange, ComputeVirtualListOccludesMap =
     VirtualListHelpers.CalculateMapRowCount,
     VirtualListHelpers.CalculateMapHeight,
+    VirtualListHelpers.CalculateMapTopSpacerHeight,
+    VirtualListHelpers.ComputeVirtualListVisibleRowRange,
     VirtualListHelpers.ComputeVirtualListOccludesMap
 
 export type Items = {{
@@ -77,16 +80,40 @@ local function ComputeRows(
     hideValues: boolean,
     emptyText: string?,
     collapsedState: Fusion.Value<boolean>,
-    tweenComputeMapSize: Fusion.Tween<UDim2>
+    tweenComputeMapSize: Fusion.Tween<UDim2>,
+    visibleRowRange: Fusion.UsedAs<Vector2>?,
+    lgHeight: number
 ): Fusion.Computed<{ Fusion.Child }?>
     return Computed(scope, function(use, scope: Fusion.Scope): { Fusion.Child }?
         local usedRowCount = use<<number>>(computeRowCount)
         local usedItems = if items then use<<Items>>(items) else nil
-        local baseIdx, instances = 0, table.create(usedRowCount) :: { Instance }
+        local firstRow, lastRow = 1, usedRowCount
 
-        if header then
-            baseIdx = 1
+        if visibleRowRange then
+            local usedVisibleRowRange = use<<Vector2>>(visibleRowRange)
+            firstRow, lastRow = usedVisibleRowRange.X, usedVisibleRowRange.Y
+        end
 
+        if firstRow > lastRow then return {} end
+
+        local visibleRowCount = lastRow - firstRow + 1
+        local instances = table.create(visibleRowCount + 1) :: { Instance }
+        local baseIdx = if header then 1 else 0
+
+        if firstRow > 1 then
+            instances[0] = New(scope, "Frame") {
+                Size = UDim2.new(
+                    1, 0, 0,
+                    CalculateMapTopSpacerHeight(firstRow - 1, lgHeight)
+                ),
+                BackgroundTransparency = 1,
+                LayoutOrder = firstRow - 1,
+
+                Name = "CulledMapRowsSpacer"
+            }
+        end
+
+        if header and firstRow <= 1 and lastRow >= 1 then
             instances[1] = MapHeader(scope, {
                 Header = header,
                 Variant = variant,
@@ -100,26 +127,35 @@ local function ComputeRows(
         if not usedItems or #usedItems == 0 then
             if not emptyText then return instances :: { Fusion.Child } end
 
-            instances[baseIdx + 1] = MapEmptyItem(scope, {
+            local rowIdx = baseIdx + 1
+            if rowIdx < firstRow or rowIdx > lastRow then
+                return instances :: { Fusion.Child }
+            end
+
+            instances[rowIdx] = MapEmptyItem(scope, {
                 Text = emptyText,
                 Variant = variant,
                 RowCount = usedRowCount,
-                RowIdx = baseIdx + 1,
+                RowIdx = rowIdx,
             })
 
             return instances :: { Fusion.Child }
         end
 
-        for idx, item in usedItems do
-            local idx = baseIdx + idx
+        local firstItemIdx = math.max(firstRow - baseIdx, 1)
+        local lastItemIdx = math.min(lastRow - baseIdx, #usedItems)
 
-            instances[idx] = MapItem(scope, {
+        for itemIdx = firstItemIdx, lastItemIdx do
+            local item = usedItems[itemIdx]
+            local rowIdx = baseIdx + itemIdx
+
+            instances[rowIdx] = MapItem(scope, {
                 Key = item.Key,
                 Value = item.Value,
                 HideValue = hideValues,
                 Variant = variant,
                 RowCount = usedRowCount,
-                RowIdx = idx
+                RowIdx = rowIdx
             })
         end
 
@@ -150,6 +186,7 @@ local function ComputeVisibleRows(
     collapsedState: Fusion.Value<boolean>,
     tweenComputeMapSize: Fusion.Tween<UDim2>,
     lgHeight: number,
+    visibleRowRange: Fusion.UsedAs<Vector2>?,
     virtualListOccludesMap: Fusion.UsedAs<boolean>
 )
     return Computed(scope, function(
@@ -161,7 +198,8 @@ local function ComputeVisibleRows(
         local computeRows = ComputeRows(
             scope, variant, header, items,
             computeRowCount, hideValues, emptyText,
-            collapsedState, tweenComputeMapSize
+            collapsedState, tweenComputeMapSize,
+            visibleRowRange, lgHeight
         )
 
         return Computed(scope, function(use): Fusion.Child?
@@ -210,6 +248,10 @@ return Component<<MapProps>>(function(scope, props)
         scope, virtualListData
     )
 
+    local computeVisibleRowRange = ComputeVirtualListVisibleRowRange(
+        scope, virtualListData, computeRowCount, lgHeight
+    )
+
     local tweenComputeMapSize = Tween<<UDim2>>(
         scope,
         Computed(scope, function(use, scope)
@@ -231,7 +273,8 @@ return Component<<MapProps>>(function(scope, props)
         scope, variant, header, items,
         computeRowCount, hideValues, emptyText,
         collapsedState, tweenComputeMapSize,
-        lgHeight, computeVirtualListOccludesMap
+        lgHeight, computeVisibleRowRange,
+        computeVirtualListOccludesMap
     )
 
     return Supercorner.new(scope :: any, CombineProps({

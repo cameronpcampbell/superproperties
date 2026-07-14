@@ -5,6 +5,9 @@ local Packages = script.Parent.Parent.Parent.Parent
 local Fusion = require(Packages.fusion)
 local Computed = Fusion.Computed
 
+local RowGap = 1
+local MapContentPadding = 1
+
 export type VirtualListData = {
     ViewportAbsolutePosition: Fusion.UsedAs<Vector2>,
     ViewportAbsoluteSize: Fusion.UsedAs<Vector2>,
@@ -36,6 +39,66 @@ local function CalculateMapHeight(rowCount: number, lgHeight: number): number
     local rowHeight = lgHeight - 2
 
     return rowHeight * rowCount + rowCount + 1
+end
+
+local function CalculateMapTopSpacerHeight(
+    skippedRowCount: number,
+    lgHeight: number
+): number
+    if skippedRowCount <= 0 then return 0 end
+
+    local rowHeight = lgHeight - 2
+
+    return rowHeight * skippedRowCount
+        + RowGap * (skippedRowCount - 1)
+end
+
+local function ComputeVirtualListVisibleRowRange(
+    scope: Fusion.Scope,
+    virtualListData: VirtualListData?,
+    rowCount: Fusion.UsedAs<number>,
+    lgHeight: number
+): Fusion.Computed<Vector2>?
+    if not virtualListData then return nil end
+
+    return Computed(scope, function(use): Vector2
+        local usedRowCount = use<<number>>(rowCount)
+        if usedRowCount <= 0 then return Vector2.new(1, 0) end
+
+        local usedMapAbsolutePosition =
+            use<<Vector2>>(virtualListData.MapAbsolutePosition)
+        local usedViewportAbsolutePosition =
+            use<<Vector2>>(virtualListData.ViewportAbsolutePosition)
+        local usedViewportAbsoluteSize =
+            use<<Vector2>>(virtualListData.ViewportAbsoluteSize)
+        local usedOverdraw = math.max(use<<number>>(virtualListData.Overdraw), 0)
+
+        local rowHeight = lgHeight - 2
+        local rowStride = rowHeight + RowGap
+        local contentTopY = usedMapAbsolutePosition.Y + MapContentPadding
+
+        local viewportTopY = usedViewportAbsolutePosition.Y - usedOverdraw
+        local viewportBottomY = usedViewportAbsolutePosition.Y
+            + usedViewportAbsoluteSize.Y
+            + usedOverdraw
+
+        local firstRow = math.floor(
+            (viewportTopY - contentTopY - rowHeight) / rowStride
+        ) + 2
+
+        local lastRow = math.ceil(
+            (viewportBottomY - contentTopY) / rowStride
+        )
+
+        if lastRow < 1 or firstRow > usedRowCount or firstRow > lastRow then
+            return Vector2.new(1, 0)
+        end
+
+        return Vector2.new(
+            math.clamp(firstRow, 1, usedRowCount),
+            math.clamp(lastRow, 1, usedRowCount)
+        )
+    end)
 end
 
 local function ComputeVirtualListOccludesMap(
@@ -71,5 +134,7 @@ end
 return {
     CalculateMapRowCount = CalculateMapRowCount,
     CalculateMapHeight = CalculateMapHeight,
+    CalculateMapTopSpacerHeight = CalculateMapTopSpacerHeight,
+    ComputeVirtualListVisibleRowRange = ComputeVirtualListVisibleRowRange,
     ComputeVirtualListOccludesMap = ComputeVirtualListOccludesMap
 }
