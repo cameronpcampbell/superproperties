@@ -5,8 +5,7 @@ local Packages = script.Parent.Parent.Parent.Parent.packages
 local Fusion = require(Packages.fusion)
 local Computed = Fusion.Computed
 
-local Mosaic = require(Packages.mosaic)
-local Map = Mosaic.Map
+local Map = require(Packages.mosaic.components.map)
 
 local CategoryOrder = require(script.categoryOrder)
 local CreateItemFilter = require(script.filterItems)
@@ -17,6 +16,9 @@ local DefaultCategoryLayoutOrder = 999997
 
 type Item = { Key: string, Value: any }
 type ItemFilter = (query: string?) -> { Item }
+
+export type MapProps = Map.MapProps
+export type State = Fusion.Computed<MapProps?>
 
 type CategoryProps = {
     Name: string,
@@ -65,8 +67,9 @@ end
 return function(
     scope: Fusion.Scope,
     outerScope: Fusion.Scope,
+    collapsedStateScope: Fusion.Scope,
     props: CategoryProps
-)
+): State
     local name = props.Name
 
     local sortedItems: Fusion.UsedAs<{ Item }> =
@@ -75,27 +78,33 @@ return function(
         else
             SortItems(scope, props.Items)
 
+    local filterState = GetFilterState(outerScope)
     local itemFilter = PrepareItemFilter(scope, sortedItems)
     local filteredItems =
-        FilterItems(scope, GetFilterState(outerScope), itemFilter)
+        FilterItems(scope, filterState, itemFilter)
 
-    return Computed(scope, function(use, scope): Fusion.Child?
+    return Computed(scope, function(use): MapProps?
         local usedFilteredItems = use<<{ Item }>>(filteredItems)
+        local usedFilter = use<<string?>>(filterState)
+        local hasActiveFilter =
+            usedFilter ~= nil and usedFilter:match("%S") ~= nil
 
-        if #usedFilteredItems == 0 then
+        if
+            #usedFilteredItems == 0 and
+            (not props.EmptyText or hasActiveFilter)
+        then
             return nil
         end
 
-        return Map(scope, {
+        return {
             Header = name,
-            Items = use(usedFilteredItems),
+            Items = usedFilteredItems,
             LayoutOrder =
                 CategoryOrder[name] or
                 DefaultCategoryLayoutOrder,
-            -- We want this state to outlive the inner scope.
-            Collapsed = GetCollapsedState(outerScope, name),
+            Collapsed = GetCollapsedState(collapsedStateScope, name),
             HideValues = props.HideValues,
             EmptyText = props.EmptyText
-        })
+        }
     end)
 end

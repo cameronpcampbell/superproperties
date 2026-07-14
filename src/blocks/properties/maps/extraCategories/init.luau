@@ -3,11 +3,14 @@
 local Packages = script.Parent.Parent.Parent.Parent.packages
 local Fusion = require(Packages.fusion)
 
+local Category = require(script.Parent.category)
+
 type ExtraCategories = {
     [string]: (
-        scope: Fusion.Child,
-        outerScope: Fusion.Child
-    ) -> { Fusion.UsedAs<Fusion.Child?> }
+        scope: Fusion.Scope,
+        outerScope: Fusion.Scope,
+        collapsedStateScope: Fusion.Scope
+    ) -> { Category.State }
 }
 
 return {

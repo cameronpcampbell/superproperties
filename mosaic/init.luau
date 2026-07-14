@@ -16,6 +16,7 @@ return {
     Icon = require(Components.icon),
     Text = require(Components.text),
     Map = require(Components.map),
+    VirtualMapScrollable = require(Components.virtualMapScrollable),
     Scrollable = require(Components.scrollable),
     Checkbox = require(Components.checkbox),
 

@@ -40,9 +40,13 @@ local function GetMaterials(): {{ Key: string, Value: string }}
     return materials
 end
 
-return function(scope: Fusion.Scope, outerScope: Fusion.Scope)
+return function(
+    scope: Fusion.Scope,
+    outerScope: Fusion.Scope,
+    collapsedStateScope: Fusion.Scope
+)
     return {
-        Category(scope, outerScope, {
+        Category(scope, outerScope, collapsedStateScope, {
             Name = "Material Overrides",
             Items = GetMaterials()
         })

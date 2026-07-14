@@ -27,10 +27,18 @@ local MapHeader = require(script.header)
 local MapItem = require(script.item)
 local MapEmptyItem = require(script.emptyItem)
 
+local VirtualListHelpers = require(script.virtualListHelpers)
+local CalculateMapRowCount, CalculateMapHeight, ComputeVirtualListOccludesMap =
+    VirtualListHelpers.CalculateMapRowCount,
+    VirtualListHelpers.CalculateMapHeight,
+    VirtualListHelpers.ComputeVirtualListOccludesMap
+
 export type Items = {{
     Key: string,
 	Value: any
 }}
+
+export type VirtualListData = VirtualListHelpers.VirtualListData
 
 export type MapProps = {
 	Variant: ThemeUtils.BgVariantLayer?,
@@ -39,7 +47,8 @@ export type MapProps = {
 	Items: Fusion.UsedAs<Items>?,
 	HideValues: boolean?,
 	EmptyText: string?,
-	Collapsed: Fusion.UsedAs<boolean>?
+	Collapsed: Fusion.UsedAs<boolean>?,
+	VirtualListData: VirtualListData?,
 }
 
 local function ComputeRowCount(
@@ -49,19 +58,13 @@ local function ComputeRowCount(
     emptyText: string?
 )
     return Computed(scope, function(use, scope)
-        local usedItems = use<<{ Item }>>(items)
-        local rowCount = 0
+        local usedItems = if items then use<<Items>>(items) else nil
 
-        if usedItems and #usedItems ~= 0 then
-            rowCount += #usedItems
-
-        elseif emptyText then
-            rowCount += 1
-        end
-
-        if header then rowCount += 1 end
-
-        return rowCount
+        return CalculateMapRowCount(
+            if usedItems then #usedItems else 0,
+            header ~= nil,
+            emptyText ~= nil
+        )
     end)
 end
 
@@ -78,7 +81,7 @@ local function ComputeRows(
 ): Fusion.Computed<{ Fusion.Child }?>
     return Computed(scope, function(use, scope: Fusion.Scope): { Fusion.Child }?
         local usedRowCount = use<<number>>(computeRowCount)
-        local usedItems = use<<{ Item }>>(items)
+        local usedItems = if items then use<<Items>>(items) else nil
         local baseIdx, instances = 0, table.create(usedRowCount) :: { Instance }
 
         if header then
@@ -132,10 +135,54 @@ local function ComputeUncollapsedMapHeight(
     return Computed(scope, function(use, scope)
         local usedRowCount = use<<number>>(computeRowCount)
 
-        -- We subtract 2 to account for the stroke.
-        local itemHeight = lgHeight - 2
+        return CalculateMapHeight(usedRowCount, lgHeight)
+    end)
+end
 
-        return itemHeight * usedRowCount + usedRowCount + 1
+local function ComputeVisibleRows(
+    scope: Fusion.Scope,
+    variant: ThemeUtils.BgVariantLayer,
+    header: string?,
+    items: Fusion.UsedAs<Items>?,
+    computeRowCount: Fusion.Computed<number>,
+    hideValues: boolean,
+    emptyText: string?,
+    collapsedState: Fusion.Value<boolean>,
+    tweenComputeMapSize: Fusion.Tween<UDim2>,
+    lgHeight: number,
+    virtualListOccludesMap: Fusion.UsedAs<boolean>
+)
+    return Computed(scope, function(
+        use,
+        scope: Fusion.Scope
+    ): Fusion.Child?
+        if use<<boolean>>(virtualListOccludesMap) then return nil end
+
+        local computeRows = ComputeRows(
+            scope, variant, header, items,
+            computeRowCount, hideValues, emptyText,
+            collapsedState, tweenComputeMapSize
+        )
+
+        return Computed(scope, function(use): Fusion.Child?
+            local usedCollapsedState = use<<boolean>>(collapsedState)
+            local usedTweenComputeMapSize = use<<UDim2>>(tweenComputeMapSize)
+            local usedComputeRows =
+                use(computeRows :: any) :: { Fusion.Child }?
+
+            local isFullyCollapsed =
+                usedCollapsedState and
+                usedTweenComputeMapSize.Height.Offset == lgHeight
+
+            if isFullyCollapsed then
+                return
+                    if header then (usedComputeRows :: { Fusion.Child })[1]
+                    else nil
+
+            else
+                return usedComputeRows :: any
+            end
+        end) :: any
     end)
 end
 
@@ -150,6 +197,7 @@ return Component<<MapProps>>(function(scope, props)
     local props, emptyText = TableExtract(props, "EmptyText")
     local props, hideValues = TableExtract(props, "HideValues", false)
     local props, collapsed = TableExtract(props, "Collapsed", false)
+    local props, virtualListData = TableExtract(props, "VirtualListData")
 
     local strokeVariant = GetNextVariant(variant)
     local computeRowCount = ComputeRowCount(scope, header, items, emptyText)
@@ -157,6 +205,10 @@ return Component<<MapProps>>(function(scope, props)
         ComputeUncollapsedMapHeight(scope, computeRowCount, lgHeight)
 
     local collapsedState = CoerceToValue<<boolean>>(scope, collapsed)
+
+    local computeVirtualListOccludesMap = ComputeVirtualListOccludesMap(
+        scope, virtualListData
+    )
 
     local tweenComputeMapSize = Tween<<UDim2>>(
         scope,
@@ -175,10 +227,11 @@ return Component<<MapProps>>(function(scope, props)
         )
     )
 
-    local computeRows = ComputeRows(
+    local computeVisibleRows = ComputeVisibleRows(
         scope, variant, header, items,
         computeRowCount, hideValues, emptyText,
-        collapsedState, tweenComputeMapSize
+        collapsedState, tweenComputeMapSize,
+        lgHeight, computeVirtualListOccludesMap
     )
 
     return Supercorner.new(scope :: any, CombineProps({
@@ -195,19 +248,7 @@ return Component<<MapProps>>(function(scope, props)
         RootChildren = New(scope, "UIFlexItem") {},
 
         [Children] = {
-            Computed(scope, function(use, scope): Fusion.Child?
-                local usedTweenComputeMapSize = use(tweenComputeMapSize)
-                local usedComputeRows = use(computeRows :: any) :: { Fusion.Child }?
-
-                if usedTweenComputeMapSize.Height.Offset == lgHeight then
-                    return
-                        if header then (usedComputeRows :: { Fusion.Child })[1]
-                        else nil
-
-                else
-                    return usedComputeRows :: any
-                end
-            end),
+            computeVisibleRows,
 
             New(scope, "UIListLayout") {
                 Padding = UDim.new(0, 1),
