@@ -12,8 +12,10 @@ local Category = require(script.Parent.Parent.category)
 type CategoryState = Category.State
 
 local GetProperties = require(script.Parent.Parent.getProperties)
-type PropertyPlan = GetProperties.PropertyPlan
 type Snapshot = GetProperties.Snapshot
+local LongPoll = require(script.Parent.Parent.longPoll)
+
+local CustomPropertyPollInterval = 0.1
 
 local function ConnectToPropertyChange(
     instance: Instance,
@@ -31,33 +33,23 @@ local function ConnectToPropertyChange(
     return connection
 end
 
-local function ConnectToCustomPropertyChange(
-    instance: Instance,
-    propertyPlan: PropertyPlan,
-    callback: () -> ()
-): RBXScriptConnection?
-    local observe = propertyPlan.Observe
-    if not observe then return nil end
-
-    local connection: RBXScriptConnection? = nil
-    local success = pcall(function()
-        connection = observe(instance, callback)
-    end)
-
-    if not success then return nil end
-    return connection
-end
-
 local function ObservePropertyChanges(
     scope: Fusion.Scope,
     instance: Instance,
     snapshot: Snapshot,
     refreshProperty: (propertyName: string) -> ()
 )
+    local polledPropertyNames = {} :: { string }
+    for propertyName, location in snapshot.LocationsByName do
+        if location.Plan.Poll then
+            table.insert(polledPropertyNames, propertyName)
+        end
+    end
+
     -- ValueBase.Changed sends the new value instead of a property name.
     if instance:IsA("ValueBase") then
         for propertyName, location in snapshot.LocationsByName do
-            if location.Plan.Observe then continue end
+            if location.Plan.Poll then continue end
 
             local connection = ConnectToPropertyChange(
                 instance,
@@ -74,14 +66,15 @@ local function ObservePropertyChanges(
         )
     end
 
-    for propertyName, location in snapshot.LocationsByName do
-        local connection = ConnectToCustomPropertyChange(
-            instance,
-            location.Plan,
-            function() refreshProperty(propertyName) end
-        )
-
-        if connection then table.insert(scope, connection) end
+    if #polledPropertyNames > 0 then
+        table.insert(scope, LongPoll(
+            CustomPropertyPollInterval,
+            function()
+                for _, propertyName in polledPropertyNames do
+                    refreshProperty(propertyName)
+                end
+            end
+        ))
     end
 end
 

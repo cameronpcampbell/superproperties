@@ -1,8 +1,6 @@
 --!strict
 --!nolint LocalShadow
 
-local RunService = game:GetService("RunService")
-
 local Packages = script.Parent.Parent.Parent.Parent.Parent.packages
 local Typeforge = require(Packages.typeforge)
 
@@ -40,15 +38,6 @@ local function CreateDeprecationPatch(replacement: string): PropertyPatch
 end
 
 local TextColorPatch = CreateDeprecationPatch("TextColor3")
-
--- These values can change through methods or descendants without a reliable
--- property signal on the selected instance.
-local function ObserveHeartbeat(
-    _instance: Instance,
-    callback: () -> ()
-): RBXScriptConnection
-    return RunService.Heartbeat:Connect(callback)
-end
 
 local Patches: Patches = {
     Behavior = {
@@ -93,7 +82,9 @@ local Patches: Patches = {
                         instance:PivotTo(value)
                     end,
 
-                    Observe = ObserveHeartbeat
+                    -- This can change through descendants without a reliable
+                    -- property signal on the selected instance.
+                    Poll = true
                 }
             }
         }
@@ -110,7 +101,7 @@ local Patches: Patches = {
                         instance:ScaleTo(value)
                     end,
 
-                    Observe = ObserveHeartbeat
+                    Poll = true
                 }
             }
         }

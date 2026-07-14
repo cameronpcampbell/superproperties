@@ -15,10 +15,7 @@ type Item = Map.Item
 export type PropertyPlan = {
     Name: string,
     Read: ((Instance) -> any)?,
-    Observe: ((
-        instance: Instance,
-        callback: () -> ()
-    ) -> RBXScriptConnection?)?
+    Poll: boolean
 }
 
 type CategoryPlan = {
@@ -143,9 +140,8 @@ local function BuildClassPlan(className: string): ClassPlan
             Read =
                 if customReadWrite then customReadWrite.Read
                 else nil,
-            Observe =
-                if customReadWrite then customReadWrite.Observe
-                else nil
+            Poll = customReadWrite ~= nil and
+                customReadWrite.Poll == true
         }
 
         table.insert(category.Properties, propertyPlan)
