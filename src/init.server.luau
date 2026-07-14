@@ -51,7 +51,10 @@ Scope:Widget {
             [Children] = {
                 Properties.Input(Scope),
 
-                Properties.Maps(Scope, SelectedInstanceValue),
+                Properties.Maps(Scope, {
+                    SelectedInstanceValue = SelectedInstanceValue,
+                    OmitRbxAttributes = true
+                }),
 
                 Scope:New "UIPadding" {
                     PaddingLeft = UDim.new(0, 4),

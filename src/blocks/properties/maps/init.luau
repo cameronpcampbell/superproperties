@@ -16,8 +16,15 @@ local Category = require(script.category)
 type CategoryState = Category.State
 type MapProps = Category.MapProps
 
+type PropertiesMapsProps = {
+    SelectedInstanceValue: Fusion.Value<Instance>,
+    OmitRbxAttributes: boolean?
+}
+
 local GetProperties = require(script.getProperties)
 local ExtraCategories = require(script.extraCategories)
+
+local RbxAttributePrefix = "RBX_"
 
 local function TableBulkInsert<T>(target: { T }, source: { T })
     table.move(source, 1, #source, #target + 1, target)
@@ -49,13 +56,21 @@ local function GetTags(
 end
 
 local function GetAttributes(
-    instance: Instance
+    instance: Instance,
+    omitRbxAttributes: boolean
 ): { Item }
     local attributes = instance:GetAttributes()
     local attributeItems = {} :: { Item }
 
     local attributeIdx = 1
     for attributeName, attributeValue in attributes do
+        if omitRbxAttributes
+            and string.sub(attributeName, 1, #RbxAttributePrefix)
+                == RbxAttributePrefix
+        then
+            continue
+        end
+
         attributeItems[attributeIdx] = {
             Key = attributeName,
             Value = attributeValue
@@ -71,7 +86,8 @@ local function GetCategoryStates(
     scope: Fusion.Scope,
     outerScope: Fusion.Scope,
     collapsedStateScope: Fusion.Scope,
-    instance: Instance
+    instance: Instance,
+    omitRbxAttributes: boolean
 ): { CategoryState }
     local properties = GetProperties(instance)
     local categories: { CategoryState } = {}
@@ -93,7 +109,7 @@ local function GetCategoryStates(
 
     table.insert(categories, Category(scope, outerScope, collapsedStateScope, {
         Name = "Attributes",
-        Items = GetAttributes(instance),
+        Items = GetAttributes(instance, omitRbxAttributes),
         EmptyText = "No Attributes have been added yet.",
     }))
 
@@ -110,8 +126,10 @@ end
 
 return function(
     scope: Fusion.Scope,
-    selectedInstanceValue: Fusion.Value<Instance>
+    props: PropertiesMapsProps
 )
+    local selectedInstanceValue = props.SelectedInstanceValue
+    local omitRbxAttributes = props.OmitRbxAttributes ~= false
     local outerScope = scope
     local collapsedStateScope = Fusion.innerScope(outerScope)
     local mapsScope = Fusion.innerScope(outerScope)
@@ -127,7 +145,8 @@ return function(
             scope,
             outerScope,
             collapsedStateScope,
-            usedSelectedInstance
+            usedSelectedInstance,
+            omitRbxAttributes
         )
     end)
 
