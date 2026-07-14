@@ -13,20 +13,12 @@ local Utils = script.Parent.Parent.utils
 local FusionUtils = require(Utils.fusionUtils)
 local Component = FusionUtils.Component
 
-local ThemeUtils = require(Utils.themeUtils)
-local GetThemeForScope = ThemeUtils.GetThemeForScope
-
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
 local Components = script.Parent
 local Scrollable = require(Components.scrollable)
 local Map = require(Components.map)
-
-local VirtualListHelpers = require(Components.map.virtualListHelpers)
-local CalculateMapRowCount, CalculateMapHeight =
-    VirtualListHelpers.CalculateMapRowCount,
-    VirtualListHelpers.CalculateMapHeight
 
 type MapProps = Map.MapProps
 
@@ -45,15 +37,14 @@ local MapPadding = 4
 local DefaultOverdraw = 200
 
 return Component<<VirtualMapScrollableProps>>(function(scope, props)
-    local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
-    local lgHeight = theme:GetHeight("Lg")
-
     local props, mapsProps = TableExtract(props, "Maps")
     local props, overdraw = TableExtract(props, "Overdraw")
 
     local viewportAbsolutePositionState =
         Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
     local viewportAbsoluteSizeState =
+        Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
+    local canvasContentSizeState =
         Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
 
     local overdrawState: Fusion.UsedAs<number> = overdraw or DefaultOverdraw
@@ -69,37 +60,14 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
         return usedMapsProps
     end)
 
-    local computeCanvasHeight = Computed(scope, function(use, scope): number
+    local computeCanvasSize = Computed(scope, function(use): UDim2
         local usedMapsProps = use<<{ MapProps }>>(computeSortedMapsProps)
-        local mapCount = #usedMapsProps
-        local canvasHeight = 0
+        if #usedMapsProps == 0 then return UDim2.new() end
 
-        for idx, mapProps in usedMapsProps do
-            local items = mapProps.Items
-            local usedItems = if items then use<<Map.Items>>(items) else nil
+        local usedCanvasContentSize =
+            use<<Vector2>>(canvasContentSizeState)
 
-            local collapsed = mapProps.Collapsed
-            local usedCollapsed =
-                if collapsed then use<<boolean>>(collapsed) else false
-
-            local rowCount = CalculateMapRowCount(
-                if usedItems then #usedItems else 0,
-                mapProps.Header ~= nil,
-                mapProps.EmptyText ~= nil
-            )
-
-            local mapHeight =
-                if usedCollapsed then lgHeight
-                else CalculateMapHeight(rowCount, lgHeight)
-
-            canvasHeight += mapHeight
-
-            if idx < mapCount then
-                canvasHeight += MapPadding
-            end
-        end
-
-        return canvasHeight
+        return UDim2.fromOffset(0, usedCanvasContentSize.Y)
     end)
 
     local computeMapInstances = Computed(scope, function(
@@ -185,7 +153,10 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
             SortOrder = Enum.SortOrder.LayoutOrder,
             Padding = UDim.new(0, MapPadding),
 
-            [OnChange "AbsoluteContentSize"] = function()
+            [OnChange "AbsoluteContentSize"] = function(
+                absoluteContentSize: Vector2
+            )
+                canvasContentSizeState:set(absoluteContentSize)
                 layoutHasRun = true
                 commitGeometry()
             end
@@ -195,11 +166,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
     end)
 
     return Scrollable(scope, {
-        CanvasSize = FusionUtils.ComputeTransforms.UDim2(
-            scope,
-            UDim.new(),
-            FusionUtils.ComputeTransforms.UDim(scope, 0, computeCanvasHeight)
-        ),
+        CanvasSize = computeCanvasSize,
         AutomaticCanvasSize = Enum.AutomaticSize.None,
         OutAbsolutePosition = viewportAbsolutePositionState,
         OutAbsoluteSize = viewportAbsoluteSizeState,
