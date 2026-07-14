@@ -34,6 +34,7 @@ export type MapLayout = {
     RootItems: Fusion.Computed<{ ItemLayout }>,
     RootRows: Fusion.Computed<RootRowDescriptors>,
     Metadata: Fusion.Computed<RowMetadata>,
+    CornerRowCount: Fusion.Computed<number>,
     RowCount: Fusion.Computed<number>
 }
 
@@ -127,6 +128,14 @@ local function CreateItemLayout(
             * (RowGap + use<<number>>(childrenContentHeight))
     end)
 
+    local cornersCollapsed: Fusion.Computed<boolean>? = nil
+    if reveal then
+        local animatedReveal = reveal
+        cornersCollapsed = Computed(scope, function(use): boolean
+            return use<<number>>(animatedReveal) == 0
+        end)
+    end
+
     local animatedHeight = Computed(scope, function(use): number
         return rowHeight + use<<number>>(animatedChildrenHeight)
     end)
@@ -136,11 +145,50 @@ local function CreateItemLayout(
         Depth = depth,
         CanBecomeMapBottom = canBecomeMapBottom,
         CollapsedState = collapsedState,
+        CornersCollapsed = cornersCollapsed,
         Children = children,
         ChildrenContentHeight = childrenContentHeight,
         AnimatedChildrenHeight = animatedChildrenHeight,
         AnimatedHeight = animatedHeight
     }
+end
+
+local function ComputeRowMetadata(
+    scope: Fusion.Scope,
+    rootItems: Fusion.Computed<{ ItemLayout }>,
+    header: string?,
+    emptyText: string?,
+    useAnimatedCollapse: boolean
+): Fusion.Computed<RowMetadata>
+    return Computed(scope, function(use): RowMetadata
+        local usedRootItems = use<<{ ItemLayout }>>(rootItems)
+        local rowIndices = {} :: { [ItemLayout]: number }
+        local rowCount = if header then 1 else 0
+
+        local function visit(layout: ItemLayout)
+            rowCount += 1
+            rowIndices[layout] = rowCount
+
+            local collapsedState =
+                if useAnimatedCollapse then layout.CornersCollapsed
+                else layout.CollapsedState
+
+            if collapsedState and use<<boolean>>(collapsedState) then return end
+
+            for _, child in layout.Children do visit(child) end
+        end
+
+        if #usedRootItems > 0 then
+            for _, layout in usedRootItems do visit(layout) end
+        elseif emptyText then
+            rowCount += 1
+        end
+
+        return {
+            RowCount = rowCount,
+            RowIndices = rowIndices
+        }
+    end)
 end
 
 local function CreateMapLayout(
@@ -187,34 +235,25 @@ local function CreateMapLayout(
         return rows
     end)
 
-    local metadata = Computed(scope, function(use): RowMetadata
-        local usedRootItems = use<<{ ItemLayout }>>(rootItems)
-        local rowIndices = {} :: { [ItemLayout]: number }
-        local rowCount = if header then 1 else 0
-
-        local function visit(layout: ItemLayout)
-            rowCount += 1
-            rowIndices[layout] = rowCount
-
-            local collapsedState = layout.CollapsedState
-            if collapsedState and use<<boolean>>(collapsedState) then return end
-
-            for _, child in layout.Children do visit(child) end
-        end
-
-        if #usedRootItems > 0 then
-            for _, layout in usedRootItems do visit(layout) end
-        elseif emptyText then
-            rowCount += 1
-        end
-
-        return {
-            RowCount = rowCount,
-            RowIndices = rowIndices
-        }
-    end)
+    local targetMetadata = ComputeRowMetadata(
+        scope,
+        rootItems,
+        header,
+        emptyText,
+        false
+    )
+    local metadata = ComputeRowMetadata(
+        scope,
+        rootItems,
+        header,
+        emptyText,
+        true
+    )
 
     local rowCount = Computed(scope, function(use): number
+        return use<<RowMetadata>>(targetMetadata).RowCount
+    end)
+    local cornerRowCount = Computed(scope, function(use): number
         return use<<RowMetadata>>(metadata).RowCount
     end)
 
@@ -222,6 +261,7 @@ local function CreateMapLayout(
         RootItems = rootItems,
         RootRows = rootRows,
         Metadata = metadata,
+        CornerRowCount = cornerRowCount,
         RowCount = rowCount
     }
 end
@@ -342,7 +382,7 @@ local function CreateRow(
         Variant = config.Variant,
         Layout = descriptor :: ItemLayout,
         LayoutOrder = rootIdx,
-        RowCount = rowCount,
+        RowCount = config.Layout.CornerRowCount,
         RowMetadata = config.Layout.Metadata,
         HideValue = config.HideValues
     })

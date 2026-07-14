@@ -26,6 +26,7 @@ export type ItemLayout = {
     Depth: number,
     CanBecomeMapBottom: boolean,
     CollapsedState: Fusion.Value<boolean>?,
+	CornersCollapsed: Fusion.Computed<boolean>?,
 	Children: { ItemLayout },
 	ChildrenContentHeight: Fusion.Computed<number>,
 	AnimatedChildrenHeight: Fusion.Computed<number>,
