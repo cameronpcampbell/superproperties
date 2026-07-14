@@ -23,7 +23,8 @@ local CalculateRowCornerRadii =
 
 type MapItemValueProps = Typeforge.Flatten<
     Types.BaseMapProps & {
-        Value: any
+        Value: any,
+        Redrawable: boolean
     }
 >
 
@@ -41,6 +42,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
             "Right",
             rowCount,
             rowIdx,
+            props.Redrawable,
             innerCornerRadius
         )
 
@@ -51,6 +53,8 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
         TopRightRadius = topRightRadius,
         BottomLeftRadius = bottomLeftRadius,
         BottomRightRadius = bottomRightRadius,
+        MaxCornerRadius = if props.Redrawable then innerCornerRadius else nil,
+        Redrawable = props.Redrawable,
         LayoutOrder = 1,
 
         Name = "MapItemValue",

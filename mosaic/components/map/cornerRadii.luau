@@ -2,7 +2,7 @@
 
 local Packages = script.Parent.Parent.Parent.Parent
 local Fusion = require(Packages.fusion)
-local Computed = Fusion.Computed
+local Computed, Peek = Fusion.Computed, Fusion.peek
 
 export type RowSide = "Left" | "Right"
 
@@ -11,10 +11,11 @@ local function CalculateRowCornerRadii(
     side: RowSide,
     rowCount: Fusion.UsedAs<number>,
     rowIdx: Fusion.UsedAs<number>,
+    redrawable: boolean,
     radius: number
 ): (
-    Fusion.Computed<number>, Fusion.Computed<number>,
-    Fusion.Computed<number>, Fusion.Computed<number>
+    Fusion.UsedAs<number>, Fusion.UsedAs<number>,
+    Fusion.UsedAs<number>, Fusion.UsedAs<number>
 )
     local topRadius = Computed(scope, function(use): number
         return if use<<number>>(rowIdx) == 1 then radius else 0
@@ -27,11 +28,25 @@ local function CalculateRowCornerRadii(
     end)
     local zero = Computed(scope, function(): number return 0 end)
 
-    if side == "Left" then
-        return topRadius, zero, bottomRadius, zero
+    local function resolve(radiusState: Fusion.Computed<number>): Fusion.UsedAs<number>
+        return
+            if redrawable then radiusState
+            else Peek<<number>>(radiusState)
     end
 
-    return zero, topRadius, zero, bottomRadius
+    if side == "Left" then
+        return
+            resolve(topRadius),
+            resolve(zero),
+            resolve(bottomRadius),
+            resolve(zero)
+    end
+
+    return
+        resolve(zero),
+        resolve(topRadius),
+        resolve(zero),
+        resolve(bottomRadius)
 end
 
 return CalculateRowCornerRadii

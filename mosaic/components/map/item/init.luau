@@ -34,6 +34,7 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
     local item = layout.Item
     local children = layout.Children
     local hasSubItems = #children > 0
+    local redrawable = layout.CanBecomeMapBottom
 
     local rowIdx = Computed(scope, function(use): number
         local metadata = use<<Types.RowMetadata>>(props.RowMetadata)
@@ -66,7 +67,8 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
             RowIdx = rowIdx,
             HasSubItems = hasSubItems,
             Nestedness = layout.Depth,
-            CollapsedState = layout.CollapsedState
+            CollapsedState = layout.CollapsedState,
+            Redrawable = redrawable
         })
     } :: { Fusion.Child }
 
@@ -76,6 +78,7 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
             Variant = props.Variant,
             RowCount = props.RowCount,
             RowIdx = rowIdx,
+            Redrawable = redrawable
         }))
     end
 

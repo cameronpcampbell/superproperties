@@ -22,9 +22,10 @@ export type Item = {
 export type Items = { Item }
 
 export type ItemLayout = {
-	Item: Item,
-	Depth: number,
-	CollapsedState: Fusion.Value<boolean>?,
+    Item: Item,
+    Depth: number,
+    CanBecomeMapBottom: boolean,
+    CollapsedState: Fusion.Value<boolean>?,
 	Children: { ItemLayout },
 	ChildrenContentHeight: Fusion.Computed<number>,
 	AnimatedChildrenHeight: Fusion.Computed<number>,

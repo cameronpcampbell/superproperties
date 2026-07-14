@@ -40,6 +40,7 @@ local function MapEmptyItem(scope: Fusion.Scope, props: MapEmptyItemProps)
             "Left",
             rowCount,
             rowIdx,
+            false,
             innerCornerRadius
         )
 

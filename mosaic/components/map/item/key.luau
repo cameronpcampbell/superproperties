@@ -29,7 +29,8 @@ type MapItemKeyProps = Typeforge.Flatten<
         Key: string,
         HasSubItems: boolean,
         Nestedness: number,
-        CollapsedState: Fusion.Value<boolean>?
+        CollapsedState: Fusion.Value<boolean>?,
+        Redrawable: boolean
     }
 >
 
@@ -51,6 +52,7 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
             "Left",
             rowCount,
             rowIdx,
+            props.Redrawable,
             innerCornerRadius
         )
 
@@ -61,6 +63,8 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
         TopRightRadius = topRightRadius,
         BottomLeftRadius = bottomLeftRadius,
         BottomRightRadius = bottomRightRadius,
+        MaxCornerRadius = if props.Redrawable then innerCornerRadius else nil,
+        Redrawable = props.Redrawable,
         LayoutOrder = 0,
 
         Name = "MapItemKey",

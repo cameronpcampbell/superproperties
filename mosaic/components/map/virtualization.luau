@@ -74,7 +74,8 @@ local function CreateItemLayout(
     scope: Fusion.Scope,
     item: Item,
     depth: number,
-    rowHeight: number
+    rowHeight: number,
+    canBecomeMapBottom: boolean
 ): ItemLayout
     local childItems: Items = item.SubItems or {}
     local children = table.create(#childItems) :: { ItemLayout }
@@ -84,7 +85,8 @@ local function CreateItemLayout(
             scope,
             childItem,
             depth + 1,
-            rowHeight
+            rowHeight,
+            canBecomeMapBottom and childIdx == #childItems
         )
     end
 
@@ -132,6 +134,7 @@ local function CreateItemLayout(
     return {
         Item = item,
         Depth = depth,
+        CanBecomeMapBottom = canBecomeMapBottom,
         CollapsedState = collapsedState,
         Children = children,
         ChildrenContentHeight = childrenContentHeight,
@@ -161,7 +164,8 @@ local function CreateMapLayout(
                 layoutScope,
                 item,
                 1,
-                rowHeight
+                rowHeight,
+                itemIdx == #usedItems
             )
         end
 
