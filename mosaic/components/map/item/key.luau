@@ -22,7 +22,9 @@ local CalculateRowCornerRadii = require(script.Parent.Parent.cornerRadii)
 
 type MapItemKeyProps = Typeforge.Flatten<
     Types.BaseMapProps & {
-        Key: string
+        Key: string,
+        HasSubItems: boolean,
+        Nestedness: number
     }
 >
 

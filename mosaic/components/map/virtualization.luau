@@ -9,6 +9,7 @@ local Computed, New, Observer, Peek, Tween =
 local Utils = script.Parent.Parent.Parent.utils
 local ThemeUtils = require(Utils.themeUtils)
 
+local Types = require(script.Parent.types)
 local MapHeader = require(script.Parent.header)
 local MapItem = require(script.Parent.item)
 local MapEmptyItem = require(script.Parent.emptyItem)
@@ -21,14 +22,8 @@ local MapTweenInfo = TweenInfo.new(
     Enum.EasingDirection.InOut
 )
 
-export type Item = {
-    Key: string,
-    Value: any,
-    SubItem: Item?
-}
-
-export type Items = { Item }
-
+type Item = Types.Item
+type Items = Types.Items
 type RowDescriptor = Item | string
 type RowDescriptors = { [number]: RowDescriptor }
 type RenderedRows = { [number]: Instance }
@@ -222,6 +217,8 @@ local function CreateRow(
     return MapItem(scope, {
         Key = item.Key,
         Value = item.Value,
+        SubItems = item.SubItems,
+        Nestedness = 0,
         HideValue = config.HideValues,
         Variant = config.Variant,
         RowCount = rowCount,

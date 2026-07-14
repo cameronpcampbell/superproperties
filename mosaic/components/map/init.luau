@@ -21,6 +21,8 @@ local GetThemeForScope, GetNextVariant =
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
+local Types = require(script.types)
+
 local Virtualization = require(script.virtualization)
 local ComputeMapRowCount, CreateMapSizeTween,
     ComputeVirtualListVisibleRowRange, ComputeVirtualizedRows =
@@ -29,8 +31,8 @@ local ComputeMapRowCount, CreateMapSizeTween,
     Virtualization.ComputeVirtualListVisibleRowRange,
     Virtualization.ComputeVirtualizedRows
 
-export type Item = Virtualization.Item
-export type Items = Virtualization.Items
+export type Item = Types.Item
+export type Items = Types.Items
 export type VirtualListData = Virtualization.VirtualListData
 
 export type MapProps = {

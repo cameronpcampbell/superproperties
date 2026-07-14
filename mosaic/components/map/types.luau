@@ -9,4 +9,12 @@ export type BaseMapProps = {
     RowIdx: number
 }
 
+export type Item = {
+    Key: string,
+    Value: any,
+    SubItems: { Item }?
+}
+
+export type Items = { Item }
+
 return nil

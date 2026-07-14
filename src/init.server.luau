@@ -51,6 +51,25 @@ Scope:Widget {
             [Children] = {
                 Properties.Input(Scope),
 
+                --[[Scope:Map({
+                    Items = {
+                        {
+                            Key = "Origin",
+                            Value = "{5, 5, 5}, {0, 0, 0}",
+                            SubItems = {
+                                {
+                                    Key = "Position",
+                                    Value = "5, 5, 5"
+                                },
+                                {
+                                    Key = "Orientation",
+                                    Value = "0, 0, 0"
+                                }
+                            }
+                        }
+                    }
+                }),]]
+
                 Properties.Maps(Scope, SelectedInstanceValue),
 
                 Scope:New "UIPadding" {

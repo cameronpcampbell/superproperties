@@ -20,17 +20,21 @@ type MapItemProps = Typeforge.Flatten<
     Types.BaseMapProps & {
         Key: string,
         Value: any,
-        HideValue: boolean?
+        HideValue: boolean?,
+        SubItems: Types.Items?,
+        Nestedness: number
     }
 >
 
 local function MapItem(scope: Fusion.Scope, props: MapItemProps)
     local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
+    local rowHeight = theme:GetHeight("Lg") - 2
 
     local rowCount, rowIdx = props.RowCount, props.RowIdx
     local variant = props.Variant
     local key, value, hideValue = props.Key, props.Value, props.HideValue
-    local rowHeight = theme:GetHeight("Lg") - 2
+    local subItems = props.SubItems
+    local nestedness = props.Nestedness
 
     return New(scope, "Frame") {
         BackgroundTransparency = 1,
@@ -45,6 +49,8 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps)
                 Variant = variant,
                 RowCount = rowCount,
                 RowIdx = rowIdx,
+                HasSubItems = if subItems and #subItems ~= 0 then true else false,
+                Nestedness = nestedness
             }),
 
             if hideValue then nil else MapItemValue(scope, {
