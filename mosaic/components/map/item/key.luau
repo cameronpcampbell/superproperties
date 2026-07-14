@@ -10,9 +10,6 @@ local Peek, New, Children = Fusion.peek, Fusion.New, Fusion.Children
 
 local Utils = script.Parent.Parent.Parent.Parent.utils
 
-local FusionUtils = require(Utils.fusionUtils)
-local ForCount = FusionUtils.ForCount
-
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
 
@@ -23,6 +20,9 @@ local Assets = require(script.Parent.Parent.Parent.Parent.assets)
 local Types = require(script.Parent.Parent.types)
 local CalculateRowCornerRadii = require(script.Parent.Parent.cornerRadii)
 local Arrow = require(script.Parent.Parent.arrow)
+
+local IndicatorSize = 9
+local IndicatorGap = 6
 
 type MapItemKeyProps = Typeforge.Flatten<
     Types.BaseMapProps & {
@@ -44,7 +44,23 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
     local hasSubItems: boolean = props.HasSubItems
     local nestedness: number = props.Nestedness
 
-    local dotsAmount = if hasSubItems then nestedness - 1 else nestedness
+    local leftPadding = IndicatorGap
+        + math.max(nestedness - 1, 0) * (IndicatorSize + IndicatorGap)
+
+    local indicator: Instance
+    if hasSubItems then
+        indicator = Arrow(scope, {
+            CollapsedState = props.CollapsedState :: Fusion.Value<boolean>
+        })
+    else
+        indicator = New(scope, "ImageLabel") {
+            Image = Assets.Dot,
+            Size = UDim2.fromOffset(IndicatorSize, IndicatorSize),
+            BackgroundTransparency = 1,
+            ImageColor3 = theme:GetFg(scope, "Tertiary"),
+            ImageTransparency = .5
+        }
+    end
 
     local topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius =
         CalculateRowCornerRadii(
@@ -69,22 +85,8 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
 
         Name = "MapItemKey",
 
-        [Children] = {
-            ForCount(scope, 1, dotsAmount, 1, function(use, scope: Fusion.Scope, number)
-                return New(scope, "ImageLabel") {
-                    Image = Assets.Dot,
-                    Size = UDim2.fromOffset(9, 9),
-                    BackgroundTransparency = 1,
-                    ImageColor3 = theme:GetFg(scope, "Tertiary"),
-                    ImageTransparency = .5
-                }
-            end),
-
-            if hasSubItems then
-                Arrow(scope, {
-                    CollapsedState = props.CollapsedState :: Fusion.Value<boolean>
-                })
-            else nil,
+        [Children] = ({
+            indicator,
 
             Text(scope, {
                 Text = props.Key,
@@ -96,16 +98,16 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
             }),
 
             New(scope, "UIListLayout") {
-                Padding = UDim.new(0, 6),
+                Padding = UDim.new(0, IndicatorGap),
                 FillDirection = Enum.FillDirection.Horizontal,
                 VerticalAlignment = Enum.VerticalAlignment.Center
             },
 
             New(scope, "UIPadding") {
-                PaddingLeft = UDim.new(0, 6),
-                PaddingRight = UDim.new(0, 6)
+                PaddingLeft = UDim.new(0, leftPadding),
+                PaddingRight = UDim.new(0, IndicatorGap)
             },
-        }
+        } :: { Fusion.Child })
     })
 end
 
