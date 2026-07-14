@@ -14,6 +14,7 @@ type Item = Map.Item
 
 type Category = {
     Properties: { Item },
+    ReadProperty: (propertyName: string) -> (boolean, any)
 }
 
 type Properties = {
@@ -173,6 +174,7 @@ local function GetProperties(instance: Instance): Properties
 
     for _, categoryPlan in GetClassPlan(instance.ClassName) do
         local propertyPlans = categoryPlan.Properties
+        local propertyPlansByName: { [string]: PropertyPlan } = {}
         local items = table.create(#propertyPlans) :: { Item }
         local itemCount = 0
 
@@ -182,6 +184,7 @@ local function GetProperties(instance: Instance): Properties
                 ReadPlannedProperty(instance, propertyPlan)
             if not readSuccess then continue end
 
+            propertyPlansByName[name] = propertyPlan
             itemCount += 1
             items[itemCount] = {
                 Key = name,
@@ -192,7 +195,15 @@ local function GetProperties(instance: Instance): Properties
         if itemCount == 0 then continue end
 
         properties[categoryPlan.Name] = {
-            Properties = items
+            Properties = items,
+            ReadProperty = function(
+                propertyName: string
+            ): (boolean, any)
+                local propertyPlan = propertyPlansByName[propertyName]
+                if not propertyPlan then return false, nil end
+
+                return ReadPlannedProperty(instance, propertyPlan)
+            end
         }
     end
 

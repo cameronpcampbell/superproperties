@@ -23,7 +23,8 @@ type PropertiesMapsProps = {
 
 type PropertyCategories = {
     [string]: {
-        Properties: { Item }
+        Properties: { Item },
+        ReadProperty: (propertyName: string) -> (boolean, any)
     }
 }
 
@@ -61,11 +62,17 @@ local function GetCategoryStates(
     local categories: { CategoryState } = {}
 
     for categoryName, categoryData in currentPropertyRead.Categories do
-        table.insert(categories, Category(scope, outerScope, collapsedStateScope, {
-            Name = categoryName,
-            Items = categoryData.Properties,
-            Presorted = true
-        }))
+        table.insert(categories, InstanceMaps.Properties(
+            scope,
+            outerScope,
+            collapsedStateScope,
+            instance,
+            {
+                Name = categoryName,
+                Items = categoryData.Properties,
+                ReadProperty = categoryData.ReadProperty
+            }
+        ))
     end
 
     table.insert(categories, InstanceMaps.Tags(
