@@ -34,7 +34,7 @@ type ScoredItem = {
 }
 
 type Item = Map.Item
-type ItemFilter = (query: string?) -> { Item }
+type ItemFilter = (query: string?, items: { Item }?) -> { Item }
 
 local ExactScore = 1_000_000
 local PrefixScore = 900_000
@@ -336,14 +336,22 @@ local function CreateItemFilter(items: { Item }): ItemFilter
         preparedItems[idx] = PrepareItem(item, idx)
     end
 
-    return function(query: string?): { Item }
+    return function(
+        query: string?,
+        currentItems: { Item }?
+    ): { Item }
+        local itemsToFilter = currentItems or items
         local preparedQuery = PrepareQuery(query)
-        if preparedQuery.Length == 0 then return items end
+        if preparedQuery.Length == 0 then return itemsToFilter end
 
-        local scoredItems = table.create(#items) :: { ScoredItem }
+        local scoredItems = table.create(#preparedItems) :: { ScoredItem }
         local scoredItemCount = 0
 
-        for _, preparedItem in preparedItems do
+        for itemIdx, preparedItem in preparedItems do
+            local currentItem = itemsToFilter[itemIdx]
+            if not currentItem then continue end
+
+            preparedItem.Item = currentItem
             RefreshPreparedItem(preparedItem)
 
             local score =

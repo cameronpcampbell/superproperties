@@ -3,7 +3,8 @@
 local Packages = script.Parent.Parent.Parent.Parent.packages
 
 local Fusion = require(Packages.fusion)
-local Computed = Fusion.Computed
+local Computed, Observer, Peek, Value =
+    Fusion.Computed, Fusion.Observer, Fusion.peek, Fusion.Value
 
 local Map = require(Packages.mosaic.components.map)
 
@@ -15,15 +16,16 @@ local GetFilterState = require(script.Parent.Parent.getFilterState)
 local DefaultCategoryLayoutOrder = 999997
 
 type Item = Map.Item
-type ItemFilter = (query: string?) -> { Item }
+type ItemFilter = (query: string?, items: { Item }?) -> { Item }
 
 export type MapProps = Map.MapProps
-export type State = Fusion.Computed<MapProps?>
+export type State = Fusion.Value<MapProps?>
 
 type CategoryProps = {
     Name: string,
     Items: Fusion.UsedAs<{ Item }>,
     Presorted: boolean?,
+    StableKeys: boolean?,
     HideValues: boolean?,
     EmptyText: string?
 }
@@ -55,12 +57,14 @@ end
 local function FilterItems(
     scope: Fusion.Scope,
     filterState: Fusion.Value<string?>,
-    itemFilter: Fusion.Computed<ItemFilter>
+    items: Fusion.UsedAs<{ Item }>,
+    itemFilter: Fusion.UsedAs<ItemFilter>
 ): Fusion.Computed<{ Item }>
     return Computed(scope, function(use)
+        local usedItems = use<<{ Item }>>(items)
         local usedItemFilter = use<<ItemFilter>>(itemFilter)
         local usedFilter = use<<string?>>(filterState)
-        return usedItemFilter(usedFilter)
+        return usedItemFilter(usedFilter, usedItems)
     end)
 end
 
@@ -79,32 +83,45 @@ return function(
             SortItems(scope, props.Items)
 
     local filterState = GetFilterState(outerScope)
-    local itemFilter = PrepareItemFilter(scope, sortedItems)
+    local itemFilter: Fusion.UsedAs<ItemFilter> =
+        if props.StableKeys then
+            CreateItemFilter(Peek<<{ Item }>>(sortedItems))
+        else PrepareItemFilter(scope, sortedItems)
     local filteredItems =
-        FilterItems(scope, filterState, itemFilter)
+        FilterItems(scope, filterState, sortedItems, itemFilter)
 
-    return Computed(scope, function(use): MapProps?
-        local usedFilteredItems = use<<{ Item }>>(filteredItems)
-        local usedFilter = use<<string?>>(filterState)
+    -- Keep this table stable so item changes update the existing map layout.
+    -- The category state only changes when its visibility changes.
+    local mapProps = {
+        Header = name,
+        Items = filteredItems,
+        LayoutOrder =
+            CategoryOrder[name] or
+            DefaultCategoryLayoutOrder,
+        Collapsed = GetCollapsedState(collapsedStateScope, name),
+        HideValues = props.HideValues,
+        EmptyText = props.EmptyText
+    }
+    local categoryState = Value<<MapProps?>>(scope, nil)
+    local categoryVisible = false
+
+    local function refreshVisibility()
+        local usedFilteredItems = Peek<<{ Item }>>(filteredItems)
+        local usedFilter = Peek<<string?>>(filterState)
         local hasActiveFilter =
             usedFilter ~= nil and usedFilter:match("%S") ~= nil
-
-        if
+        local visible = not (
             #usedFilteredItems == 0 and
             (not props.EmptyText or hasActiveFilter)
-        then
-            return nil
-        end
+        )
 
-        return {
-            Header = name,
-            Items = usedFilteredItems,
-            LayoutOrder =
-                CategoryOrder[name] or
-                DefaultCategoryLayoutOrder,
-            Collapsed = GetCollapsedState(collapsedStateScope, name),
-            HideValues = props.HideValues,
-            EmptyText = props.EmptyText
-        }
-    end)
+        if visible == categoryVisible then return end
+        categoryVisible = visible
+        categoryState:set(if visible then mapProps else nil)
+    end
+
+    Observer(scope, filteredItems):onChange(refreshVisibility)
+    refreshVisibility()
+
+    return categoryState
 end

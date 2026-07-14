@@ -11,11 +11,9 @@ type Item = Map.Item
 local Category = require(script.Parent.Parent.category)
 type CategoryState = Category.State
 
-type PropertiesMapProps = {
-    Name: string,
-    Items: { Item },
-    ReadProperty: (propertyName: string) -> (boolean, any)
-}
+local GetProperties = require(script.Parent.Parent.getProperties)
+type PropertyPlan = GetProperties.PropertyPlan
+type Snapshot = GetProperties.Snapshot
 
 local function ConnectToPropertyChange(
     instance: Instance,
@@ -33,50 +31,115 @@ local function ConnectToPropertyChange(
     return connection
 end
 
-return function(
-    scope: Fusion.Scope,
-    outerScope: Fusion.Scope,
-    collapsedStateScope: Fusion.Scope,
+local function ConnectToCustomPropertyChange(
     instance: Instance,
-    props: PropertiesMapProps
-): CategoryState
-    local propertyItems = table.clone(props.Items)
-    local propertyItemsState = Value(scope, propertyItems)
-    local propertyItemIndices: { [string]: number } = {}
+    propertyPlan: PropertyPlan,
+    callback: () -> ()
+): RBXScriptConnection?
+    local observe = propertyPlan.Observe
+    if not observe then return nil end
 
-    for itemIdx, item in propertyItems do
-        propertyItemIndices[item.Key] = itemIdx
+    local connection: RBXScriptConnection? = nil
+    local success = pcall(function()
+        connection = observe(instance, callback)
+    end)
+
+    if not success then return nil end
+    return connection
+end
+
+local function ObservePropertyChanges(
+    scope: Fusion.Scope,
+    instance: Instance,
+    snapshot: Snapshot,
+    refreshProperty: (propertyName: string) -> ()
+)
+    -- ValueBase.Changed sends the new value instead of a property name.
+    if instance:IsA("ValueBase") then
+        for propertyName, location in snapshot.LocationsByName do
+            if location.Plan.Observe then continue end
+
+            local connection = ConnectToPropertyChange(
+                instance,
+                propertyName,
+                function() refreshProperty(propertyName) end
+            )
+
+            if connection then table.insert(scope, connection) end
+        end
+    else
+        table.insert(
+            scope,
+            instance.Changed:Connect(refreshProperty)
+        )
     end
 
-    local function refreshProperty(propertyName: string)
-        local itemIdx = propertyItemIndices[propertyName]
-        if not itemIdx then return end
-
-        local readSuccess, value = props.ReadProperty(propertyName)
-        if not readSuccess then return end
-
-        local nextPropertyItems = table.clone(propertyItems)
-        local nextPropertyItem = table.clone(propertyItems[itemIdx])
-        nextPropertyItem.Value = value
-        nextPropertyItems[itemIdx] = nextPropertyItem
-
-        propertyItems = nextPropertyItems
-        propertyItemsState:set(nextPropertyItems)
-    end
-
-    for propertyName in propertyItemIndices do
-        local connection = ConnectToPropertyChange(
+    for propertyName, location in snapshot.LocationsByName do
+        local connection = ConnectToCustomPropertyChange(
             instance,
-            propertyName,
+            location.Plan,
             function() refreshProperty(propertyName) end
         )
 
         if connection then table.insert(scope, connection) end
     end
+end
 
-    return Category(scope, outerScope, collapsedStateScope, {
-        Name = props.Name,
-        Items = propertyItemsState,
-        Presorted = true
-    })
+return function(
+    scope: Fusion.Scope,
+    outerScope: Fusion.Scope,
+    collapsedStateScope: Fusion.Scope,
+    instance: Instance
+): { CategoryState }
+    local snapshot = GetProperties.Read(instance)
+    local categoryItems: { { Item } } = {}
+    local categoryItemStates: { Fusion.Value<{ Item }> } = {}
+    local categoryStates =
+        table.create(#snapshot.Categories) :: { CategoryState }
+
+    for categoryIndex, categorySnapshot in snapshot.Categories do
+        local items = categorySnapshot.Items
+        local itemsState = Value(scope, items)
+
+        categoryItems[categoryIndex] = items
+        categoryItemStates[categoryIndex] = itemsState
+        categoryStates[categoryIndex] = Category(
+            scope,
+            outerScope,
+            collapsedStateScope,
+            {
+                Name = categorySnapshot.Name,
+                Items = itemsState,
+                Presorted = true,
+                StableKeys = true
+            }
+        )
+    end
+
+    local function refreshProperty(propertyName: string)
+        local location = snapshot.LocationsByName[propertyName]
+        if not location then return end
+
+        local readSuccess, value = GetProperties.ReadProperty(
+            instance,
+            location.Plan
+        )
+        if not readSuccess then return end
+
+        local items = categoryItems[location.CategoryIndex]
+        local item = items[location.ItemIndex]
+        if item.Value == value then return end
+
+        item.Value = value
+        categoryItemStates[location.CategoryIndex]:set(items)
+    end
+
+    ObservePropertyChanges(
+        scope,
+        instance,
+        snapshot,
+        refreshProperty
+    )
+
+    return categoryStates
 end

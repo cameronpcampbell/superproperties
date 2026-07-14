@@ -3,6 +3,8 @@
 local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
 
+local PollInterval = 0.1
+
 local function TagChanged(
     instance: Instance,
     callback: (tag: string, removed: boolean) -> ()
@@ -12,7 +14,13 @@ local function TagChanged(
         previousTags[tag] = true
     end
 
-    return RunService.Heartbeat:Connect(function()
+    local elapsed = 0
+
+    return RunService.Heartbeat:Connect(function(deltaTime: number)
+        elapsed += deltaTime
+        if elapsed < PollInterval then return end
+        elapsed = 0
+
         local currentTags: { [string]: boolean } = {}
         for _, tag in CollectionService:GetTags(instance) do
             currentTags[tag] = true

@@ -5,6 +5,9 @@ local MaterialService = game:GetService("MaterialService")
 local Packages = script.Parent.Parent.Parent.Parent.Parent.packages
 local Fusion = require(Packages.fusion)
 
+local Map = require(Packages.mosaic.components.map)
+type Item = Map.Item
+
 local Category = require(script.Parent.Parent.category)
 
 local function GetIncludedMaterials()
@@ -26,9 +29,9 @@ end
 local IncludedMaterials = GetIncludedMaterials()
 local IncludedMaterialCount = #IncludedMaterials
 
-local function GetMaterials(): {{ Key: string, Value: string }}
+local function GetMaterials(): { Item }
     local materials =
-        table.create(IncludedMaterialCount) :: {{ Key: string, Value: string }}
+        table.create(IncludedMaterialCount) :: { Item }
 
     for idx, enumItem in IncludedMaterials do
         materials[idx] = {
@@ -40,6 +43,11 @@ local function GetMaterials(): {{ Key: string, Value: string }}
     return materials
 end
 
+local MaterialItems = GetMaterials()
+table.sort(MaterialItems, function(leftItem, rightItem)
+    return leftItem.Key < rightItem.Key
+end)
+
 return function(
     scope: Fusion.Scope,
     outerScope: Fusion.Scope,
@@ -48,7 +56,9 @@ return function(
     return {
         Category(scope, outerScope, collapsedStateScope, {
             Name = "Material Overrides",
-            Items = GetMaterials()
+            Items = MaterialItems,
+            Presorted = true,
+            StableKeys = true
         })
     }
 end

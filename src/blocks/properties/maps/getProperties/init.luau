@@ -12,18 +12,13 @@ local Types = require(script.types)
 
 type Item = Map.Item
 
-type Category = {
-    Properties: { Item },
-    ReadProperty: (propertyName: string) -> (boolean, any)
-}
-
-type Properties = {
-    [string]: Category
-}
-
-type PropertyPlan = {
+export type PropertyPlan = {
     Name: string,
-    Read: ((Instance) -> any)?
+    Read: ((Instance) -> any)?,
+    Observe: ((
+        instance: Instance,
+        callback: () -> ()
+    ) -> RBXScriptConnection?)?
 }
 
 type CategoryPlan = {
@@ -31,7 +26,25 @@ type CategoryPlan = {
     Properties: { PropertyPlan }
 }
 
-type ClassPlan = { CategoryPlan }
+type ClassPlan = {
+    Categories: { CategoryPlan }
+}
+
+export type CategorySnapshot = {
+    Name: string,
+    Items: { Item }
+}
+
+export type PropertyLocation = {
+    Plan: PropertyPlan,
+    CategoryIndex: number,
+    ItemIndex: number
+}
+
+export type Snapshot = {
+    Categories: { CategorySnapshot },
+    LocationsByName: { [string]: PropertyLocation }
+}
 
 local ClassPlansByName: { [string]: ClassPlan } = {}
 
@@ -85,7 +98,7 @@ local function ApplyPatches(
 end
 
 local function CreateOrGetCategoryPlan(
-    categories: ClassPlan,
+    categories: { CategoryPlan },
     categoriesByName: { [string]: CategoryPlan },
     categoryName: string
 ): CategoryPlan
@@ -105,7 +118,9 @@ end
 
 local function BuildClassPlan(className: string): ClassPlan
     local categoriesByName: { [string]: CategoryPlan } = {}
-    local categories: ClassPlan = {}
+    local classPlan: ClassPlan = {
+        Categories = {}
+    }
 
     local reflectedProperties = ReflectionService:GetPropertiesOfClass(className)
 
@@ -117,22 +132,26 @@ local function BuildClassPlan(className: string): ClassPlan
         if itemDisplay.DeprecationMessage then continue end
 
         local category = CreateOrGetCategoryPlan(
-            categories,
+            classPlan.Categories,
             categoriesByName,
             itemDisplay.Category
         )
 
         local customReadWrite = item.CustomReadWrite
-
-        table.insert(category.Properties, {
+        local propertyPlan: PropertyPlan = {
             Name = item.Name,
             Read =
                 if customReadWrite then customReadWrite.Read
+                else nil,
+            Observe =
+                if customReadWrite then customReadWrite.Observe
                 else nil
-        })
+        }
+
+        table.insert(category.Properties, propertyPlan)
     end
 
-    for _, category in categories do
+    for _, category in classPlan.Categories do
         table.sort(category.Properties, function(
             leftProperty: PropertyPlan,
             rightProperty: PropertyPlan
@@ -141,7 +160,7 @@ local function BuildClassPlan(className: string): ClassPlan
         end)
     end
 
-    return categories
+    return classPlan
 end
 
 local function GetClassPlan(className: string): ClassPlan
@@ -169,13 +188,15 @@ local function ReadPlannedProperty(
     return pcall(ReadProperty, instance, propertyPlan.Name)
 end
 
-local function GetProperties(instance: Instance): Properties
-    local properties: Properties = {}
+local function GetProperties(instance: Instance): Snapshot
+    local categories: { CategorySnapshot } = {}
+    local locationsByName: { [string]: PropertyLocation } = {}
+    local classPlan = GetClassPlan(instance.ClassName)
 
-    for _, categoryPlan in GetClassPlan(instance.ClassName) do
+    for _, categoryPlan in classPlan.Categories do
         local propertyPlans = categoryPlan.Properties
-        local propertyPlansByName: { [string]: PropertyPlan } = {}
         local items = table.create(#propertyPlans) :: { Item }
+        local categoryIndex = #categories + 1
         local itemCount = 0
 
         for _, propertyPlan in propertyPlans do
@@ -184,30 +205,34 @@ local function GetProperties(instance: Instance): Properties
                 ReadPlannedProperty(instance, propertyPlan)
             if not readSuccess then continue end
 
-            propertyPlansByName[name] = propertyPlan
             itemCount += 1
             items[itemCount] = {
                 Key = name,
                 Value = value
             }
+
+            locationsByName[name] = {
+                Plan = propertyPlan,
+                CategoryIndex = categoryIndex,
+                ItemIndex = itemCount
+            }
         end
 
         if itemCount == 0 then continue end
 
-        properties[categoryPlan.Name] = {
-            Properties = items,
-            ReadProperty = function(
-                propertyName: string
-            ): (boolean, any)
-                local propertyPlan = propertyPlansByName[propertyName]
-                if not propertyPlan then return false, nil end
-
-                return ReadPlannedProperty(instance, propertyPlan)
-            end
+        categories[categoryIndex] = {
+            Name = categoryPlan.Name,
+            Items = items
         }
     end
 
-    return properties
+    return {
+        Categories = categories,
+        LocationsByName = locationsByName
+    }
 end
 
-return GetProperties
+return {
+    Read = GetProperties,
+    ReadProperty = ReadPlannedProperty
+}

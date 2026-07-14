@@ -17,6 +17,15 @@ type AttributesMapProps = {
 
 local RbxAttributePrefix = "RBX_"
 
+local function ShouldOmitAttribute(
+    attributeName: string,
+    omitRbxAttributes: boolean
+): boolean
+    return omitRbxAttributes
+        and string.sub(attributeName, 1, #RbxAttributePrefix)
+            == RbxAttributePrefix
+end
+
 local function GetAttributeItems(
     instance: Instance,
     omitRbxAttributes: boolean
@@ -26,10 +35,7 @@ local function GetAttributeItems(
 
     local attributeIdx = 1
     for attributeName, attributeValue in attributes do
-        if omitRbxAttributes
-            and string.sub(attributeName, 1, #RbxAttributePrefix)
-                == RbxAttributePrefix
-        then
+        if ShouldOmitAttribute(attributeName, omitRbxAttributes) then
             continue
         end
 
@@ -51,25 +57,62 @@ return function(
     instance: Instance,
     props: AttributesMapProps
 ): CategoryState
-    local attributeItems = Value(scope, {} :: { Item })
+    local attributeItems = GetAttributeItems(
+        instance,
+        props.OmitRbxAttributes
+    )
+    local attributeItemIndices: { [string]: number } = {}
+    local attributeItemsState = Value(scope, attributeItems)
 
-    local function refreshAttributeItems()
-        attributeItems:set(GetAttributeItems(
-            instance,
+    for itemIdx, item in attributeItems do
+        attributeItemIndices[item.Key] = itemIdx
+    end
+
+    local function refreshAttribute(attributeName: string)
+        if ShouldOmitAttribute(
+            attributeName,
             props.OmitRbxAttributes
-        ))
+        ) then
+            return
+        end
+
+        local itemIdx = attributeItemIndices[attributeName]
+        local value = instance:GetAttribute(attributeName)
+
+        if value == nil then
+            if not itemIdx then return end
+
+            table.remove(attributeItems, itemIdx)
+            attributeItemIndices[attributeName] = nil
+
+            for shiftedIdx = itemIdx, #attributeItems do
+                attributeItemIndices[attributeItems[shiftedIdx].Key] =
+                    shiftedIdx
+            end
+        elseif itemIdx then
+            local item = attributeItems[itemIdx]
+            if item.Value == value then return end
+
+            item.Value = value
+        else
+            table.insert(attributeItems, {
+                Key = attributeName,
+                Value = value
+            })
+            attributeItemIndices[attributeName] = #attributeItems
+        end
+
+        attributeItemsState:set(attributeItems)
     end
 
     table.insert(
         scope,
-        instance.AttributeChanged:Connect(refreshAttributeItems)
+        instance.AttributeChanged:Connect(refreshAttribute)
     )
-
-    refreshAttributeItems()
 
     return Category(scope, outerScope, collapsedStateScope, {
         Name = "Attributes",
-        Items = attributeItems,
+        Items = attributeItemsState,
         EmptyText = "No Attributes have been added yet."
     })
 end

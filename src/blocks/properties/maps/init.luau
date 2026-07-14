@@ -9,9 +9,6 @@ local Mosaic = require(Packages.mosaic)
 local Text, VirtualMapScrollable =
     Mosaic.Text, Mosaic.VirtualMapScrollable
 
-local Map = require(Packages.mosaic.components.map)
-type Item = Map.Item
-
 local Category = require(script.category)
 type CategoryState = Category.State
 type MapProps = Category.MapProps
@@ -21,19 +18,6 @@ type PropertiesMapsProps = {
     OmitRbxAttributes: boolean?
 }
 
-type PropertyCategories = {
-    [string]: {
-        Properties: { Item },
-        ReadProperty: (propertyName: string) -> (boolean, any)
-    }
-}
-
-type CurrentPropertyRead = {
-    Instance: Instance,
-    Categories: PropertyCategories
-}
-
-local GetProperties = require(script.getProperties)
 local ExtraCategories = require(script.extraCategories)
 local InstanceMaps = require(script.instanceMaps)
 
@@ -55,25 +39,17 @@ local function GetCategoryStates(
     scope: Fusion.Scope,
     outerScope: Fusion.Scope,
     collapsedStateScope: Fusion.Scope,
-    currentPropertyRead: CurrentPropertyRead,
+    instance: Instance,
     omitRbxAttributes: boolean
 ): { CategoryState }
-    local instance = currentPropertyRead.Instance
     local categories: { CategoryState } = {}
 
-    for categoryName, categoryData in currentPropertyRead.Categories do
-        table.insert(categories, InstanceMaps.Properties(
-            scope,
-            outerScope,
-            collapsedStateScope,
-            instance,
-            {
-                Name = categoryName,
-                Items = categoryData.Properties,
-                ReadProperty = categoryData.ReadProperty
-            }
-        ))
-    end
+    TableBulkInsert(categories, InstanceMaps.Properties(
+        scope,
+        outerScope,
+        collapsedStateScope,
+        instance
+    ))
 
     table.insert(categories, InstanceMaps.Tags(
         scope,
@@ -113,31 +89,18 @@ return function(
     local collapsedStateScope = Fusion.innerScope(outerScope)
     local mapsScope = Fusion.innerScope(outerScope)
 
-    local currentPropertyRead = Computed(mapsScope, function(
-        use
-    ): CurrentPropertyRead?
-        local instance = use<<Instance?>>(selectedInstanceValue)
-        if not instance then return nil end
-
-        return {
-            Instance = instance,
-            Categories = GetProperties(instance)
-        }
-    end)
-
     local computeCategoryStates = Computed(mapsScope, function(
         use,
         scope: Fusion.Scope
     ): { CategoryState }
-        local usedCurrentPropertyRead =
-            use<<CurrentPropertyRead?>>(currentPropertyRead)
-        if not usedCurrentPropertyRead then return {} end
+        local instance = use<<Instance?>>(selectedInstanceValue)
+        if not instance then return {} end
 
         return GetCategoryStates(
             scope,
             outerScope,
             collapsedStateScope,
-            usedCurrentPropertyRead,
+            instance,
             omitRbxAttributes
         )
     end)
@@ -163,7 +126,7 @@ return function(
         use,
         scope: Fusion.Scope
     ): Fusion.Child?
-        if use<<CurrentPropertyRead?>>(currentPropertyRead) then return nil end
+        if use<<Instance?>>(selectedInstanceValue) then return nil end
         return CreateNoInstanceSelected(scope)
     end)
 

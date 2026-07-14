@@ -13,7 +13,11 @@ export type PatchedReflectionPropertiesItem = Typeforge.Flatten<
     ReflectionPropertiesItem & {
         CustomReadWrite: {
             Read: (instance: any) -> any,
-            Write: (instance: any, value: any) -> ()
+            Write: (instance: any, value: any) -> (),
+            Observe: ((
+                instance: any,
+                callback: () -> ()
+            ) -> RBXScriptConnection?)?
         }?
     }
 >
