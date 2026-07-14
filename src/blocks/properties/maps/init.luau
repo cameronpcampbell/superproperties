@@ -28,6 +28,7 @@ local function CreateNoInstanceSelected(scope: Fusion.Scope): Fusion.Child
         Text = "No Instance selected.",
         Variant = "Secondary",
         Size = UDim2.fromScale(1, 1),
+        AutomaticSize = Enum.AutomaticSize.None,
         TextXAlignment = Enum.TextXAlignment.Center,
     })
 end

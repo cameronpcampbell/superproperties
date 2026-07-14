@@ -70,12 +70,7 @@ return Component<<ScrollableProps>>(function(scope, props)
                 [Out "CanvasPosition"] = outCanvasPosition,
 
                 [Children] = {
-                    New(scope, "Frame") {
-                        AutomaticSize = Enum.AutomaticSize.XY,
-                        BackgroundTransparency = 1,
-
-                        [Children] = children
-                    },
+                    children,
 
                     New (scope, "UIPadding") {
                         PaddingRight = UDim.new(0, 8),
