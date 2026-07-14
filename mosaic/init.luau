@@ -9,6 +9,8 @@ export type Theme = ThemeUtils.Theme
 
 return {
     Widget = require(Components.widget),
+    Toolbar = require(Components.toolbar),
+    ToolbarButton = require(Components.toolbarButton),
     Background = require(Components.background),
     Input = require(Components.input),
     Button = require(Components.button),

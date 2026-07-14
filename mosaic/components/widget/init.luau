@@ -29,7 +29,8 @@ type WidgetProps = {
 	FloatYSize: number?,
 	MinWidth: number?,
 	MinHeight: number?,
-	Debug: boolean?
+	Debug: boolean?,
+	Enabled: Fusion.UsedAs<boolean>?
 }
 
 return Component<<WidgetProps>>(function(scope, props)
@@ -44,6 +45,7 @@ return Component<<WidgetProps>>(function(scope, props)
     local props, minWidth = TableExtract(props, "MinWidth")
     local props, minHeight = TableExtract(props, "MinHeight")
     local props, debugMode = TableExtract(props, "Debug")
+    local props, enabled = TableExtract(props, "Enabled")
     local props, children = TableExtract(props, Children)
 
     local widget = (script:FindFirstAncestorOfClass("Plugin") :: Plugin):CreateDockWidgetPluginGuiAsync(
@@ -79,6 +81,7 @@ return Component<<WidgetProps>>(function(scope, props)
 
     return Hydrate(scope, widget) {
         Title = title or id,
+        Enabled = enabled,
 
         [Children] = content,
     }

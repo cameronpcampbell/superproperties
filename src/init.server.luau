@@ -5,7 +5,9 @@ local SelectionService = game:GetService("Selection")
 local Packages = script.packages
 
 local Fusion = require(Packages.fusion)
-local Children, Value = Fusion.Children, Fusion.Value
+local Children, OnEvent, Value, Peek =
+    Fusion.Children, Fusion.OnEvent,
+    Fusion.Value, Fusion.peek
 
 local Mosaic = require(Packages.mosaic)
 
@@ -30,6 +32,7 @@ local function GetSelectedInstanceValue(
 end
 
 local SelectedInstanceValue = GetSelectedInstanceValue(Scope)
+local WidgetEnabled = Value(Scope, true)
 
 local ComputeWidgetTitle = Scope:Computed(function(use, scope)
     local usedSelectedInstance = use<<Instance?>>(SelectedInstanceValue)
@@ -40,10 +43,11 @@ local ComputeWidgetTitle = Scope:Computed(function(use, scope)
         else `SuperProperties`
 end)
 
-Scope:Widget {
+local Widget = Scope:Widget {
     Id = "Superproperties",
     Title = ComputeWidgetTitle,
     Debug = Debug,
+    Enabled = WidgetEnabled,
 
     [Children] = {
         Scope:New "Frame" {
@@ -77,4 +81,24 @@ Scope:Widget {
             }
         }
     }
+} :: DockWidgetPluginGui
+
+Scope:Toolbar {
+    Name = "SuperProperties",
+
+    [Children] = Scope:ToolbarButton {
+        Id = "SuperProperties",
+        Tooltip = "Toggle the SuperProperties widget",
+        Text = "SuperProperties",
+        Active = WidgetEnabled,
+        ClickableWhenViewportHidden = true,
+
+        [OnEvent "Click"] = function()
+            WidgetEnabled:set(not Peek<<boolean>>(WidgetEnabled))
+        end
+    }
 }
+
+table.insert(Scope, Widget:GetPropertyChangedSignal("Enabled"):Connect(function()
+    WidgetEnabled:set(Widget.Enabled)
+end))
