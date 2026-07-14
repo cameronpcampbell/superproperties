@@ -16,8 +16,11 @@ local Scope = Fusion.scoped(Fusion, Mosaic)
 
 local Debug = script.debug.Value:gsub("\n", "") == "true"
 
-local function GetSelectedInstanceValue(scope: Fusion.Scope)
-    local selectedInstanceValue = Value(scope, SelectionService:Get()[1])
+local function GetSelectedInstanceValue(
+    scope: Fusion.Scope
+): Fusion.Value<Instance?>
+    local selectedInstanceValue =
+        Value<<Instance?>>(scope, SelectionService:Get()[1])
 
     SelectionService.SelectionChanged:Connect(function()
         selectedInstanceValue:set(SelectionService:Get()[1])
@@ -29,7 +32,7 @@ end
 local SelectedInstanceValue = GetSelectedInstanceValue(Scope)
 
 local ComputeWidgetTitle = Scope:Computed(function(use, scope)
-    local usedSelectedInstance = use<<Instance>>(SelectedInstanceValue)
+    local usedSelectedInstance = use<<Instance?>>(SelectedInstanceValue)
 
     return
         if usedSelectedInstance then

@@ -17,8 +17,19 @@ type CategoryState = Category.State
 type MapProps = Category.MapProps
 
 type PropertiesMapsProps = {
-    SelectedInstanceValue: Fusion.Value<Instance>,
+    SelectedInstanceValue: Fusion.Value<Instance?>,
     OmitRbxAttributes: boolean?
+}
+
+type PropertyCategories = {
+    [string]: {
+        Properties: { Item }
+    }
+}
+
+type CurrentPropertyRead = {
+    Instance: Instance,
+    Categories: PropertyCategories
 }
 
 local GetProperties = require(script.getProperties)
@@ -86,13 +97,13 @@ local function GetCategoryStates(
     scope: Fusion.Scope,
     outerScope: Fusion.Scope,
     collapsedStateScope: Fusion.Scope,
-    instance: Instance,
+    currentPropertyRead: CurrentPropertyRead,
     omitRbxAttributes: boolean
 ): { CategoryState }
-    local properties = GetProperties(instance)
+    local instance = currentPropertyRead.Instance
     local categories: { CategoryState } = {}
 
-    for categoryName, categoryData in properties do
+    for categoryName, categoryData in currentPropertyRead.Categories do
         table.insert(categories, Category(scope, outerScope, collapsedStateScope, {
             Name = categoryName,
             Items = categoryData.Properties,
@@ -134,18 +145,31 @@ return function(
     local collapsedStateScope = Fusion.innerScope(outerScope)
     local mapsScope = Fusion.innerScope(outerScope)
 
+    local currentPropertyRead = Computed(mapsScope, function(
+        use
+    ): CurrentPropertyRead?
+        local instance = use<<Instance?>>(selectedInstanceValue)
+        if not instance then return nil end
+
+        return {
+            Instance = instance,
+            Categories = GetProperties(instance)
+        }
+    end)
+
     local computeCategoryStates = Computed(mapsScope, function(
         use,
         scope: Fusion.Scope
     ): { CategoryState }
-        local usedSelectedInstance = use<<Instance>>(selectedInstanceValue)
-        if not usedSelectedInstance then return {} end
+        local usedCurrentPropertyRead =
+            use<<CurrentPropertyRead?>>(currentPropertyRead)
+        if not usedCurrentPropertyRead then return {} end
 
         return GetCategoryStates(
             scope,
             outerScope,
             collapsedStateScope,
-            usedSelectedInstance,
+            usedCurrentPropertyRead,
             omitRbxAttributes
         )
     end)
@@ -171,7 +195,7 @@ return function(
         use,
         scope: Fusion.Scope
     ): Fusion.Child?
-        if use<<Instance>>(selectedInstanceValue) then return nil end
+        if use<<CurrentPropertyRead?>>(currentPropertyRead) then return nil end
         return CreateNoInstanceSelected(scope)
     end)
 
