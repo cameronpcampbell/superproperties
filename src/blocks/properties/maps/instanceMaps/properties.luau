@@ -14,8 +14,13 @@ type CategoryState = Category.State
 local GetProperties = require(script.Parent.Parent.getProperties)
 type Snapshot = GetProperties.Snapshot
 local LongPoll = require(script.Parent.Parent.longPoll)
+type LongPollOptions = LongPoll.Options
 
-local CustomPropertyPollInterval = 0.1
+local CustomPropertyPollOptions: LongPollOptions = {
+    MinInterval = 0.1,
+    MaxInterval = 0.5,
+    BackoffFactor = 1.5
+}
 
 local function ConnectToPropertyChange(
     instance: Instance,
@@ -37,7 +42,7 @@ local function ObservePropertyChanges(
     scope: Fusion.Scope,
     instance: Instance,
     snapshot: Snapshot,
-    refreshProperty: (propertyName: string) -> ()
+    refreshProperty: (propertyName: string) -> boolean
 )
     local polledPropertyNames = {} :: { string }
     for propertyName, location in snapshot.LocationsByName do
@@ -62,17 +67,25 @@ local function ObservePropertyChanges(
     else
         table.insert(
             scope,
-            instance.Changed:Connect(refreshProperty)
+            instance.Changed:Connect(function(propertyName: string)
+                refreshProperty(propertyName)
+            end)
         )
     end
 
     if #polledPropertyNames > 0 then
         table.insert(scope, LongPoll(
-            CustomPropertyPollInterval,
-            function()
+            CustomPropertyPollOptions,
+            function(): boolean
+                local foundChanges = false
+
                 for _, propertyName in polledPropertyNames do
-                    refreshProperty(propertyName)
+                    if refreshProperty(propertyName) then
+                        foundChanges = true
+                    end
                 end
+
+                return foundChanges
             end
         ))
     end
@@ -109,22 +122,23 @@ return function(
         )
     end
 
-    local function refreshProperty(propertyName: string)
+    local function refreshProperty(propertyName: string): boolean
         local location = snapshot.LocationsByName[propertyName]
-        if not location then return end
+        if not location then return false end
 
         local readSuccess, value = GetProperties.ReadProperty(
             instance,
             location.Plan
         )
-        if not readSuccess then return end
+        if not readSuccess then return false end
 
         local items = categoryItems[location.CategoryIndex]
         local item = items[location.ItemIndex]
-        if item.Value == value then return end
+        if item.Value == value then return false end
 
         item.Value = value
         categoryItemStates[location.CategoryIndex]:set(items)
+        return true
     end
 
     ObservePropertyChanges(

@@ -16,7 +16,7 @@ local GetFilterState = require(script.Parent.Parent.getFilterState)
 local DefaultCategoryLayoutOrder = 999997
 
 type Item = Map.Item
-type ItemFilter = (query: string?, items: { Item }?) -> { Item }
+type ItemFilter = (query: string?, items: { Item }) -> { Item }
 
 export type MapProps = Map.MapProps
 export type State = Fusion.Value<MapProps?>

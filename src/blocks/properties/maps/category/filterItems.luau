@@ -34,7 +34,8 @@ type ScoredItem = {
 }
 
 type Item = Map.Item
-type ItemFilter = (query: string?, items: { Item }?) -> { Item }
+type ItemFilter = (query: string?, items: { Item }) -> { Item }
+type ItemFilterFactory = (items: { Item }) -> ItemFilter
 
 local ExactScore = 1_000_000
 local PrefixScore = 900_000
@@ -338,9 +339,9 @@ local function CreateItemFilter(items: { Item }): ItemFilter
 
     return function(
         query: string?,
-        currentItems: { Item }?
+        currentItems: { Item }
     ): { Item }
-        local itemsToFilter = currentItems or items
+        local itemsToFilter = currentItems
         local preparedQuery = PrepareQuery(query)
         if preparedQuery.Length == 0 then return itemsToFilter end
 
@@ -376,4 +377,4 @@ local function CreateItemFilter(items: { Item }): ItemFilter
     end
 end
 
-return CreateItemFilter
+return CreateItemFilter :: ItemFilterFactory
