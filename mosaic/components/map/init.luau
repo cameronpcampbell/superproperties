@@ -64,8 +64,6 @@ return Component<<MapProps>>(function(scope, props)
     local layout =
         if virtualListData then virtualListData.Layout
         else CreateMapLayout(scope, header, items, emptyText, lgHeight)
-    local rowCount = layout.RowCount
-
     local visibleRootRange = ComputeVirtualListVisibleRootRange(
         scope,
         virtualListData,
@@ -81,7 +79,7 @@ return Component<<MapProps>>(function(scope, props)
             scope,
             width,
             collapsedState,
-            rowCount,
+            layout.AnimatedExpandedHeight,
             lgHeight
         )
 

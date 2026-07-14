@@ -33,6 +33,7 @@ local EmptyRowDescriptor: "Empty" = "Empty"
 export type MapLayout = {
     RootItems: Fusion.Computed<{ ItemLayout }>,
     RootRows: Fusion.Computed<RootRowDescriptors>,
+    AnimatedExpandedHeight: Fusion.Computed<number>,
     Metadata: Fusion.Computed<RowMetadata>,
     CornerRowCount: Fusion.Computed<number>,
     RowCount: Fusion.Computed<number>
@@ -235,6 +236,27 @@ local function CreateMapLayout(
         return rows
     end)
 
+    local animatedExpandedHeight = Computed(scope, function(use): number
+        local rows = use<<RootRowDescriptors>>(rootRows)
+        local height = MapContentPadding
+
+        for _, descriptor in rows do
+            if descriptor == HeaderRowDescriptor
+                or descriptor == EmptyRowDescriptor
+            then
+                height += rowHeight
+            else
+                height += use<<number>>(
+                    (descriptor :: ItemLayout).AnimatedHeight
+                )
+            end
+
+            height += RowGap
+        end
+
+        return height
+    end)
+
     local targetMetadata = ComputeRowMetadata(
         scope,
         rootItems,
@@ -260,6 +282,7 @@ local function CreateMapLayout(
     return {
         RootItems = rootItems,
         RootRows = rootRows,
+        AnimatedExpandedHeight = animatedExpandedHeight,
         Metadata = metadata,
         CornerRowCount = cornerRowCount,
         RowCount = rowCount
@@ -270,18 +293,24 @@ local function CreateMapSizeTween(
     scope: Fusion.Scope,
     width: UDim,
     collapsed: Fusion.UsedAs<boolean>,
-    rowCount: Fusion.UsedAs<number>,
+    animatedExpandedHeight: Fusion.UsedAs<number>,
     lgHeight: number
-): Fusion.Tween<UDim2>
-    local targetSize = Computed(scope, function(use: Fusion.Use): UDim2
-        local height =
-            if use<<boolean>>(collapsed) then lgHeight
-            else CalculateMapHeight(use<<number>>(rowCount), lgHeight)
+): Fusion.Computed<UDim2>
+    local reveal = Tween<<number>>(
+        scope,
+        Computed(scope, function(use): number
+            return if use<<boolean>>(collapsed) then 0 else 1
+        end),
+        MapTweenInfo
+    )
+
+    return Computed(scope, function(use: Fusion.Use): UDim2
+        local height = lgHeight
+            + use<<number>>(reveal)
+                * (use<<number>>(animatedExpandedHeight) - lgHeight)
 
         return UDim2.new(width, UDim.new(0, height))
     end)
-
-    return Tween<<UDim2>>(scope, targetSize, MapTweenInfo)
 end
 
 local function UseRootRowHeight(

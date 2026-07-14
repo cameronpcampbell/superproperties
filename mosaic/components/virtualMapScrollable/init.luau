@@ -118,13 +118,11 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                 emptyText,
                 lgHeight
             )
-            local rowCount = layout.RowCount
-
             local animatedMapSize = CreateMapSizeTween(
                 scope,
                 width,
                 collapsedState,
-                rowCount,
+                layout.AnimatedExpandedHeight,
                 lgHeight
             )
 
