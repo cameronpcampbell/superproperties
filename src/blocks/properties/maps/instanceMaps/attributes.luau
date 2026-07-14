@@ -53,7 +53,7 @@ return function(
 ): CategoryState
     local attributeItems = Value(scope, {} :: { Item })
 
-    local function RefreshAttributeItems()
+    local function refreshAttributeItems()
         attributeItems:set(GetAttributeItems(
             instance,
             props.OmitRbxAttributes
@@ -62,13 +62,10 @@ return function(
 
     table.insert(
         scope,
-        instance.AttributeChanged:Connect(function(attributeName)
-            print(`Attribute changed on {instance:GetFullName()}: {attributeName}`)
-            RefreshAttributeItems()
-        end)
+        instance.AttributeChanged:Connect(refreshAttributeItems)
     )
 
-    RefreshAttributeItems()
+    refreshAttributeItems()
 
     return Category(scope, outerScope, collapsedStateScope, {
         Name = "Attributes",
