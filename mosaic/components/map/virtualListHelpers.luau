@@ -9,6 +9,7 @@ local RowGap = 1
 local MapContentPadding = 1
 
 export type VirtualListData = {
+    GeometryReady: Fusion.UsedAs<boolean>,
     ViewportAbsolutePosition: Fusion.UsedAs<Vector2>,
     ViewportAbsoluteSize: Fusion.UsedAs<Vector2>,
     MapAbsolutePosition: Fusion.UsedAs<Vector2>,
@@ -62,6 +63,10 @@ local function ComputeVirtualListVisibleRowRange(
     if not virtualListData then return nil end
 
     return Computed(scope, function(use): Vector2
+        if not use<<boolean>>(virtualListData.GeometryReady) then
+            return Vector2.new(1, 0)
+        end
+
         local usedRowCount = use<<number>>(rowCount)
         if usedRowCount <= 0 then return Vector2.new(1, 0) end
 
@@ -108,6 +113,10 @@ local function ComputeVirtualListOccludesMap(
     if not virtualListData then return false end
 
     return Computed(scope, function(use, scope): boolean
+        if not use<<boolean>>(virtualListData.GeometryReady) then
+            return true
+        end
+
         local usedMapAbsolutePosition =
             use<<Vector2>>(virtualListData.MapAbsolutePosition)
         local usedMapAbsoluteSize =

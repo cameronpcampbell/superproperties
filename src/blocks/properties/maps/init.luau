@@ -3,8 +3,7 @@
 local Packages = script.Parent.Parent.Parent.packages
 
 local Fusion = require(Packages.fusion)
-local Children, Computed, New =
-    Fusion.Children, Fusion.Computed, Fusion.New
+local Children, Computed = Fusion.Children, Fusion.Computed
 
 local Mosaic = require(Packages.mosaic)
 local Text, VirtualMapScrollable =
@@ -159,13 +158,7 @@ return function(
         Maps = computeMapProps,
 
         [Children] = {
-            computeNoInstanceSelected,
-
-            New(mapsScope, "UIListLayout") {
-                FillDirection = Enum.FillDirection.Vertical,
-                SortOrder = Enum.SortOrder.LayoutOrder,
-                Padding = UDim.new(0, 4)
-            }
+            computeNoInstanceSelected
         }
     })
 end
