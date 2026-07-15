@@ -25,15 +25,20 @@ type Items = Types.Items
 type IntrinsicAccessor = Types.IntrinsicAccessor
 type IntrinsicItem = Types.IntrinsicItem
 type IntrinsicItems = Types.IntrinsicItems
+type ItemDefinition = Item | IntrinsicItem
 type ItemLayout = Types.ItemLayout
 type RowMetadata = Types.RowMetadata
 type RootRowDescriptor = ItemLayout | string
 type RootRowDescriptors = { [number]: RootRowDescriptor }
 type RenderedRows = { [number]: Instance }
 type ResolvedItem = {
-    Item: Item | IntrinsicItem,
+    Item: ItemDefinition,
     ResolvedValue: any,
     ValueAccessor: IntrinsicAccessor?
+}
+type CollapseStateNode = {
+    IsCollapsed: boolean?,
+    Children: { [ItemDefinition]: CollapseStateNode }
 }
 
 local HeaderRowDescriptor: "Header" = "Header"
@@ -92,6 +97,40 @@ local function CreateCollapseRevealTween(
         end),
         MapTweenInfo
     )
+end
+
+local function GetCollapseStateNode(
+    parent: CollapseStateNode,
+    item: ItemDefinition
+): CollapseStateNode
+    local existingNode = parent.Children[item]
+    if existingNode then return existingNode end
+
+    local node: CollapseStateNode = {
+        IsCollapsed = nil,
+        Children = {}
+    }
+    parent.Children[item] = node
+
+    return node
+end
+
+local function CreateCachedCollapsedState(
+    scope: Fusion.Scope,
+    node: CollapseStateNode
+): Fusion.Value<boolean>
+    local cachedIsCollapsed = node.IsCollapsed
+    local isCollapsed: boolean =
+        if cachedIsCollapsed == nil then true else cachedIsCollapsed
+
+    local collapsedState = Value<<boolean>>(scope, isCollapsed)
+    node.IsCollapsed = isCollapsed
+
+    Observer(scope, collapsedState):onChange(function()
+        node.IsCollapsed = Peek<<boolean>>(collapsedState)
+    end)
+
+    return collapsedState
 end
 
 local function ResolveItem(item: Item): ResolvedItem
@@ -157,6 +196,7 @@ end
 
 local function CreateItemLayout(
     scope: Fusion.Scope,
+    collapseStateNode: CollapseStateNode,
     resolvedItem: ResolvedItem,
     depth: number,
     rowHeight: number,
@@ -167,8 +207,14 @@ local function CreateItemLayout(
     local children = table.create(#childItems) :: { ItemLayout }
 
     for childIdx, childItem in childItems do
+        local childCollapseStateNode = GetCollapseStateNode(
+            collapseStateNode,
+            childItem.Item
+        )
+
         children[childIdx] = CreateItemLayout(
             scope,
+            childCollapseStateNode,
             childItem,
             depth + 1,
             rowHeight,
@@ -189,7 +235,8 @@ local function CreateItemLayout(
 
     local collapsedState: Fusion.Value<boolean>? = nil
     if #children > 0 then
-        collapsedState = item.Collapsed or Value(scope, true)
+        collapsedState = item.Collapsed
+            or CreateCachedCollapsedState(scope, collapseStateNode)
     end
 
     local reveal = if collapsedState
@@ -275,7 +322,19 @@ local function CreateMapLayout(
     emptyText: string?,
     rowHeight: Fusion.UsedAs<number>
 ): MapLayout
-    local rootItems = Computed(scope, function(
+    -- Cached booleans outlive recomputed item layouts. The reactive layout
+    -- remains in the caller's scope so downstream Computeds can depend on it.
+    local mapLayoutScope = scope
+    local collapseStateRoot: CollapseStateNode = {
+        IsCollapsed = nil,
+        Children = {}
+    }
+
+    table.insert(mapLayoutScope, function()
+        table.clear(collapseStateRoot.Children)
+    end)
+
+    local rootItems = Computed(mapLayoutScope, function(
         use: Fusion.Use,
         layoutScope: Fusion.Scope
     ): { ItemLayout }
@@ -284,8 +343,14 @@ local function CreateMapLayout(
         local layouts = table.create(#usedItems) :: { ItemLayout }
 
         for itemIdx, item in usedItems do
+            local collapseStateNode = GetCollapseStateNode(
+                collapseStateRoot,
+                item
+            )
+
             layouts[itemIdx] = CreateItemLayout(
                 layoutScope,
+                collapseStateNode,
                 ResolveItem(item),
                 1,
                 usedRowHeight,
@@ -296,64 +361,73 @@ local function CreateMapLayout(
         return layouts
     end)
 
-    local rootRows = Computed(scope, function(use: Fusion.Use): RootRowDescriptors
-        local usedRootItems = use<<{ ItemLayout }>>(rootItems)
-        local rows = {} :: RootRowDescriptors
+    local rootRows = Computed(
+        mapLayoutScope,
+        function(use: Fusion.Use): RootRowDescriptors
+            local usedRootItems = use<<{ ItemLayout }>>(rootItems)
+            local rows = {} :: RootRowDescriptors
 
-        if header then table.insert(rows, HeaderRowDescriptor) end
+            if header then table.insert(rows, HeaderRowDescriptor) end
 
-        if #usedRootItems > 0 then
-            for _, layout in usedRootItems do table.insert(rows, layout) end
-        elseif emptyText then
-            table.insert(rows, EmptyRowDescriptor)
-        end
-
-        return rows
-    end)
-
-    local animatedExpandedHeight = Computed(scope, function(use: Fusion.Use): number
-        local usedRootRows = use<<RootRowDescriptors>>(rootRows)
-        local usedRowHeight = use<<number>>(rowHeight)
-        local height = MapContentPadding
-
-        for _, descriptor in usedRootRows do
-            if descriptor == HeaderRowDescriptor
-                or descriptor == EmptyRowDescriptor
-            then
-                height += usedRowHeight
-            else
-                height += use<<number>>(
-                    (descriptor :: ItemLayout).AnimatedHeight
-                )
+            if #usedRootItems > 0 then
+                for _, layout in usedRootItems do table.insert(rows, layout) end
+            elseif emptyText then
+                table.insert(rows, EmptyRowDescriptor)
             end
 
-            height += RowGap
+            return rows
         end
+    )
 
-        return height
-    end)
+    local animatedExpandedHeight = Computed(
+        mapLayoutScope,
+        function(use: Fusion.Use): number
+            local usedRootRows = use<<RootRowDescriptors>>(rootRows)
+            local usedRowHeight = use<<number>>(rowHeight)
+            local height = MapContentPadding
+
+            for _, descriptor in usedRootRows do
+                if descriptor == HeaderRowDescriptor
+                    or descriptor == EmptyRowDescriptor
+                then
+                    height += usedRowHeight
+                else
+                    height += use<<number>>(
+                        (descriptor :: ItemLayout).AnimatedHeight
+                    )
+                end
+
+                height += RowGap
+            end
+
+            return height
+        end
+    )
 
     local targetMetadata = ComputeRowMetadata(
-        scope,
+        mapLayoutScope,
         rootItems,
         header,
         emptyText,
         false
     )
     local metadata = ComputeRowMetadata(
-        scope,
+        mapLayoutScope,
         rootItems,
         header,
         emptyText,
         true
     )
 
-    local rowCount = Computed(scope, function(use: Fusion.Use): number
+    local rowCount = Computed(mapLayoutScope, function(use: Fusion.Use): number
         return use<<RowMetadata>>(targetMetadata).RowCount
     end)
-    local cornerRowCount = Computed(scope, function(use: Fusion.Use): number
-        return use<<RowMetadata>>(metadata).RowCount
-    end)
+    local cornerRowCount = Computed(
+        mapLayoutScope,
+        function(use: Fusion.Use): number
+            return use<<RowMetadata>>(metadata).RowCount
+        end
+    )
 
     return {
         RootItems = rootItems,
