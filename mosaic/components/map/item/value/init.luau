@@ -19,13 +19,12 @@ local ComputeAdd = ComputeMath.Add
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
 
-local Components = script.Parent.Parent.Parent
-local Text = require(Components.text)
-local Checkbox = require(Components.checkbox)
-
 local Types = require(script.Parent.Parent.types)
 local CalculateRowCornerRadii =
     require(script.Parent.Parent.cornerRadii)
+
+local ValueVariants = require(script.variants)
+local DefaultValueVariant = ValueVariants.string
 
 type MapItemValueProps = Typeforge.Flatten<
     Types.BaseMapProps & {
@@ -37,6 +36,11 @@ type MapItemValueProps = Typeforge.Flatten<
 local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
     local rowCount, rowIdx = props.RowCount, props.RowIdx
     local variant = props.Variant
+    local value = props.Value
+
+    local valueVariant: ValueVariants.ValueVariantFn<any> =
+        (ValueVariants :: any)[typeof(value)] or
+        DefaultValueVariant
 
     local theme = GetThemeForScope(scope)
     local bgColor = theme:GetBg(scope, variant)
@@ -69,18 +73,9 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
         Name = "MapItemValue",
 
         [Children] = {
-            if type(props.Value) == "boolean" then
-                Checkbox(scope, {
-                    Checked = props.Value
-                })
-            else
-                Text(scope, {
-                    Text =
-                        if typeof(props.Value) == "EnumItem" then props.Value.Name
-                        else tostring(props.Value),
-                    Variant = "Primary",
-                    Size = UDim2.fromScale(1, 0),
-                }),
+            valueVariant(scope, {
+                Value = value
+            }),
 
             New(scope, "UIListLayout") {
                 Padding = UDim.new(0, 6),
