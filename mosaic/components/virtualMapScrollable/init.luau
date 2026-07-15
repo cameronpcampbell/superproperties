@@ -43,7 +43,7 @@ type VirtualMapScrollableProps = {
 }
 
 local DefaultPadding = 4
-local DefaultOverdraw = 200
+local DefaultOverdraw = 80
 
 local function GetLayoutOrder(mapProps: MapProps): number
     -- Component props also carry Roblox instance properties, but MapProps only
