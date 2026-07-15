@@ -81,6 +81,7 @@ return Component<<WidgetProps>>(function(scope, props)
 
     return Hydrate(scope, widget) {
         Title = title or id,
+        Name = id,
         Enabled = enabled,
 
         [Children] = content,
