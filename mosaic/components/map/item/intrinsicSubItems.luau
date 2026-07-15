@@ -124,6 +124,24 @@ local IntrinsicSubItems: { [string]: Types.IntrinsicItems } = {
                 }
             }
         }
+    },
+    Font = {
+        {
+            Key = "Style",
+            Value = {
+                Read = function(value: Font)
+                    return value.Style
+                end
+            }
+        },
+        {
+            Key = "Weight",
+            Value = {
+                Read = function(value: Font)
+                    return value.Weight
+                end
+            }
+        }
     }
 }
 
