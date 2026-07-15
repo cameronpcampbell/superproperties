@@ -53,7 +53,10 @@ return function(scope: Fusion.Scope, props: Types.ValueVariantProps<Color3 | Bri
 
         [Children] = {
             Text(scope, {
-                Text = tostring(value),
+                Text =
+                    if typeof(value) == "Color3" then
+                        `[{math.round(value.G * 255)}, {math.round(value.G * 255)}, {math.round(value.G * 255)}]`
+                    else value.Name,
                 Variant = "Primary",
                 Size = UDim2.fromScale(1, 0),
                 LayoutOrder = 0,
