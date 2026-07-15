@@ -712,10 +712,11 @@ local function ComputeVirtualizedRows(
     local rowChildren, renderedRows = ComputeRows(scope, config)
 
     return Computed(scope, function(use: Fusion.Use): Fusion.Child
+        local usedRowHeight = use<<number>>(config.RowHeight)
         local isFullyCollapsed =
             use<<boolean>>(config.CollapsedState)
             and use<<UDim2>>(config.AnimatedMapSize).Height.Offset
-                == config.RowHeight
+                == usedRowHeight
 
         if isFullyCollapsed then
             local usedRenderedRows = use<<RenderedRows>>(renderedRows)

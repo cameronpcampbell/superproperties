@@ -54,9 +54,10 @@ local function ComputeCornerRadii(
             local usedTweenComputeMapHeightOffset = usedTweenComputeMapSize.Height.Offset
             local usedRowCount = use<<number>>(rowCount)
             local usedRowIdx = use<<number>>(rowIdx)
+            local usedHeight = use<<number>>(height)
 
             local itemCount =
-                if usedTweenComputeMapHeightOffset == height then 1
+                if usedTweenComputeMapHeightOffset == usedHeight then 1
                 else usedRowCount
 
             if roundFirst and usedRowIdx == 1 then
