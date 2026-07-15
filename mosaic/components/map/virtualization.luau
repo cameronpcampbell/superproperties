@@ -22,11 +22,19 @@ local MapContentPadding = 1
 
 type Item = Types.Item
 type Items = Types.Items
+type IntrinsicAccessor = Types.IntrinsicAccessor
+type IntrinsicItem = Types.IntrinsicItem
+type IntrinsicItems = Types.IntrinsicItems
 type ItemLayout = Types.ItemLayout
 type RowMetadata = Types.RowMetadata
 type RootRowDescriptor = ItemLayout | string
 type RootRowDescriptors = { [number]: RootRowDescriptor }
 type RenderedRows = { [number]: Instance }
+type ResolvedItem = {
+    Item: Item | IntrinsicItem,
+    ResolvedValue: any,
+    ValueAccessor: IntrinsicAccessor?
+}
 
 local HeaderRowDescriptor: "Header" = "Header"
 local EmptyRowDescriptor: "Empty" = "Empty"
@@ -86,34 +94,62 @@ local function CreateCollapseRevealTween(
     )
 end
 
-local function GetChildItems(item: Item): Items
-    local intrinsicItems = IntrinsicSubItems[typeof(item.Value)]
-    local suppliedItems = item.SubItems
+local function ResolveItem(item: Item): ResolvedItem
+    return {
+        Item = item,
+        ResolvedValue = item.Value,
+        ValueAccessor = nil
+    }
+end
 
-    if not intrinsicItems or #intrinsicItems == 0 then
-        return suppliedItems or {}
+local function ResolveIntrinsicItem(
+    item: IntrinsicItem,
+    parentValue: any
+): ResolvedItem
+    local valueAccessor = item.Value
+
+    return {
+        Item = item,
+        ResolvedValue = valueAccessor.Read(parentValue),
+        ValueAccessor = valueAccessor
+    }
+end
+
+local function GetChildItems(item: ResolvedItem): { ResolvedItem }
+    local resolvedValue = item.ResolvedValue
+    local intrinsicItems: IntrinsicItems =
+        IntrinsicSubItems[typeof(resolvedValue)] or {}
+    local suppliedItems = item.Item.SubItems
+    local suppliedCount = if suppliedItems then #suppliedItems else 0
+    local childItems = table.create(
+        #intrinsicItems + suppliedCount
+    ) :: { ResolvedItem }
+
+    for childIdx, childItem in intrinsicItems do
+        childItems[childIdx] = ResolveIntrinsicItem(
+            childItem,
+            resolvedValue
+        )
     end
 
-    local suppliedCount = if suppliedItems then #suppliedItems else 0
-    local childItems =
-        table.create(#intrinsicItems + suppliedCount) :: Items
+    if item.ValueAccessor then
+        local intrinsicParent = item.Item :: IntrinsicItem
+        local suppliedIntrinsicItems: IntrinsicItems =
+            intrinsicParent.SubItems or {}
 
-    table.move(
-        intrinsicItems,
-        1,
-        #intrinsicItems,
-        1,
-        childItems
-    )
+        for childIdx, childItem in suppliedIntrinsicItems do
+            childItems[#intrinsicItems + childIdx] = ResolveIntrinsicItem(
+                childItem,
+                resolvedValue
+            )
+        end
+    else
+        local suppliedParent = item.Item :: Item
+        local suppliedMapItems: Items = suppliedParent.SubItems or {}
 
-    if suppliedItems then
-        table.move(
-            suppliedItems,
-            1,
-            suppliedCount,
-            #intrinsicItems + 1,
-            childItems
-        )
+        for childIdx, childItem in suppliedMapItems do
+            childItems[#intrinsicItems + childIdx] = ResolveItem(childItem)
+        end
     end
 
     return childItems
@@ -121,12 +157,13 @@ end
 
 local function CreateItemLayout(
     scope: Fusion.Scope,
-    item: Item,
+    resolvedItem: ResolvedItem,
     depth: number,
     rowHeight: number,
     canBecomeMapBottom: boolean
 ): ItemLayout
-    local childItems = GetChildItems(item)
+    local item = resolvedItem.Item
+    local childItems = GetChildItems(resolvedItem)
     local children = table.create(#childItems) :: { ItemLayout }
 
     for childIdx, childItem in childItems do
@@ -180,6 +217,8 @@ local function CreateItemLayout(
 
     return {
         Item = item,
+        ResolvedValue = resolvedItem.ResolvedValue,
+        ValueAccessor = resolvedItem.ValueAccessor,
         Depth = depth,
         CanBecomeMapBottom = canBecomeMapBottom,
         CollapsedState = collapsedState,
@@ -247,7 +286,7 @@ local function CreateMapLayout(
         for itemIdx, item in usedItems do
             layouts[itemIdx] = CreateItemLayout(
                 layoutScope,
-                item,
+                ResolveItem(item),
                 1,
                 usedRowHeight,
                 itemIdx == #usedItems

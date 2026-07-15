@@ -82,7 +82,7 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
 
     if not props.HideValue then
         table.insert(itemContentChildren, MapItemValue(scope, {
-            Value = item.Value,
+            Value = layout.ResolvedValue,
             Variant = props.Variant,
             RowCount = props.RowCount,
             RowIdx = rowIdx,

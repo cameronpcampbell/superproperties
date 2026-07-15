@@ -21,8 +21,23 @@ export type Item = {
 
 export type Items = { Item }
 
+export type IntrinsicAccessor = {
+	Read: (parentValue: any) -> any,
+}
+
+export type IntrinsicItem = {
+	Key: string,
+	Value: IntrinsicAccessor,
+	SubItems: { IntrinsicItem }?,
+	Collapsed: Fusion.Value<boolean>?,
+}
+
+export type IntrinsicItems = { IntrinsicItem }
+
 export type ItemLayout = {
-    Item: Item,
+    Item: Item | IntrinsicItem,
+    ResolvedValue: any,
+    ValueAccessor: IntrinsicAccessor?,
     Depth: number,
     CanBecomeMapBottom: boolean,
     CollapsedState: Fusion.Value<boolean>?,
