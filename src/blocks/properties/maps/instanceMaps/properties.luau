@@ -16,7 +16,7 @@ type Snapshot = GetProperties.Snapshot
 local LongPoll = require(script.Parent.Parent.longPoll)
 type LongPollOptions = LongPoll.Options
 
-local CustomPropertyPollOptions: LongPollOptions = {
+local PollOptions: LongPollOptions = {
     MinInterval = 0.1,
     MaxInterval = 0.5,
     BackoffFactor = 1.5
@@ -75,7 +75,7 @@ local function ObservePropertyChanges(
 
     if #polledPropertyNames > 0 then
         table.insert(scope, LongPoll(
-            CustomPropertyPollOptions,
+            PollOptions,
             function(): boolean
                 local foundChanges = false
 
