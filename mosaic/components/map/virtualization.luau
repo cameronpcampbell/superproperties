@@ -14,6 +14,7 @@ local Types = require(script.Parent.types)
 local MapTweenInfo = require(script.Parent.animation)
 local MapHeader = require(script.Parent.header)
 local MapItem = require(script.Parent.item)
+local IntrinsicSubItems = require(script.Parent.item.intrinsicSubItems)
 local MapEmptyItem = require(script.Parent.emptyItem)
 
 local RowGap = 1
@@ -85,6 +86,39 @@ local function CreateCollapseRevealTween(
     )
 end
 
+local function GetChildItems(item: Item): Items
+    local intrinsicItems = IntrinsicSubItems[typeof(item.Value)]
+    local suppliedItems = item.SubItems
+
+    if not intrinsicItems or #intrinsicItems == 0 then
+        return suppliedItems or {}
+    end
+
+    local suppliedCount = if suppliedItems then #suppliedItems else 0
+    local childItems =
+        table.create(#intrinsicItems + suppliedCount) :: Items
+
+    table.move(
+        intrinsicItems,
+        1,
+        #intrinsicItems,
+        1,
+        childItems
+    )
+
+    if suppliedItems then
+        table.move(
+            suppliedItems,
+            1,
+            suppliedCount,
+            #intrinsicItems + 1,
+            childItems
+        )
+    end
+
+    return childItems
+end
+
 local function CreateItemLayout(
     scope: Fusion.Scope,
     item: Item,
@@ -92,7 +126,7 @@ local function CreateItemLayout(
     rowHeight: number,
     canBecomeMapBottom: boolean
 ): ItemLayout
-    local childItems: Items = item.SubItems or {}
+    local childItems = GetChildItems(item)
     local children = table.create(#childItems) :: { ItemLayout }
 
     for childIdx, childItem in childItems do
