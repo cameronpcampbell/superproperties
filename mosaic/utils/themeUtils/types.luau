@@ -23,7 +23,97 @@ export type FontSizeVariant = "Title" | "Body" | "Caption"
 
 export type ThemeColorModifier = "Hover" | "Press" | "HoverStroke"
 
+type Value<T, S = T> = Fusion.Value<T, S>
+
+type function mapTable(input: type, map: (ty: type) -> type)
+    assert(input.tag, "table")
+
+    for key, value in input:properties() do
+        local value = value.read or value.write
+        if not value then continue end
+
+        input:setproperty(key, map(value))
+    end
+
+    return input
+end
+
+type function MapThemeToValue(input: type)
+    return mapTable(input, function(ty)
+        return Value(ty)
+    end)
+end
+
+export type ThemeConfig = {
+    BgBaseColor: Color3,
+
+    AccentPrimary: Color3,
+    AccentSecondary: Color3,
+    AccentDestructive: Color3,
+
+    HeightSm: number,
+    HeightMd: number,
+    HeightLg: number,
+
+    -- We force all corner radii to be the same for all
+    -- themes as an optimization due to supercorner.
+    --CornerRadiusSm: number,
+    --CornerRadiusMd: number,
+    --CornerRadiusLg: number,
+
+    FontMain: Font,
+    FontMono: Font,
+
+    FontMainTitleSize: number,
+    FontMainBodySize: number,
+    FontMainCaptionSize: number,
+
+    FontMonoTitleSize: number,
+    FontMonoBodySize: number,
+    FontMonoCaptionSize: number,
+}
+
 export type ThemeSource = {
+    BgPrimary: Color3,
+    BgSecondary: Color3,
+    BgTertiary: Color3,
+    BgQuaternary: Color3,
+    BgQuinary: Color3,
+
+    BgPrimaryHighlight: Color3,
+    BgSecondaryHighlight: Color3,
+    BgTertiaryHighlight: Color3,
+    BgQuaternaryHighlight: Color3,
+
+    FgPrimary: Color3,
+    FgSecondary: Color3,
+    FgTertiary: Color3,
+
+    AccentPrimary: Color3,
+    AccentSecondary: Color3,
+    AccentDestructive: Color3,
+
+    HeightSm: number,
+    HeightMd: number,
+    HeightLg: number,
+
+    CornerRadiusSm: number,
+    CornerRadiusMd: number,
+    CornerRadiusLg: number,
+
+    FontMain: Font,
+    FontMono: Font,
+
+    FontMainTitleSize: number,
+    FontMainBodySize: number,
+    FontMainCaptionSize: number,
+
+    FontMonoTitleSize: number,
+    FontMonoBodySize: number,
+    FontMonoCaptionSize: number,
+}
+
+export type Theme = {
     BgPrimary: Fusion.UsedAs<Color3>,
     BgSecondary: Fusion.UsedAs<Color3>,
     BgTertiary: Fusion.UsedAs<Color3>,
@@ -34,6 +124,7 @@ export type ThemeSource = {
     BgSecondaryHighlight: Fusion.UsedAs<Color3>,
     BgTertiaryHighlight: Fusion.UsedAs<Color3>,
     BgQuaternaryHighlight: Fusion.UsedAs<Color3>,
+    BgQuinaryHighlight: Fusion.UsedAs<Color3>,
 
     FgPrimary: Fusion.UsedAs<Color3>,
     FgSecondary: Fusion.UsedAs<Color3>,
@@ -61,30 +152,9 @@ export type ThemeSource = {
     FontMonoTitleSize: Fusion.UsedAs<number>,
     FontMonoBodySize: Fusion.UsedAs<number>,
     FontMonoCaptionSize: Fusion.UsedAs<number>,
-}
 
-type ValueType<T, S = T> = Fusion.Value<T, S>
+    [string]: Fusion.UsedAs<unknown>,
 
-type function UpgradeTheme(input: type)
-    assert(input.tag, "table")
-
-    for key, value in input:properties() do
-        local value = value.read or value.write
-        if not value then continue end
-
-        if value.tag == "union" then value = value:components()[1] end
-        if value.tag == "intersection" then value = value:components()[2] end
-
-        local ty =
-            value:readproperty(types.singleton("_EXTREMELY_DANGEROUS_usedAsValue"))
-
-        input:setproperty(key, ValueType(ty))
-    end
-
-    return input
-end
-
-export type Theme = UpgradeTheme<ThemeSource> & {
     GetBg: (
         theme: Theme,
         scope: Fusion.Scope,
@@ -146,32 +216,4 @@ export type Theme = UpgradeTheme<ThemeSource> & {
         transparency: Fusion.UsedAs<number>
     ) -> UIGradient
 }
-
-export type ThemeConfig = {
-    BgBaseColor: Color3,
-
-    AccentPrimary: Color3,
-    AccentSecondary: Color3,
-    AccentDestructive: Color3,
-
-    HeightSm: number,
-    HeightMd: number,
-    HeightLg: number,
-
-    CornerRadiusSm: number,
-    CornerRadiusMd: number,
-    CornerRadiusLg: number,
-
-    FontMain: Font,
-    FontMono: Font,
-
-    FontMainTitleSize: number,
-    FontMainBodySize: number,
-    FontMainCaptionSize: number,
-
-    FontMonoTitleSize: number,
-    FontMonoBodySize: number,
-    FontMonoCaptionSize: number,
-}
-
 return nil

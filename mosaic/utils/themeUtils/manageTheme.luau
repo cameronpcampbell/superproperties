@@ -4,12 +4,13 @@ local Packages = script.Parent.Parent.Parent.Parent
 local Fusion = require(Packages.fusion)
 
 local Types = require(script.Parent.types)
-local DefaultTheme = require(script.Parent.defaultTheme)
+local DefaultThemeConfig = require(script.Parent.defaultThemeConfig)
 local ThemeHelpers = require(script.Parent.themeHelpers)
+local CreateTheme = require(script.Parent.createTheme)
 
 local Peek, Value = Fusion.peek, Fusion.Value
 
-local THEME_TOKEN_KEYS = {
+local THEME_TOKEN_KEYS: { [number]: keyof<Types.ThemeSource> } = {
     "BgPrimary",
     "BgSecondary",
     "BgTertiary",
@@ -53,8 +54,10 @@ local ThemeForScopes: { [Fusion.Scope]: Types.Theme } = {}
 
 local function CreateThemeForScope(
     scope: Fusion.Scope,
-    source: Types.ThemeSource
+    config: Types.ThemeConfig
 ): Types.Theme
+    local source = CreateTheme(config)
+
     table.insert(scope, function()
         ThemeForScopes[scope] = nil
     end)
@@ -76,16 +79,19 @@ local function CreateThemeForScope(
     end
 
     ThemeForScopes[scope] = theme
+
     return theme
 end
 
-local function SetThemeForScope(scope: Fusion.Scope, source: Types.ThemeSource)
+local function SetThemeForScope(scope: Fusion.Scope, config: Types.ThemeConfig)
     local theme = ThemeForScopes[scope]
 
     if not theme then
-        CreateThemeForScope(scope, source)
+        CreateThemeForScope(scope, config)
         return
     end
+
+    local source = CreateTheme(config)
 
     for _, key in THEME_TOKEN_KEYS do
         local themeValue = (theme :: any)[key] :: Fusion.Value<any>
@@ -97,7 +103,7 @@ local function GetThemeForScope(scope: Fusion.Scope): Types.Theme
     local theme = ThemeForScopes[scope]
 
     if not theme then
-        theme = CreateThemeForScope(scope, DefaultTheme)
+        theme = CreateThemeForScope(scope, DefaultThemeConfig)
     end
 
     return theme

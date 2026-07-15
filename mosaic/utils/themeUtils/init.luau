@@ -1,7 +1,6 @@
 --!strict
 
 local CreateTheme = require(script.createTheme)
-local DefaultTheme = require(script.defaultTheme)
 local ManageTheme = require(script.manageTheme)
 local Types = require(script.types)
 local ThemeHelpers = require(script.themeHelpers)
@@ -39,7 +38,6 @@ end
 
 return {
     CreateTheme = CreateTheme,
-    DefaultTheme = DefaultTheme,
     SetThemeForScope = ManageTheme.SetThemeForScope,
     GetThemeForScope = ManageTheme.GetThemeForScope,
     GetNextVariant = GetNextVariant,

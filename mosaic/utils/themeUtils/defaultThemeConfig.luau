@@ -1,8 +1,8 @@
 --!strict
 
-local CreateTheme = require(script.Parent.createTheme)
+local Types = require(script.Parent.types)
 
-return CreateTheme({
+local DefaultThemeConfig: Types.ThemeConfig = {
     BgBaseColor = settings().Studio.Theme:GetColor(Enum.StudioStyleGuideColor.MainBackground),
 
     AccentPrimary = settings().Studio.Theme:GetColor(Enum.StudioStyleGuideColor.MainButton),
@@ -12,10 +12,6 @@ return CreateTheme({
     HeightSm = 13,
     HeightMd = 18,
     HeightLg = 25,
-
-    CornerRadiusSm = 3,
-    CornerRadiusMd = 6,
-    CornerRadiusLg = 9,
 
     FontMain = Font.fromName("BuilderSans"),
     FontMono = Font.fromName("BuilderSansMono"),
@@ -27,4 +23,6 @@ return CreateTheme({
     FontMonoTitleSize = 14,
     FontMonoBodySize = 14,
     FontMonoCaptionSize = 13,
-})
+}
+
+return DefaultThemeConfig

@@ -40,7 +40,8 @@ local function ApplyColorModifier(
     return Computed(scope, function(use, scope): Color3
         local usedColorName = use<<string>>(colorName)
 
-        local usedColor = use<<Color3>>(theme[usedColorName]) or
+        local usedColor =
+            use<<Color3>>(theme[usedColorName] :: Fusion.UsedAs<Color3>) or
             use<<Color3>>(defaultColor)
 
         local usedModifier = use(modifier)
@@ -170,7 +171,7 @@ local function GetFont(
         local usedVariant = use<<Types.FontVariant>>(variant)
 
         local font =
-            use<<Font>>(theme[usedVariant]) or
+            use<<Font>>(theme[usedVariant] :: Fusion.UsedAs<Font>) or
             use<<Font>>(theme.FontMain)
 
         font.Weight = use<<FontWeight>>(weight)

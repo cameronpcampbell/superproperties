@@ -1,12 +1,11 @@
 --!strict
 
-local Types = require(script.Parent.types)
-local ThemeHelpers = require(script.Parent.themeHelpers)
-
 local Utils = script.Parent.Parent
-local ColorSpace = require(Utils.colorSpace)
 
+local ColorSpace = require(Utils.colorSpace)
 local IsDark = ColorSpace.Utils.IsDark
+
+local Types = require(script.Parent.types)
 
 local function GenPalette(
 	color: Color3,
@@ -63,6 +62,10 @@ end
 const BASE_LIGHT_TEXT_COLOR = Color3.fromHex("#F8FAFC")
 const BASE_DARK_TEXT_COLOR = Color3.fromHex("#09090b")
 
+const CORNER_RADIUS_SM = 3
+const CORNER_RADIUS_MD = 6
+const CORNER_RADIUS_LG = 9
+
 local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
     local bgBaseColor = config.BgBaseColor
 
@@ -103,9 +106,9 @@ local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
         HeightMd = config.HeightMd,
         HeightLg = config.HeightLg,
 
-        CornerRadiusSm = config.CornerRadiusSm,
-        CornerRadiusMd = config.CornerRadiusMd,
-        CornerRadiusLg = config.CornerRadiusLg,
+        CornerRadiusSm = CORNER_RADIUS_SM,
+        CornerRadiusMd = CORNER_RADIUS_MD,
+        CornerRadiusLg = CORNER_RADIUS_LG,
 
         FontMain = config.FontMain,
         FontMono = config.FontMono,
@@ -116,17 +119,7 @@ local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
 
         FontMonoTitleSize = config.FontMonoTitleSize,
         FontMonoBodySize = config.FontMonoBodySize,
-        FontMonoCaptionSize = config.FontMonoCaptionSize,
-
-        GetBg = ThemeHelpers.GetBg,
-        GetBgHighlight = ThemeHelpers.GetBgHighlight,
-        GetFg = ThemeHelpers.GetFg,
-        GetAccent = ThemeHelpers.GetAccent,
-        GetHeight = ThemeHelpers.GetHeight,
-        GetCornerRadius = ThemeHelpers.GetCornerRadius,
-        GetFont = ThemeHelpers.GetFont,
-        GetFontSize = ThemeHelpers.GetFontSize,
-        HighlightGradient = ThemeHelpers.HighlightGradient
+        FontMonoCaptionSize = config.FontMonoCaptionSize
     }
 end
 
