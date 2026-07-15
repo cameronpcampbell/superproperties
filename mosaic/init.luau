@@ -23,5 +23,6 @@ return {
     Checkbox = require(Components.checkbox),
 
     GetTheme = ThemeUtils.GetThemeForScope,
-    SetTheme = ThemeUtils.SetThemeForScope
+    SetTheme = ThemeUtils.SetThemeForScope,
+    DefaultThemeConfig = ThemeUtils.DefaultThemeConfig
 }

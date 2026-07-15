@@ -4,6 +4,7 @@ local CreateTheme = require(script.createTheme)
 local ManageTheme = require(script.manageTheme)
 local Types = require(script.types)
 local ThemeHelpers = require(script.themeHelpers)
+local DefaultThemeConfig = require(script.defaultThemeConfig)
 
 export type Theme = Types.Theme
 export type ThemeSource = Types.ThemeSource
@@ -41,5 +42,6 @@ return {
     SetThemeForScope = ManageTheme.SetThemeForScope,
     GetThemeForScope = ManageTheme.GetThemeForScope,
     GetNextVariant = GetNextVariant,
-    CalcColorModifier = ThemeHelpers.CalcColorModifier
+    CalcColorModifier = ThemeHelpers.CalcColorModifier,
+    DefaultThemeConfig = DefaultThemeConfig
 }

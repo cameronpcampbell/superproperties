@@ -18,6 +18,18 @@ local Scope = Fusion.scoped(Fusion, Mosaic)
 
 local Debug = script.debug.Value:gsub("\n", "") == "true"
 
+local theme = Scope:DefaultThemeConfig()
+for key, value in (theme :: { [string]: any }) do
+    if typeof(value) ~= "Color3" then continue end
+
+    (theme :: any)[key] = require(Packages.mosaic.utils.colorSpace).Stringify.Hex(value)
+end
+print(theme)
+
+settings().Studio.ThemeChanged:Connect(function()
+	Scope:SetTheme(Scope:DefaultThemeConfig())
+end)
+
 local function GetSelectedInstanceValue(
     scope: Fusion.Scope
 ): Fusion.Value<Instance?>

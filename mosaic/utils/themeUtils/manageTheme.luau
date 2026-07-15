@@ -103,7 +103,7 @@ local function GetThemeForScope(scope: Fusion.Scope): Types.Theme
     local theme = ThemeForScopes[scope]
 
     if not theme then
-        theme = CreateThemeForScope(scope, DefaultThemeConfig)
+        theme = CreateThemeForScope(scope, DefaultThemeConfig())
     end
 
     return theme
