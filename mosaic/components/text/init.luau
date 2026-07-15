@@ -4,7 +4,7 @@
 local Packages = script.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
-local Peek, New = Fusion.peek, Fusion.New
+local New = Fusion.New
 
 local Utils = script.Parent.Parent.utils
 
@@ -28,20 +28,23 @@ type TextProps = {
 }
 
 return Component<<TextProps>>(function(scope, props)
-    local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
-
     local props, text = TableExtract(props, "Text")
     local props, variant = TableExtract(props, "Variant", "Primary")
-    local props, font = TableExtract(props, "Font", "Main")
+    local props, fontVariant = TableExtract(props, "Font", "Main")
     local props, fontWeight = TableExtract(props, "FontWeight", Enum.FontWeight.Regular)
     local props, fontStyle = TableExtract(props, "FontStyle", Enum.FontStyle.Normal)
     local props, fontSize = TableExtract(props, "FontSize", "Body")
 
+    local theme = GetThemeForScope(scope)
+    local textColor = theme:GetFg(scope, variant)
+    local font = theme:GetFont(scope, fontVariant, fontWeight, fontStyle)
+    local fontSize = theme:GetFontSize(scope, fontVariant, fontSize)
+
     return New (scope, "TextLabel") (CombineProps({
         Text = text,
-        TextColor3 = theme:GetFg(scope, variant),
-        FontFace = theme:GetFont(font, fontWeight, fontStyle),
-        TextSize = theme:GetFontSize(font, fontSize),
+        TextColor3 = textColor,
+        FontFace = font,
+        TextSize = fontSize,
         Size = UDim2.fromScale(0, 0),
         AutomaticSize = Enum.AutomaticSize.XY,
         BackgroundTransparency = 1,

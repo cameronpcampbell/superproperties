@@ -5,15 +5,17 @@ local Packages = script.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local New, Children, Value, Peek, OnEvent, Tween =
+local New, Children, Value, OnEvent, Tween =
     Fusion.New, Fusion.Children, Fusion.Value,
-    Fusion.peek, Fusion.OnEvent, Fusion.Tween
+    Fusion.OnEvent, Fusion.Tween
 
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
 local Component, CombineProps, ChildrenTransform =
     FusionUtils.Component, FusionUtils.CombineProps, FusionUtils.ChildrenTransform
+local ComputeTransforms = FusionUtils.ComputeTransforms
+local ComputeUDim2, ComputeUDim = ComputeTransforms.UDim2, ComputeTransforms.UDim
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope, CalcColorModifier =
@@ -37,7 +39,7 @@ local function TransformChild(scope: Fusion.Scope, child: unknown): Fusion.Child
         return if childTypeof == "Instance" then child :: Fusion.Child else nil
 
     elseif string.match(child :: string, "^rbxassetid://%d+$") then
-        local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
+        local theme = GetThemeForScope(scope)
 
         return New (scope, "ImageLabel") {
             Size = UDim2.fromOffset(9, 9),
@@ -55,8 +57,6 @@ local function TransformChild(scope: Fusion.Scope, child: unknown): Fusion.Child
 end
 
 return Component<<ButtonProps>>(function(scope, props)
-    local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
-
     local props, variant = TableExtract(props, "Variant", "Primary")
     local props, width = TableExtract(props, "Width", UDim.new(1, 0))
     local props, children = TableExtract(props, Children)
@@ -64,19 +64,24 @@ return Component<<ButtonProps>>(function(scope, props)
     local isHoverState, isFocusState = Value(scope, false), Value(scope, false)
     local themeColorModifier = CalcColorModifier(scope, isHoverState, isFocusState)
 
+    local theme = GetThemeForScope(scope)
+    local accentColor = theme:GetAccent(scope, variant, themeColorModifier)
+    local highlightGradient = theme:HighlightGradient(scope, 0.78)
+    local cornerRadius = theme:GetCornerRadius(scope, "Md")
+    local height = theme:GetHeight(scope, "Lg")
+
     return Supercorner.new(scope :: any, CombineProps({
         Button = true,
         BackgroundColor3 = Tween<<Color3>>(
-            scope,
-            theme:GetAccent(scope, variant, themeColorModifier),
+            scope, accentColor,
             TweenInfo.new(
                 .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
             )
         ),
-        StrokeGradient = theme:HighlightGradient(scope, 0.78),
+        StrokeGradient = highlightGradient,
         StrokeThickness = 1,
-        Size = UDim2.new(width, UDim.new(0, theme:GetHeight("Lg"))),
-        CornerRadius = theme:GetCornerRadius("Md"),
+        Size = ComputeUDim2(scope, width, ComputeUDim(scope, 0, height)),
+        CornerRadius = cornerRadius,
         CornerSmoothing = 1,
 
         [OnEvent "MouseEnter"] = function() isHoverState:set(true) end,

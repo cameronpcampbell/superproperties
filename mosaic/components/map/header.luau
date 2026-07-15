@@ -6,10 +6,17 @@ local Supercorner = require(Packages.supercorner)
 local Typeforge = require(Packages.typeforge)
 
 local Fusion = require(Packages.fusion)
-local Peek, New, Children, Computed =
-    Fusion.peek, Fusion.New, Fusion.Children, Fusion.Computed
+local New, Children, Computed =
+    Fusion.New, Fusion.Children, Fusion.Computed
 
 local Utils = script.Parent.Parent.Parent.utils
+
+local FusionUtils = require(Utils.fusionUtils)
+local ComputeTransforms = FusionUtils.ComputeTransforms
+local ComputeUDim2, ComputeUDim =
+    ComputeTransforms.UDim2, ComputeTransforms.UDim
+local ComputeMath = FusionUtils.ComputeMath
+local ComputeAdd = ComputeMath.Add
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
@@ -32,14 +39,14 @@ local function ComputeCornerRadii(
     scope: Fusion.Scope,
     rowCount: Fusion.UsedAs<number>,
     rowIdx: Fusion.UsedAs<number>,
-    baseRadius: number,
+    baseRadius: Fusion.UsedAs<number>,
     tweenComputeMapSize: Fusion.UsedAs<UDim2>
 ): (
     Fusion.Computed<number>, Fusion.Computed<number>,
     Fusion.Computed<number>, Fusion.Computed<number>
 )
-    local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
-    local lgHeight = theme:GetHeight("Lg")
+    local theme = GetThemeForScope(scope)
+    local height = theme:GetHeight(scope, "Lg")
 
     local function cornerRadius(roundFirst: boolean, roundLast: boolean)
         return Computed(scope, function(use: Fusion.Use): number
@@ -49,15 +56,15 @@ local function ComputeCornerRadii(
             local usedRowIdx = use<<number>>(rowIdx)
 
             local itemCount =
-                if usedTweenComputeMapHeightOffset == lgHeight then 1
+                if usedTweenComputeMapHeightOffset == height then 1
                 else usedRowCount
 
             if roundFirst and usedRowIdx == 1 then
-                return baseRadius
+                return use<<number>>(baseRadius)
             end
 
             if roundLast and usedRowIdx == itemCount then
-                return baseRadius
+                return use<<number>>(baseRadius)
             end
 
             return 0
@@ -72,15 +79,14 @@ local function ComputeCornerRadii(
 end
 
 local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
-    local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
-
     local rowCount, rowIdx = props.RowCount, props.RowIdx
     local variant = props.Variant
     local collapsedState = props.CollapsedState
     local tweenComputeMapSize = props.TweenComputeMapSize
 
-    local innerCornerRadius = theme:GetCornerRadius("Md") - 1
-    local rowHeight = theme:GetHeight("Lg") - 2
+    local theme = GetThemeForScope(scope)
+    local innerCornerRadius = ComputeAdd(scope, theme:GetCornerRadius(scope, "Md"), - 1)
+    local rowHeight = ComputeAdd(scope, theme:GetHeight(scope, "Lg"), - 2)
 
     local topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius =
         ComputeCornerRadii(
@@ -93,7 +99,7 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
 
     return Supercorner.new(scope, {
         BackgroundColor3 = theme:GetBgHighlight(scope, variant),
-        Size = UDim2.new(1, 0, 0, rowHeight),
+        Size = ComputeUDim2(scope, UDim.new(1, 0), ComputeUDim(scope, 0, rowHeight)),
         LayoutOrder = rowIdx,
         TopLeftRadius = topLeftRadius,
         TopRightRadius = topRightRadius,

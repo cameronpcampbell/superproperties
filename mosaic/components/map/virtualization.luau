@@ -58,7 +58,7 @@ export type VirtualRowsConfig = {
     CollapsedState: Fusion.Value<boolean>,
     AnimatedMapSize: Fusion.UsedAs<UDim2>,
     VisibleRootRange: Fusion.UsedAs<Vector2>?,
-    RowHeight: number
+    RowHeight: Fusion.UsedAs<number>
 }
 
 type MountedRow = {
@@ -67,8 +67,8 @@ type MountedRow = {
     Instance: Instance
 }
 
-local function CalculateMapHeight(rowCount: number, lgHeight: number): number
-    local rowHeight = lgHeight - 2
+local function CalculateMapHeight(rowCount: number, height: number): number
+    local rowHeight = height - 2
     return rowHeight * rowCount + rowCount + 1
 end
 
@@ -200,15 +200,14 @@ local function CreateMapLayout(
     header: string?,
     items: Fusion.UsedAs<Items>?,
     emptyText: string?,
-    lgHeight: number
+    rowHeight: Fusion.UsedAs<number>
 ): MapLayout
-    local rowHeight = lgHeight - 2
-
     local rootItems = Computed(scope, function(
         use: Fusion.Use,
         layoutScope: Fusion.Scope
     ): { ItemLayout }
         local usedItems: Items = if items then use<<Items>>(items) else {}
+        local usedRowHeight = use<<number>>(rowHeight)
         local layouts = table.create(#usedItems) :: { ItemLayout }
 
         for itemIdx, item in usedItems do
@@ -216,7 +215,7 @@ local function CreateMapLayout(
                 layoutScope,
                 item,
                 1,
-                rowHeight,
+                usedRowHeight,
                 itemIdx == #usedItems
             )
         end
@@ -240,14 +239,15 @@ local function CreateMapLayout(
     end)
 
     local animatedExpandedHeight = Computed(scope, function(use: Fusion.Use): number
-        local rows = use<<RootRowDescriptors>>(rootRows)
+        local usedRootRows = use<<RootRowDescriptors>>(rootRows)
+        local usedRowHeight = use<<number>>(rowHeight)
         local height = MapContentPadding
 
-        for _, descriptor in rows do
+        for _, descriptor in usedRootRows do
             if descriptor == HeaderRowDescriptor
                 or descriptor == EmptyRowDescriptor
             then
-                height += rowHeight
+                height += usedRowHeight
             else
                 height += use<<number>>(
                     (descriptor :: ItemLayout).AnimatedHeight
@@ -297,16 +297,18 @@ local function CreateMapSizeTween(
     width: UDim,
     collapsed: Fusion.UsedAs<boolean>,
     animatedExpandedHeight: Fusion.UsedAs<number>,
-    lgHeight: number
+    height: Fusion.UsedAs<number>
 ): Fusion.Computed<UDim2>
     local reveal = CreateCollapseRevealTween(scope, collapsed)
 
     return Computed(scope, function(use: Fusion.Use): UDim2
-        local height = lgHeight
-            + use<<number>>(reveal)
-                * (use<<number>>(animatedExpandedHeight) - lgHeight)
+        local usedHeight = use<<number>>(height)
 
-        return UDim2.new(width, UDim.new(0, height))
+        local resolvedHeight = usedHeight
+            + use<<number>>(reveal)
+                * (use<<number>>(animatedExpandedHeight) - usedHeight)
+
+        return UDim2.new(width, UDim.new(0, resolvedHeight))
     end)
 end
 
@@ -328,11 +330,9 @@ local function ComputeVirtualListVisibleRootRange(
     scope: Fusion.Scope,
     virtualListData: VirtualListData?,
     layout: MapLayout,
-    lgHeight: number
+    rowHeight: Fusion.UsedAs<number>
 ): Fusion.Computed<Vector2>?
     if not virtualListData then return nil end
-
-    local rowHeight = lgHeight - 2
 
     return Computed(scope, function(use: Fusion.Use): Vector2
         if not use<<boolean>>(virtualListData.GeometryReady) then
@@ -357,8 +357,10 @@ local function ComputeVirtualListVisibleRootRange(
         local rowTop = mapCanvasTop + MapContentPadding
         local firstRow, lastRow: number? = nil, nil
 
+        local usedRowHeight = use<<number>>(rowHeight)
+
         for rootIdx, descriptor in rootRows do
-            local height = UseRootRowHeight(use, descriptor, rowHeight)
+            local height = UseRootRowHeight(use, descriptor, usedRowHeight)
             local rowBottom = rowTop + height
 
             if rowBottom > viewportTop and rowTop < viewportBottom then
@@ -506,7 +508,7 @@ local function ComputeTopSpacerHeight(
         if skippedCount == 0 then return 0 end
 
         local rootRows = use<<RootRowDescriptors>>(config.Layout.RootRows)
-        local rowHeight = config.RowHeight - 2
+        local rowHeight = use<<number>>(config.RowHeight) - 2
         local height = RowGap * (skippedCount - 1)
 
         for rootIdx = 1, skippedCount do

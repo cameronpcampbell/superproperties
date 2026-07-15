@@ -5,7 +5,7 @@ local Packages = script.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local Peek, New, Children = Fusion.peek, Fusion.New, Fusion.Children
+local New, Children = Fusion.New, Fusion.Children
 
 local Utils = script.Parent.Parent.utils
 
@@ -13,6 +13,8 @@ local FusionUtils = require(Utils.fusionUtils)
 local Component, CombineProps, CoerceToValue =
     FusionUtils.Component, FusionUtils.CombineProps,
     FusionUtils.CoerceToValue
+local ComputeMath = FusionUtils.ComputeMath
+local ComputeAdd = ComputeMath.Add
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope, GetNextVariant =
@@ -47,9 +49,6 @@ export type MapProps = {
 }
 
 return Component<<MapProps>>(function(scope, props)
-    local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
-    local lgHeight = theme:GetHeight("Lg")
-
     local props, variant = TableExtract(props, "Variant", "Secondary")
     local props, width = TableExtract(props, "Width", UDim.new(1, 0))
     local props, header = TableExtract(props, "Header")
@@ -61,14 +60,23 @@ return Component<<MapProps>>(function(scope, props)
 
     local strokeVariant: ThemeUtils.BgVariant = GetNextVariant(variant)
     local collapsedState = CoerceToValue<<boolean>>(scope, collapsed)
+
+    local theme = GetThemeForScope(scope)
+    local strokeColor = theme:GetBg(scope, strokeVariant)
+    local height = theme:GetHeight(scope, "Lg")
+    local cornerRadius = theme:GetCornerRadius(scope, "Md")
+
+    local rowHeight = ComputeAdd(scope, height, - 2)
+
     local layout =
         if virtualListData then virtualListData.Layout
-        else CreateMapLayout(scope, header, items, emptyText, lgHeight)
+        else CreateMapLayout(scope, header, items, emptyText, rowHeight)
+
     local visibleRootRange = ComputeVirtualListVisibleRootRange(
         scope,
         virtualListData,
         layout,
-        lgHeight
+        height
     )
 
     -- The parent supplies this tween so unmounted maps continue animating.
@@ -80,7 +88,7 @@ return Component<<MapProps>>(function(scope, props)
             width,
             collapsedState,
             layout.AnimatedExpandedHeight,
-            lgHeight
+            height
         )
 
     local visibleRows = ComputeVirtualizedRows(scope, {
@@ -92,7 +100,7 @@ return Component<<MapProps>>(function(scope, props)
         CollapsedState = collapsedState,
         AnimatedMapSize = animatedMapSize,
         VisibleRootRange = visibleRootRange,
-        RowHeight = lgHeight
+        RowHeight = height
     })
 
     local mapChildren: { Fusion.Child } = {
@@ -112,12 +120,12 @@ return Component<<MapProps>>(function(scope, props)
     }
 
     return Supercorner.new(scope, CombineProps({
-        BackgroundColor3 = theme:GetBg(scope, strokeVariant, nil),
-        StrokeColor = theme:GetBg(scope, strokeVariant, nil),
+        BackgroundColor3 = strokeColor,
+        StrokeColor = strokeColor,
         StrokeThickness = 1,
         Size = animatedMapSize,
         ClipsDescendants = true,
-        CornerRadius = theme:GetCornerRadius("Md"),
+        CornerRadius = cornerRadius,
         CornerSmoothing = 1,
 
         Name = `Map {if header then `[{header}]` else ""}`,

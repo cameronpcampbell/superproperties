@@ -61,9 +61,6 @@ local function SortMapProps(mapProps: { MapProps }): { MapProps }
 end
 
 return Component<<VirtualMapScrollableProps>>(function(scope, props)
-    local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
-    local lgHeight = theme:GetHeight("Lg")
-
     local props, mapsProps = TableExtract(props, "Maps")
     local props, overdraw = TableExtract(props, "Overdraw")
     local props, padding = TableExtract(props, "Padding", DefaultPadding)
@@ -89,6 +86,9 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
     local computeCanvasSize = Computed(scope, function(use: Fusion.Use): UDim2
         return UDim2.fromOffset(0, use<<number>>(canvasHeightState))
     end)
+
+    local theme = GetThemeForScope(scope)
+    local height = theme:GetHeight(scope, "Lg")
 
     local computeMapInstances = Computed(scope, function(
         use: Fusion.Use,
@@ -116,14 +116,14 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                 header,
                 items,
                 emptyText,
-                lgHeight
+                height
             )
             local animatedMapSize = CreateMapSizeTween(
                 scope,
                 width,
                 collapsedState,
                 layout.AnimatedExpandedHeight,
-                lgHeight
+                height
             )
 
             local mapTop: Fusion.UsedAs<number> = 0

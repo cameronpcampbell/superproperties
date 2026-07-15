@@ -5,10 +5,18 @@ local Packages = script.Parent.Parent.Parent.Parent
 local Typeforge = require(Packages.typeforge)
 
 local Fusion = require(Packages.fusion)
-local Computed, Peek, New, Children =
-    Fusion.Computed, Fusion.peek, Fusion.New, Fusion.Children
+local Computed, New, Children =
+    Fusion.Computed, Fusion.New, Fusion.Children
 
 local Utils = script.Parent.Parent.Parent.utils
+
+local FusionUtils = require(Utils.fusionUtils)
+local ComputeTransforms = FusionUtils.ComputeTransforms
+local ComputeUDim2, ComputeUDim, ComputeUDim2FromOffset =
+    ComputeTransforms.UDim2, ComputeTransforms.UDim,
+    ComputeTransforms.UDim2FromOffset
+local ComputeMath = FusionUtils.ComputeMath
+local ComputeAdd = ComputeMath.Add
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
@@ -27,9 +35,6 @@ type MapItemProps = Typeforge.Flatten<{
 }>
 
 local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
-    local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
-    local rowHeight = theme:GetHeight("Lg") - 2
-
     local layout = props.Layout
     local item = layout.Item
     local children = layout.Children
@@ -52,6 +57,9 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
             HideValue = props.HideValue
         })
     end
+
+    local theme = GetThemeForScope(scope)
+    local rowHeight = ComputeAdd(scope, theme:GetHeight(scope, "Lg"), - 2)
 
     table.insert(nestedChildren, New(scope, "UIListLayout") {
         Padding = UDim.new(0, 1),
@@ -90,7 +98,7 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
     })
 
     local itemContent = New(scope, "Frame") {
-        Size = UDim2.new(1, 0, 0, rowHeight),
+        Size = ComputeUDim2(scope, UDim.new(1, 0), ComputeUDim(scope, 0, rowHeight)),
         BackgroundTransparency = 1,
         Name = "ItemContent",
 
@@ -100,7 +108,7 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
     local subItemsClip: Instance? = nil
     if hasSubItems then
         subItemsClip = New(scope, "Frame") {
-            Position = UDim2.fromOffset(0, rowHeight),
+            Position = ComputeUDim2FromOffset(scope, 0, rowHeight),
             Size = Computed(scope, function(use: Fusion.Use): UDim2
                 return UDim2.new(
                     1,

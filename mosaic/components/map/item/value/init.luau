@@ -6,9 +6,15 @@ local Supercorner = require(Packages.supercorner)
 local Typeforge = require(Packages.typeforge)
 
 local Fusion = require(Packages.fusion)
-local Peek, New, Children = Fusion.peek, Fusion.New, Fusion.Children
+local New, Children = Fusion.New, Fusion.Children
 
 local Utils = script.Parent.Parent.Parent.Parent.utils
+
+local FusionUtils = require(Utils.fusionUtils)
+local ComputeTransforms = FusionUtils.ComputeTransforms
+local ComputeUDim2, ComputeUDim = ComputeTransforms.UDim2, ComputeTransforms.UDim
+local ComputeMath = FusionUtils.ComputeMath
+local ComputeAdd = ComputeMath.Add
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
@@ -29,12 +35,15 @@ type MapItemValueProps = Typeforge.Flatten<
 >
 
 local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
-    local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
-    local rowHeight = theme:GetHeight("Lg") - 2
-    local innerCornerRadius = theme:GetCornerRadius("Md") - 1
-
     local rowCount, rowIdx = props.RowCount, props.RowIdx
     local variant = props.Variant
+
+    local theme = GetThemeForScope(scope)
+    local bgColor = theme:GetBg(scope, variant)
+    local rowHeight =
+        ComputeAdd(scope, theme:GetHeight(scope, "Lg"), - 2)
+    local innerCornerRadius =
+        ComputeAdd(scope, theme:GetCornerRadius(scope, "Md"), - 1)
 
     local topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius =
         CalculateRowCornerRadii(
@@ -47,8 +56,8 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
         )
 
     return Supercorner.new(scope, {
-        BackgroundColor3 = theme:GetBg(scope, variant),
-        Size = UDim2.new(1, 0, 0, rowHeight),
+        BackgroundColor3 = bgColor,
+        Size = ComputeUDim2(scope, UDim.new(1, 0), ComputeUDim(scope, 0, rowHeight)),
         TopLeftRadius = topLeftRadius,
         TopRightRadius = topRightRadius,
         BottomLeftRadius = bottomLeftRadius,

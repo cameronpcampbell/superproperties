@@ -5,43 +5,105 @@ local Fusion = require(Packages.fusion)
 
 local Types = require(script.Parent.types)
 local DefaultTheme = require(script.Parent.defaultTheme)
+local ThemeHelpers = require(script.Parent.themeHelpers)
 
-local Value = Fusion.Value
+local Peek, Value = Fusion.peek, Fusion.Value
 
-local ThemeForScopes: { [Fusion.Scope]: Fusion.Value<Types.Theme> } = {}
+local THEME_TOKEN_KEYS = {
+    "BgPrimary",
+    "BgSecondary",
+    "BgTertiary",
+    "BgQuaternary",
+    "BgQuinary",
 
-local function CreateThemeForScope(scope: Fusion.Scope, theme: Types.Theme)
+    "BgPrimaryHighlight",
+    "BgSecondaryHighlight",
+    "BgTertiaryHighlight",
+    "BgQuaternaryHighlight",
+
+    "FgPrimary",
+    "FgSecondary",
+    "FgTertiary",
+
+    "AccentPrimary",
+    "AccentSecondary",
+    "AccentDestructive",
+
+    "HeightSm",
+    "HeightMd",
+    "HeightLg",
+
+    "CornerRadiusSm",
+    "CornerRadiusMd",
+    "CornerRadiusLg",
+
+    "FontMain",
+    "FontMono",
+
+    "FontMainTitleSize",
+    "FontMainBodySize",
+    "FontMainCaptionSize",
+
+    "FontMonoTitleSize",
+    "FontMonoBodySize",
+    "FontMonoCaptionSize",
+}
+
+local ThemeForScopes: { [Fusion.Scope]: Types.Theme } = {}
+
+local function CreateThemeForScope(
+    scope: Fusion.Scope,
+    source: Types.ThemeSource
+): Types.Theme
     table.insert(scope, function()
         ThemeForScopes[scope] = nil
     end)
 
-    local themeState = Value(scope, theme)
-    ThemeForScopes[scope] = themeState
+    local theme = {
+        GetBg = ThemeHelpers.GetBg,
+        GetBgHighlight = ThemeHelpers.GetBgHighlight,
+        GetFg = ThemeHelpers.GetFg,
+        GetAccent = ThemeHelpers.GetAccent,
+        GetHeight = ThemeHelpers.GetHeight,
+        GetCornerRadius = ThemeHelpers.GetCornerRadius,
+        GetFont = ThemeHelpers.GetFont,
+        GetFontSize = ThemeHelpers.GetFontSize,
+        HighlightGradient = ThemeHelpers.HighlightGradient,
+    } :: any
 
-    return themeState
-end
-
-local function SetThemeForScope(scope: Fusion.Scope, theme: Types.Theme)
-    if not ThemeForScopes[scope] then
-        CreateThemeForScope(scope, theme)
-
-    else
-         ThemeForScopes[scope]:set(theme)
+    for _, key in THEME_TOKEN_KEYS do
+        theme[key] = Value(scope, Peek((source :: any)[key]))
     end
 
+    ThemeForScopes[scope] = theme
+    return theme
 end
 
-local function GetThemeForScope(scope: Fusion.Scope): Fusion.UsedAs<Types.Theme>
-    local themeState = ThemeForScopes[scope]
+local function SetThemeForScope(scope: Fusion.Scope, source: Types.ThemeSource)
+    local theme = ThemeForScopes[scope]
 
-    if not themeState then
-        themeState = CreateThemeForScope(scope, DefaultTheme)
+    if not theme then
+        CreateThemeForScope(scope, source)
+        return
     end
 
-    return themeState
+    for _, key in THEME_TOKEN_KEYS do
+        local themeValue = (theme :: any)[key] :: Fusion.Value<any>
+        themeValue:set(Peek((source :: any)[key]))
+    end
+end
+
+local function GetThemeForScope(scope: Fusion.Scope): Types.Theme
+    local theme = ThemeForScopes[scope]
+
+    if not theme then
+        theme = CreateThemeForScope(scope, DefaultTheme)
+    end
+
+    return theme
 end
 
 return {
     SetThemeForScope = SetThemeForScope,
-    GetThemeForScope = GetThemeForScope
+    GetThemeForScope = GetThemeForScope,
 }

@@ -14,6 +14,8 @@ local Utils = script.Parent.Parent.utils
 local FusionUtils = require(Utils.fusionUtils)
 local Component, CombineProps, CoerceToValue =
     FusionUtils.Component, FusionUtils.CombineProps, FusionUtils.CoerceToValue
+local ComputeTransforms = FusionUtils.ComputeTransforms
+local ComputeUDim2FromOffset = ComputeTransforms.UDim2FromOffset
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope, CalcColorModifier =
@@ -30,7 +32,6 @@ type CheckboxProps = {
 }
 
 return Component<<CheckboxProps>>(function(scope, props)
-    local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
 
     local props, checked = TableExtract(props, "Checked", true)
     local props, disabled = TableExtract(props, "Disabled", true)
@@ -50,21 +51,27 @@ return Component<<CheckboxProps>>(function(scope, props)
         )
     )
 
+    local theme = GetThemeForScope(scope)
+    local accentColor = theme:GetAccent(scope, "Primary", themeColorModifier)
+    local fgColor = theme:GetFg(scope, "Primary", themeColorModifier)
+    local highlightGradient = theme:HighlightGradient(scope, 0.78)
+    local height = theme:GetHeight(scope, "Sm")
+    local cornerRadius = theme:GetCornerRadius(scope, "Sm")
+
     return Supercorner.new(scope, CombineProps({
         Button = true,
         BackgroundColor3 = Tween<<Color3>>(
-            scope,
-            theme:GetAccent(scope, "Primary", themeColorModifier),
+            scope, accentColor,
             TweenInfo.new(
                 .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
             )
         ),
         BackgroundTransparency = computeTruthyTransparency,
         StrokeTransparency = computeTruthyTransparency,
-        StrokeGradient = theme:HighlightGradient(scope, 0.78),
+        StrokeGradient = highlightGradient,
         StrokeThickness = 1,
-        Size = UDim2.fromOffset(theme:GetHeight("Sm"), theme:GetHeight("Sm")),
-        CornerRadius = theme:GetCornerRadius("Sm"),
+        Size = ComputeUDim2FromOffset(scope, height, height),
+        CornerRadius = cornerRadius,
         CornerSmoothing = 1,
 
         [OnEvent "MouseEnter"] = function()
@@ -103,13 +110,12 @@ return Component<<CheckboxProps>>(function(scope, props)
                 StrokeThickness = 1,
                 BackgroundTransparency = 1,
                 StrokeColor = Tween<<Color3>>(
-                    scope,
-                    theme:GetFg(scope, "Primary", themeColorModifier),
+                    scope, fgColor,
                     TweenInfo.new(
                         .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
                     )
                 ),
-                CornerRadius = theme:GetCornerRadius("Sm"),
+                CornerRadius = cornerRadius,
                 StrokeTransparency = Tween<<number>>(
                     scope,
                     Computed(scope, function(use: any, scope)
@@ -127,7 +133,7 @@ return Component<<CheckboxProps>>(function(scope, props)
         [Children] = {
             New(scope, "ImageLabel") {
                 Image = Assets.CheckboxTrue,
-                ImageColor3 = theme:GetFg(scope, "Primary"),
+                ImageColor3 = fgColor,
                 Size = UDim2.fromScale(1, 1),
                 BackgroundTransparency = 1,
                 ImageTransparency = computeTruthyTransparency

@@ -7,6 +7,7 @@ local Types = require(script.types)
 local ThemeHelpers = require(script.themeHelpers)
 
 export type Theme = Types.Theme
+export type ThemeSource = Types.ThemeSource
 export type ThemeConfig = Types.ThemeConfig
 
 export type BgVariant = Types.BgVariant

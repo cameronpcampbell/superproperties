@@ -5,7 +5,7 @@ local Packages = script.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local Peek, Tween, Computed = Fusion.peek, Fusion.Tween, Fusion.Computed
+local Tween, Computed = Fusion.Tween, Fusion.Computed
 
 local Utils = script.Parent.Parent.utils
 
@@ -29,8 +29,6 @@ type FocusRingProps = {
 }
 
 return Component<<FocusRingProps>>(function(scope, props)
-    local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
-
     local props, cornerRadius = TableExtract(props, "CornerRadius")
     local props, topLeftRadius = TableExtract(props, "TopLeftRadius")
     local props, topRightRadius = TableExtract(props, "TopRightRadius")
@@ -65,13 +63,16 @@ return Component<<FocusRingProps>>(function(scope, props)
         return math.map(usedAlpha, 0, 1, 1, .6)
     end)
 
+    local theme = GetThemeForScope(scope)
+    local accentColor = theme:GetAccent(scope, "Primary")
+
     return Supercorner.new(scope, CombineProps({
         Size = computeSize,
         Position = UDim2.fromScale(.5, .5),
         AnchorPoint = Vector2.new(.5, .5),
         StrokeThickness = ringThickness + ringInset,
         StrokeTransparency = computeTransparency,
-        StrokeColor = theme:GetAccent(scope, "Primary"),
+        StrokeColor = accentColor,
         BackgroundTransparency = 1,
         CornerRadius =
             if cornerRadius then cornerRadius + ringThickness else nil,

@@ -12,23 +12,26 @@ local function CalculateRowCornerRadii(
     rowCount: Fusion.UsedAs<number>,
     rowIdx: Fusion.UsedAs<number>,
     redrawable: boolean,
-    radius: number
+    radius: Fusion.UsedAs<number>
 ): (
     Fusion.UsedAs<number>, Fusion.UsedAs<number>,
     Fusion.UsedAs<number>, Fusion.UsedAs<number>
 )
     local topRadius = Computed(scope, function(use: Fusion.Use): number
-        return if use<<number>>(rowIdx) == 1 then radius else 0
+        return
+            if use<<number>>(rowIdx) == 1
+            then use<<number>>(radius)
+            else 0
     end)
+
     local bottomRadius = Computed(scope, function(use: Fusion.Use): number
         return
             if use<<number>>(rowIdx) == use<<number>>(rowCount)
-            then radius
+            then use<<number>>(radius)
             else 0
     end)
-    local zero = Computed(scope, function(): number return 0 end)
 
-    local function resolve(radiusState: Fusion.Computed<number>): Fusion.UsedAs<number>
+    local function resolve(radiusState: Fusion.UsedAs<number>): Fusion.UsedAs<number>
         return
             if redrawable then radiusState
             else Peek<<number>>(radiusState)
@@ -37,15 +40,15 @@ local function CalculateRowCornerRadii(
     if side == "Left" then
         return
             resolve(topRadius),
-            resolve(zero),
+            resolve(0),
             resolve(bottomRadius),
-            resolve(zero)
+            resolve(0)
     end
 
     return
-        resolve(zero),
+        resolve(0),
         resolve(topRadius),
-        resolve(zero),
+        resolve(0),
         resolve(bottomRadius)
 end
 

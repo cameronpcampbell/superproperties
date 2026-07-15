@@ -5,8 +5,8 @@ local Packages = script.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local Peek, New, Children, Value, Out, OnEvent, Computed, Tween =
-    Fusion.peek, Fusion.New, Fusion.Children, Fusion.Value,
+local New, Children, Value, Peek, Out, OnEvent, Computed, Tween =
+    Fusion.New, Fusion.Children, Fusion.Value, Fusion.peek,
     Fusion.Out, Fusion.OnEvent, Fusion.Computed, Fusion.Tween
 
 local Utils = script.Parent.Parent.utils
@@ -15,6 +15,8 @@ local FusionUtils = require(Utils.fusionUtils)
 local Component, CombineProps, CreateOutProxy, IsValue =
     FusionUtils.Component, FusionUtils.CombineProps,
     FusionUtils.CreateOutProxy, FusionUtils.IsValue
+local ComputeTransforms = FusionUtils.ComputeTransforms
+local ComputeUDim2, ComputeUDim = ComputeTransforms.UDim2, ComputeTransforms.UDim
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope, GetNextVariant, CalcColorModifier =
@@ -37,8 +39,6 @@ type InputProps = {
 }
 
 return Component<<InputProps>>(function(scope, props)
-    local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
-
     local props, variant = TableExtract(props, "Variant", "Tertiary")
     local props, text = TableExtract(props, "Text", "")
     local props, placeholderText = TableExtract(props, "PlaceholderText", "Type here...")
@@ -47,21 +47,8 @@ return Component<<InputProps>>(function(scope, props)
     local props, rightChildren = TableExtract(props, "RightChildren")
 
     local isHoverState, isFocusState = Value(scope, false), Value(scope, false)
-    local themeColorModifier = CalcColorModifier(scope, isHoverState, isFocusState, "Stroke")
-
-    local tweenComputeStrokeColor = Tween<<Color3>>(
-        scope,
-        Computed(scope, function(use, scope)
-            return
-                if use<<boolean>>(isFocusState) then
-                    use<<Color3>>(theme:GetAccent(scope, "Primary", themeColorModifier))
-                else
-                    use<<Color3>>(theme:GetBg(scope, GetNextVariant(variant), themeColorModifier))
-        end),
-        TweenInfo.new(
-            .18, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
-        )
-    )
+    local themeColorModifier =
+        CalcColorModifier(scope, isHoverState, isFocusState, "Stroke")
 
     local computeVisualText = Computed(scope, function(use, scope)
         local usedText = use<<string?>>(text)
@@ -71,6 +58,31 @@ return Component<<InputProps>>(function(scope, props)
     local textValue = if IsValue(text) then
         (text :: any) :: Fusion.Value<string?, string>
         else nil
+
+    local theme = GetThemeForScope(scope)
+    local bgColor = theme:GetBg(scope, variant)
+    local textColor = theme:GetFg(scope, "Primary")
+    local textPlaceholderColor = theme:GetFg(scope, "Secondary")
+    local accentColor = theme:GetAccent(scope, "Primary", themeColorModifier)
+    local strokeColor = theme:GetBg(scope, GetNextVariant(variant), themeColorModifier)
+    local height = theme:GetHeight(scope, "Lg")
+    local cornerRadius = theme:GetCornerRadius(scope, "Md")
+    local font = theme:GetFont(scope, "Main", Enum.FontWeight.Medium)
+    local fontSize = theme:GetFontSize(scope, "Main", "Title")
+
+    local tweenComputeStrokeColor = Tween<<Color3>>(
+        scope,
+        Computed(scope, function(use, scope)
+            return
+                if use<<boolean>>(isFocusState) then
+                    use<<Color3>>(accentColor)
+                else
+                    use<<Color3>>(strokeColor)
+        end),
+        TweenInfo.new(
+            .18, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
+        )
+    )
 
     local textOutProxy =
         if textValue then
@@ -82,11 +94,11 @@ return Component<<InputProps>>(function(scope, props)
         else nil
 
     return Supercorner.new(scope :: any, CombineProps({
-        BackgroundColor3 = theme:GetBg(scope, variant),
+        BackgroundColor3 = bgColor,
         StrokeColor = tweenComputeStrokeColor,
         StrokeThickness = 1,
-        Size = UDim2.new(width, UDim.new(0, theme:GetHeight("Lg"))),
-        CornerRadius = theme:GetCornerRadius("Md"),
+        Size = ComputeUDim2(scope, width, ComputeUDim(scope, 0, height)),
+        CornerRadius = cornerRadius,
         CornerSmoothing = 1,
 
         Name = "Input",
@@ -99,7 +111,8 @@ return Component<<InputProps>>(function(scope, props)
 
             FocusRing(scope, {
                 IsFocus = isFocusState,
-                CornerRadius = theme:GetCornerRadius("Md")
+                -- Focus ring's corner radius can't be changed.
+                CornerRadius = Peek<<number>>(cornerRadius)
             })
         },
 
@@ -111,10 +124,10 @@ return Component<<InputProps>>(function(scope, props)
                 BackgroundTransparency = 1,
                 Text = computeVisualText,
                 PlaceholderText = placeholderText,
-                TextSize = theme:GetFontSize("Main", "Title"),
-                TextColor3 = theme:GetFg(scope, "Primary"),
-                PlaceholderColor3 = theme:GetFg(scope, "Secondary"),
-                FontFace = theme:GetFont("Main", Enum.FontWeight.Medium),
+                TextSize = fontSize,
+                TextColor3 = textColor,
+                PlaceholderColor3 = textPlaceholderColor,
+                FontFace = font,
                 ClearTextOnFocus = false,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 TextTruncate = Enum.TextTruncate.AtEnd,

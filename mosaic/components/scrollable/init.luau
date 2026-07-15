@@ -5,8 +5,8 @@ local Packages = script.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
 local Typeforge = require(Packages.typeforge)
-local Peek, New, Children, Out =
-    Fusion.peek, Fusion.New, Fusion.Children, Fusion.Out
+local New, Children, Out =
+    Fusion.New, Fusion.Children, Fusion.Out
 
 local Utils = script.Parent.Parent.utils
 
@@ -35,8 +35,6 @@ export type ScrollableOverrides = Typeforge.FlattenTable<
 >
 
 return Component<<ScrollableProps>>(function(scope, props)
-    local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
-
     local props, children = TableExtract(props, Children)
     local props, outAbsolutePosition = TableExtract(props, "OutAbsolutePosition")
     local props, outAbsoluteSize = TableExtract(props, "OutAbsoluteSize")
@@ -44,6 +42,10 @@ return Component<<ScrollableProps>>(function(scope, props)
     local props, canvasSize = TableExtract(props, "CanvasSize", UDim2.fromScale(0, 0))
     local props, automaticCanvasSize =
         TableExtract(props, "AutomaticCanvasSize", Enum.AutomaticSize.Y)
+
+    local theme = GetThemeForScope(scope)
+    local scrollBarColor = theme:GetBgHighlight(scope, "Tertiary")
+    local scrollBarUnderlayColor = theme:GetBgHighlight(scope, "Secondary")
 
     return New(scope, "Frame") (CombineProps({
         Size = UDim2.fromScale(1, 1),
@@ -59,7 +61,7 @@ return Component<<ScrollableProps>>(function(scope, props)
                 ScrollBarThickness = 4,
                 BackgroundTransparency = 1,
                 BorderSizePixel = 0,
-                ScrollBarImageColor3 = theme:GetBgHighlight(scope, "Tertiary"),
+                ScrollBarImageColor3 = scrollBarColor,
                 TopImage = Assets.ScrollTop,
                 MidImage = Assets.ScrollMiddle,
                 BottomImage = Assets.ScrollBottom,
@@ -81,7 +83,7 @@ return Component<<ScrollableProps>>(function(scope, props)
             New(scope, "Frame") {
                 Size = UDim2.new(0, 4, 1, 0),
                 Position = UDim2.new(1, -4, 0, 0),
-                BackgroundColor3 = theme:GetBgHighlight(scope, "Secondary"),
+                BackgroundColor3 = scrollBarUnderlayColor,
 
                 [Children] = New(scope, "UICorner") {
                     CornerRadius = UDim.new(1, 0)

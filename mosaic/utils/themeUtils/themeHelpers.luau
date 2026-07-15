@@ -8,135 +8,212 @@ local ColorSpace = require(Utils.colorSpace)
 
 local Types = require(script.Parent.types)
 
-local New = Fusion.New
+local Computed, New = Fusion.Computed, Fusion.New
 
-local function ApplyHoverColorModifier(theme: Types.Theme, color: Color3)
+local function LerpColor(from: Color3, to: Color3, alpha: number)
     return
-        ColorSpace.Oklab.From(color)
-            :Lerp(ColorSpace.Oklab.From(theme.BgPrimary), .1)
+        ColorSpace.Oklab.From(from)
+            :Lerp(ColorSpace.Oklab.From(to), .1)
             :ToColor3()
 end
 
-local function ApplyHoverStrokeColorModifier(theme: Types.Theme, color: Color3)
-    return
-        ColorSpace.Oklab.From(color)
-            :Lerp(ColorSpace.Oklab.From(theme.FgPrimary), .1)
-            :ToColor3()
-end
+local function ComputeWithDefault(
+    theme: Types.Theme,
+    scope: Fusion.Scope,
+    itemName: Fusion.UsedAs<string>,
+    default: any
+)
+    return Computed(scope, function(use, scope)
+        local usedItemName = use<<string>>(itemName)
 
-local function ApplyPressColorModifier(theme: Types.Theme, color: Color3)
-    return ColorSpace.Oklab.From(color)
-        :Lerp(ColorSpace.Oklab.From(theme.BgPrimary), .2)
-        :ToColor3()
+        return use<<T>>(theme[usedItemName]) or default
+    end)
 end
 
 local function ApplyColorModifier(
     theme: Types.Theme,
     scope: Fusion.Scope,
-    color: Color3,
+    colorName: Fusion.UsedAs<string>,
+    defaultColor: Fusion.UsedAs<Color3>,
     modifier: Fusion.UsedAs<Types.ThemeColorModifier?>
 ): Fusion.Computed<Color3>
-    return Fusion.Computed(scope, function(use, scope): Color3
+    return Computed(scope, function(use, scope): Color3
+        local usedColorName = use<<string>>(colorName)
+
+        local usedColor = use<<Color3>>(theme[usedColorName]) or
+            use<<Color3>>(defaultColor)
+
         local usedModifier = use(modifier)
 
         return
-            if usedModifier == "Hover" then ApplyHoverColorModifier(theme, color)
-            elseif usedModifier == "HoverStroke" then ApplyHoverStrokeColorModifier(theme, color)
-            elseif usedModifier == "Press" then ApplyPressColorModifier(theme, color)
-            else color
+            if usedModifier == "Hover" then
+                LerpColor(usedColor, use<<Color3>>(theme.BgPrimary), .1)
+
+            elseif usedModifier == "HoverStroke" then
+                LerpColor(usedColor, use<<Color3>>(theme.FgPrimary), .1)
+
+            elseif usedModifier == "Press" then
+                LerpColor(usedColor, use<<Color3>>(theme.BgPrimary), .2)
+
+            else usedColor
     end)
 end
 
 local function GetBg(
     theme: Types.Theme,
     scope: Fusion.Scope,
-    variant: Types.BgVariant,
+    variant: Fusion.UsedAs<Types.BgVariant>,
     modifier: Fusion.UsedAs<Types.ThemeColorModifier?>
-): Fusion.Computed<Color3>
-    local color = (theme :: any)[`Bg{variant}`] or theme.BgPrimary
-    return ApplyColorModifier(theme, scope, color, modifier)
+): Fusion.UsedAs<Color3>
+    return ApplyColorModifier(
+        theme, scope, theme[`Bg{variant}`], theme.BgPrimary, modifier
+    )
 end
 
 local function GetBgHighlight(
     theme: Types.Theme,
     scope: Fusion.Scope,
-    variant: Types.BgVariantLayer,
+    variant: Fusion.UsedAs<Types.BgVariantLayer>,
     modifier: Fusion.UsedAs<Types.ThemeColorModifier?>
-): Fusion.Computed<Color3>
-    local color = (theme :: any)[`Bg{variant}Highlight`] or theme.BgPrimaryHighlight
-    return ApplyColorModifier(theme, scope, color, modifier)
+): Fusion.UsedAs<Color3>
+    local computeName = Computed(scope, function(use, scope)
+        local usedVariant = use<<Types.BgVariantLayer>>(variant)
+
+        return `Bg{usedVariant}Highlight`
+    end)
+
+    return ApplyColorModifier(
+        theme, scope, computeName, theme.BgPrimaryHighlight, modifier
+    )
 end
 
 local function GetFg(
     theme: Types.Theme,
     scope: Fusion.Scope,
-    variant: Types.FgVariant,
+    variant: Fusion.UsedAs<Types.FgVariant>,
     modifier: Fusion.UsedAs<Types.ThemeColorModifier?>
-): Fusion.Computed<Color3>
-    local color = (theme :: any)[`Fg{variant}`] or theme.FgPrimary
-    return ApplyColorModifier(theme, scope, color, modifier)
+): Fusion.UsedAs<Color3>
+    local computeName = Computed(scope, function(use, scope)
+        local usedVariant = use<<Types.FgVariant>>(variant)
+
+        return `Fg{usedVariant}`
+    end)
+
+    return ApplyColorModifier(
+        theme, scope, computeName, theme.FgPrimary, modifier
+    )
 end
 
 local function GetAccent(
     theme: Types.Theme,
     scope: Fusion.Scope,
-    variant: Types.AccentVariant,
+    variant: Fusion.UsedAs<Types.AccentVariant>,
     modifier: Fusion.UsedAs<Types.ThemeColorModifier?>
-): Fusion.Computed<Color3>
-    local color = (theme :: any)[`Accent{variant}`] or theme.AccentPrimary
-    return ApplyColorModifier(theme, scope, color, modifier)
+): Fusion.UsedAs<Color3>
+    local computeName = Computed(scope, function(use, scope)
+        local usedVariant = use<<Types.AccentVariant>>(variant)
+
+        return `Accent{usedVariant}`
+    end)
+
+    return ApplyColorModifier(
+        theme, scope, computeName, theme.AccentPrimary, modifier
+    )
 end
 
-local function GetHeight(theme: Types.Theme, variant: Types.HeightVariant): number
-    return (theme :: any)[`Height{variant}`] or theme.HeightMd
+local function GetHeight(
+    theme: Types.Theme,
+    scope: Fusion.Scope,
+    variant: Fusion.UsedAs<Types.HeightVariant>
+): Fusion.UsedAs<number>
+    local computeName = Computed(scope, function(use, scope)
+        local usedVariant = use<<Types.HeightVariant>>(variant)
+
+        return `Height{usedVariant}`
+    end)
+
+    return ComputeWithDefault(
+        theme, scope, computeName, theme.CornerRadiusMd
+    )
 end
 
 local function GetCornerRadius(
     theme: Types.Theme,
-    variant: Types.CornerRadiusVariant
-): number
-    return (theme :: any)[`CornerRadius{variant}`] or theme.CornerRadiusMd
+    scope: Fusion.Scope,
+    variant: Fusion.UsedAs<Types.CornerRadiusVariant>
+): Fusion.UsedAs<number>
+    local computeName = Computed(scope, function(use, scope)
+        local usedVariant = use<<Types.CornerRadiusVariant>>(variant)
+
+        return `CornerRadius{usedVariant}`
+    end)
+
+    return ComputeWithDefault(
+        theme, scope, computeName, theme.CornerRadiusMd
+    )
 end
 
 local function GetFont(
     theme: Types.Theme,
-    variant: Types.FontVariant,
-    weight: Enum.FontWeight?,
-    style: Enum.FontStyle?
-): Font
-    local font = ((theme :: any)[`Font{variant}`] or theme.FontMain) :: Font
-    font.Weight = weight or Enum.FontWeight.Medium
-    font.Style = style or Enum.FontStyle.Normal
+    scope: Fusion.Scope,
+    variant: Fusion.UsedAs<Types.FontVariant>,
+    weight: Fusion.UsedAs<Enum.FontWeight>?,
+    style: Fusion.UsedAs<Enum.FontStyle>?
+): Fusion.UsedAs<Font>
+    return Computed(scope, function(use, scope): Font
+        local usedVariant = use<<Types.FontVariant>>(variant)
 
-    return font
+        local font =
+            use<<Font>>(theme[usedVariant]) or
+            use<<Font>>(theme.FontMain)
+
+        font.Weight = use<<FontWeight>>(weight)
+            or Enum.FontWeight.Medium
+
+        font.Style = use<<FontStyle>>(style)
+            or Enum.FontStyle.Normal
+
+        return font
+    end)
 end
 
 local function GetFontSize(
     theme: Types.Theme,
-    variant: Types.FontVariant,
-    sizeVariant: Types.FontSizeVariant
-): number
-    return (theme :: any)[`Font{variant}{sizeVariant}Size`] or theme.FontMainBodySize
+    scope: Fusion.Scope,
+    variant: Fusion.UsedAs<Types.FontVariant>,
+    sizeVariant: Fusion.UsedAs<Types.FontSizeVariant>
+): Fusion.UsedAs<number>
+    local computeName = Computed(scope, function(use, scope)
+        local usedVariant = use<<Types.FontVariant>>(variant)
+        local usedSizeVariant = use<<Types.FontSizeVariant>>(sizeVariant)
+
+        return `Font{usedVariant}{usedSizeVariant}Size`
+    end)
+
+    return ComputeWithDefault(
+        theme, scope, computeName, theme.FontMainBodySize
+    )
 end
 
 local function HighlightGradient(
     theme: Types.Theme,
     scope: Fusion.Scope,
-    transparency: number
+    transparency: Fusion.UsedAs<number>
 )
+    local bgColor = theme:GetBg(scope, "Primary")
+    local fgColor = theme:GetFg(scope, "Primary")
+
     return New(scope, "UIGradient") {
-        Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(
-                0,
-                Fusion.peek<<Color3>>(theme:GetFg(scope, "Primary"))
-            ),
-            ColorSequenceKeypoint.new(
-                1,
-                Fusion.peek<<Color3>>(theme:GetBg(scope, "Primary"))
-            )
-        }),
+        Color = Computed(scope, function(use, scope)
+            return ColorSequence.new({
+                ColorSequenceKeypoint.new(0, use(fgColor)),
+                ColorSequenceKeypoint.new(1, use(bgColor)),
+            })
+        end),
         Rotation = 90,
-        Transparency = NumberSequence.new(transparency)
+        Transparency = Computed(scope, function(use, scope)
+            return NumberSequence.new(use(transparency))
+        end),
     } :: UIGradient
 end
 
@@ -145,7 +222,7 @@ local function CalcColorModifier(
     isHover: Fusion.UsedAs<boolean>,
     isPress: Fusion.UsedAs<boolean>,
     hoverMode: ("Stroke" | "Default")?
-): Fusion.Computed<Types.ThemeColorModifier?>
+): Fusion.UsedAs<Types.ThemeColorModifier?>
     return Fusion.Computed(scope, function(use, scope): Types.ThemeColorModifier?
         local usedIsHover, usedIsPress =
             use<<boolean>>(isHover), use<<boolean>>(isPress)

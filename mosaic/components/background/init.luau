@@ -4,7 +4,7 @@
 local Packages = script.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
-local Peek, New = Fusion.peek, Fusion.New
+local New = Fusion.New
 
 local Utils = script.Parent.Parent.utils
 
@@ -23,14 +23,15 @@ type BackgroundProps = {
 }
 
 return Component<<BackgroundProps>>(function(scope, props)
-    local theme = Peek<<ThemeUtils.Theme>>(GetThemeForScope(scope))
-
     local props, variant = TableExtract(props, "Variant", "Primary")
+
+    local theme = GetThemeForScope(scope)
+    local bgColor = theme:GetBg(scope, variant)
 
     return New(scope, "Frame") (CombineProps({
         Name = "Background",
 
-        BackgroundColor3 = theme:GetBg(scope, variant),
+        BackgroundColor3 = bgColor,
         Size = UDim2.fromScale(1, 1)
     }, props))
 end)
