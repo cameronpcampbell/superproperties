@@ -5,7 +5,7 @@ local Packages = script.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local New, Children = Fusion.New, Fusion.Children
+local New, Children, Peek = Fusion.New, Fusion.Children, Fusion.peek
 
 local Utils = script.Parent.Parent.utils
 
@@ -58,7 +58,7 @@ return Component<<MapProps>>(function(scope, props)
     local props, collapsed = TableExtract(props, "Collapsed", false)
     local props, virtualListData = TableExtract(props, "VirtualListData")
 
-    local strokeVariant: ThemeUtils.BgVariant = GetNextVariant(variant)
+    local strokeVariant = GetNextVariant(variant)
     local collapsedState = CoerceToValue<<boolean>>(scope, collapsed)
 
     local theme = GetThemeForScope(scope)
@@ -76,7 +76,7 @@ return Component<<MapProps>>(function(scope, props)
         scope,
         virtualListData,
         layout,
-        height
+        rowHeight
     )
 
     -- The parent supplies this tween so unmounted maps continue animating.
@@ -125,7 +125,7 @@ return Component<<MapProps>>(function(scope, props)
         StrokeThickness = 1,
         Size = animatedMapSize,
         ClipsDescendants = true,
-        CornerRadius = cornerRadius,
+        CornerRadius = Peek<<number>>(cornerRadius),
         CornerSmoothing = 1,
 
         Name = `Map {if header then `[{header}]` else ""}`,

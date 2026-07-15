@@ -71,7 +71,7 @@ return Component<<CheckboxProps>>(function(scope, props)
         StrokeGradient = highlightGradient,
         StrokeThickness = 1,
         Size = ComputeUDim2FromOffset(scope, height, height),
-        CornerRadius = cornerRadius,
+        CornerRadius = Peek<<number>>(cornerRadius),
         CornerSmoothing = 1,
 
         [OnEvent "MouseEnter"] = function()
@@ -115,7 +115,7 @@ return Component<<CheckboxProps>>(function(scope, props)
                         .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
                     )
                 ),
-                CornerRadius = cornerRadius,
+                CornerRadius = Peek<<number>>(cornerRadius),
                 StrokeTransparency = Tween<<number>>(
                     scope,
                     Computed(scope, function(use: any, scope)

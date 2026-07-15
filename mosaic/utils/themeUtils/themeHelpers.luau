@@ -65,8 +65,14 @@ local function GetBg(
     variant: Fusion.UsedAs<Types.BgVariant>,
     modifier: Fusion.UsedAs<Types.ThemeColorModifier?>
 ): Fusion.UsedAs<Color3>
+    local computeName = Computed(scope, function(use, scope)
+        local usedVariant = use<<Types.BgVariant>>(variant)
+
+        return `Bg{usedVariant}`
+    end)
+
     return ApplyColorModifier(
-        theme, scope, theme[`Bg{variant}`], theme.BgPrimary, modifier
+        theme, scope, computeName, theme.BgPrimary, modifier
     )
 end
 
@@ -133,7 +139,7 @@ local function GetHeight(
     end)
 
     return ComputeWithDefault(
-        theme, scope, computeName, theme.CornerRadiusMd
+        theme, scope, computeName, theme.HeightLg
     )
 end
 

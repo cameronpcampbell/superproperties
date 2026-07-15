@@ -5,9 +5,9 @@ local Packages = script.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local New, Children, Value, OnEvent, Tween =
+local New, Children, Value, Peek, OnEvent, Tween =
     Fusion.New, Fusion.Children, Fusion.Value,
-    Fusion.OnEvent, Fusion.Tween
+    Fusion.peek, Fusion.OnEvent, Fusion.Tween
 
 local Utils = script.Parent.Parent.utils
 
@@ -81,7 +81,7 @@ return Component<<ButtonProps>>(function(scope, props)
         StrokeGradient = highlightGradient,
         StrokeThickness = 1,
         Size = ComputeUDim2(scope, width, ComputeUDim(scope, 0, height)),
-        CornerRadius = cornerRadius,
+        CornerRadius = Peek<<number>>(cornerRadius),
         CornerSmoothing = 1,
 
         [OnEvent "MouseEnter"] = function() isHoverState:set(true) end,

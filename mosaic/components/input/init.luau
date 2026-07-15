@@ -98,7 +98,7 @@ return Component<<InputProps>>(function(scope, props)
         StrokeColor = tweenComputeStrokeColor,
         StrokeThickness = 1,
         Size = ComputeUDim2(scope, width, ComputeUDim(scope, 0, height)),
-        CornerRadius = cornerRadius,
+        CornerRadius = Peek<<number>>(cornerRadius),
         CornerSmoothing = 1,
 
         Name = "Input",

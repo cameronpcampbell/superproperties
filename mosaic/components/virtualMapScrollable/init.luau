@@ -12,6 +12,8 @@ local Utils = script.Parent.Parent.utils
 local FusionUtils = require(Utils.fusionUtils)
 local Component, CoerceToValue =
     FusionUtils.Component, FusionUtils.CoerceToValue
+local ComputeMath = FusionUtils.ComputeMath
+local ComputeAdd = ComputeMath.Add
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
@@ -89,6 +91,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
 
     local theme = GetThemeForScope(scope)
     local height = theme:GetHeight(scope, "Lg")
+    local rowHeight = ComputeAdd(scope, height, - 2)
 
     local computeMapInstances = Computed(scope, function(
         use: Fusion.Use,
@@ -116,7 +119,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                 header,
                 items,
                 emptyText,
-                height
+                rowHeight
             )
             local animatedMapSize = CreateMapSizeTween(
                 scope,
