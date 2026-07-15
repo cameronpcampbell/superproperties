@@ -20,7 +20,7 @@ local TableExtract = TableUtils.Extract
 type IconButtonProps = {
     Variant: ThemeUtils.FgVariant?,
     Image: Fusion.UsedAs<string>?,
-    [Fusion.SpecialKey]: any
+    [Fusion.SpecialKey | string]: any
 }
 
 return Component<<IconButtonProps>>(function(scope, props)

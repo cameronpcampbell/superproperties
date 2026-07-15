@@ -11,4 +11,5 @@ return {
     EnumItem = require(script.enumItem),
     Color3 = require(script.color),
     BrickColor = require(script.color),
+    Instance = require(script.instance)
 }

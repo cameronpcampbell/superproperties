@@ -80,7 +80,8 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
             New(scope, "UIListLayout") {
                 Padding = UDim.new(0, 6),
                 FillDirection = Enum.FillDirection.Horizontal,
-                VerticalAlignment = Enum.VerticalAlignment.Center
+                VerticalAlignment = Enum.VerticalAlignment.Center,
+                SortOrder = Enum.SortOrder.LayoutOrder
             },
 
             New(scope, "UIPadding") {

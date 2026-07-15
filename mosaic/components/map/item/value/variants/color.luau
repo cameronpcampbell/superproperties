@@ -47,34 +47,21 @@ end
 return function(scope: Fusion.Scope, props: Types.ValueVariantProps<Color3 | BrickColor>)
     local value = props.Value
 
-    return New(scope, "Frame") {
-        Size = UDim2.fromScale(1, 1),
-        BackgroundTransparency = 1,
+    return {
+        Text(scope, {
+            Text =
+                if typeof(value) == "Color3" then
+                    `[{math.round(value.G * 255)}, {math.round(value.G * 255)}, {math.round(value.G * 255)}]`
+                else value.Name,
+            Variant = "Primary",
+            Size = UDim2.fromScale(1, 0),
+            LayoutOrder = 0,
 
-        [Children] = {
-            Text(scope, {
-                Text =
-                    if typeof(value) == "Color3" then
-                        `[{math.round(value.G * 255)}, {math.round(value.G * 255)}, {math.round(value.G * 255)}]`
-                    else value.Name,
-                Variant = "Primary",
-                Size = UDim2.fromScale(1, 0),
-                LayoutOrder = 0,
+            [Children] = New(scope, "UIFlexItem") {
+                FlexMode = Enum.UIFlexMode.Shrink
+            }
+        }),
 
-                [Children] = New(scope, "UIFlexItem") {
-                    FlexMode = Enum.UIFlexMode.Shrink
-                }
-            }),
-
-            Color(scope, value),
-
-            New(scope, "UIListLayout") {
-                Padding = UDim.new(0, 6),
-                FillDirection = Enum.FillDirection.Horizontal,
-                HorizontalFlex = Enum.UIFlexAlignment.SpaceBetween,
-                VerticalAlignment = Enum.VerticalAlignment.Center,
-                SortOrder = Enum.SortOrder.LayoutOrder
-            },
-        }
+        Color(scope, value),
     }
 end
