@@ -20,6 +20,7 @@ local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
 type FocusRingProps = {
+    BaseSize: Fusion.UsedAs<UDim2>?,
     CornerRadius: number?,
 	TopLeftRadius: number?,
 	TopRightRadius: number?,
@@ -30,6 +31,8 @@ type FocusRingProps = {
 }
 
 return Component<<FocusRingProps>>(function(scope, props)
+    local props, baseSize =
+        TableExtract(props, "BaseSize", UDim2.new(1, 0, 1, 0))
     local props, cornerRadius = TableExtract(props, "CornerRadius")
     local props, topLeftRadius = TableExtract(props, "TopLeftRadius")
     local props, topRightRadius = TableExtract(props, "TopRightRadius")
@@ -53,10 +56,13 @@ return Component<<FocusRingProps>>(function(scope, props)
     )
 
     local computeSize = Computed(scope, function(use, scope)
+        local usedBaseSize = use<<UDim2>>(baseSize)
         local usedAlpha = use<<number>>(computeAlpha)
         local sizeOffset = math.map(usedAlpha, 0, 1, unfocusOffset, ringThickness * 2)
+        local animatedOffset =
+            UDim2.new(0, sizeOffset + ringInset, 0, sizeOffset + ringInset)
 
-        return UDim2.new(1, sizeOffset + ringInset, 1, sizeOffset + ringInset)
+        return usedBaseSize + animatedOffset
     end)
 
     local computeTransparency = Computed(scope, function(use, scope)

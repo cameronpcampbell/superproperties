@@ -155,6 +155,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
         focusRing = FocusRing(scope, {
             IsFocus = isFocusState,
             CullWhenHidden = true,
+            BaseSize = UDim2.new(1, 2, 1, 2),
             TopLeftRadius = Peek<<number>>(topLeftRadius),
             TopRightRadius = Peek<<number>>(topRightRadius),
             BottomLeftRadius = Peek<<number>>(bottomLeftRadius),
