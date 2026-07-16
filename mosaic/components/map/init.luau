@@ -55,12 +55,12 @@ return Component<<MapProps>>(function(scope, props)
     local props: MapProps, variant = (TableExtract :: any)(props, "Variant", "Secondary")
     local props: MapProps, width = (TableExtract :: any)(props, "Width", UDim.new(1, 0))
     local props: MapProps, header = (TableExtract :: any)(props, "Header")
-    local props, headerChildren = TableExtract(props, "HeaderChildren")
-    local props, items = TableExtract(props, "Items")
-    local props, emptyText = TableExtract(props, "EmptyText")
-    local props, hideValues = TableExtract(props, "HideValues", false)
-    local props, collapsed = TableExtract(props, "Collapsed", false)
-    local props, virtualListData = TableExtract(props, "VirtualListData")
+    local props: MapProps, headerChildren = (TableExtract :: any)(props, "HeaderChildren")
+    local props: MapProps, items = (TableExtract :: any)(props, "Items")
+    local props: MapProps, emptyText = (TableExtract :: any)(props, "EmptyText")
+    local props: MapProps, hideValues = (TableExtract :: any)(props, "HideValues", false)
+    local props: MapProps, collapsed = (TableExtract :: any)(props, "Collapsed", false)
+    local props: MapProps, virtualListData = (TableExtract :: any)(props, "VirtualListData")
 
     local strokeVariant = GetNextVariant(variant)
     local collapsedState = CoerceToValue<<boolean>>(scope, collapsed)
@@ -91,8 +91,8 @@ return Component<<MapProps>>(function(scope, props)
         and virtualListData.AnimatedMapSize
         and virtualListData.MapReveal
     then
-        animatedMapSize = virtualListData.AnimatedMapSize
-        mapReveal = virtualListData.MapReveal
+        animatedMapSize = virtualListData.AnimatedMapSize :: any
+        mapReveal = virtualListData.MapReveal :: any
     else
         animatedMapSize, mapReveal = CreateMapSizeTween(
             scope,
