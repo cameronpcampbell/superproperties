@@ -47,14 +47,18 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
 
     local isHoverState: Fusion.Value<boolean>? = nil
     local isFocusState: Fusion.Value<boolean>? = nil
+    local isFocusElevationState: Fusion.Value<boolean>? = nil
     local rowZIndex: Fusion.UsedAs<number> = 1
 
     if hasInteractiveValue then
         isHoverState = Value(scope, false)
         isFocusState = Value(scope, false)
+        isFocusElevationState = Value(scope, false)
 
         rowZIndex = Computed(scope, function(use: Fusion.Use): number
-            if use<<boolean>>(isFocusState :: Fusion.Value<boolean>) then
+            if use<<boolean>>(
+                isFocusElevationState :: Fusion.Value<boolean>
+            ) then
                 return FocusRowZIndex
             end
 
@@ -119,7 +123,8 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
             RowIdx = rowIdx,
             Redrawable = redrawable,
             HoverState = isHoverState,
-            FocusState = isFocusState
+            FocusState = isFocusState,
+            FocusElevationState = isFocusElevationState
         }))
     end
 

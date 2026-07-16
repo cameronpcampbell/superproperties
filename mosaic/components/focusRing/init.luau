@@ -27,8 +27,15 @@ type FocusRingProps = {
 	BottomRightRadius: number?,
 	BottomLeftRadius: number?,
 	IsFocus: Fusion.UsedAs<boolean>,
-	CullWhenHidden: boolean?
+	CullWhenHidden: boolean?,
+	TransitionTweenInfo: Fusion.UsedAs<TweenInfo>?
 }
+
+local DefaultTransitionTweenInfo = TweenInfo.new(
+    .23,
+    Enum.EasingStyle.Quint,
+    Enum.EasingDirection.InOut
+)
 
 return Component<<FocusRingProps>>(function(scope, props)
     local props, baseSize =
@@ -40,6 +47,12 @@ return Component<<FocusRingProps>>(function(scope, props)
     local props, bottomLeftRadius = TableExtract(props, "BottomLeftRadius")
     local props, isFocus = TableExtract(props, "IsFocus")
     local props, cullWhenHidden = TableExtract(props, "CullWhenHidden", false)
+    local props, transitionTweenInfo =
+        TableExtract(
+            props,
+            "TransitionTweenInfo",
+            DefaultTransitionTweenInfo
+        )
 
     local ringThickness = 2
     local ringInset = .5
@@ -50,9 +63,7 @@ return Component<<FocusRingProps>>(function(scope, props)
         Computed(scope, function(use, scope)
             return if use<<boolean>>(isFocus) then 1 else 0
         end),
-        TweenInfo.new(
-            .23, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut
-        )
+        transitionTweenInfo
     )
 
     local computeSize = Computed(scope, function(use, scope)

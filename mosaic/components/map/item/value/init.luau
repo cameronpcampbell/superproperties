@@ -41,9 +41,17 @@ type MapItemValueProps = Typeforge.Flatten<
         TrySetValue: Types.TrySetValue<any>?,
         Redrawable: boolean,
         HoverState: Fusion.Value<boolean>?,
-        FocusState: Fusion.Value<boolean>?
+        FocusState: Fusion.Value<boolean>?,
+        FocusElevationState: Fusion.Value<boolean>?
     }
 >
+
+local FocusRingTweenInfo = TweenInfo.new(
+    .23,
+    Enum.EasingStyle.Quint,
+    Enum.EasingDirection.InOut
+)
+local FocusElevationReleasePadding = 1 / 30
 
 local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
     local rowCount, rowIdx = props.RowCount, props.RowIdx
@@ -79,6 +87,8 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
     if props.Writable then
         local isHoverState = props.HoverState :: Fusion.Value<boolean>
         local isFocusState = props.FocusState :: Fusion.Value<boolean>
+        local isFocusElevationState =
+            props.FocusElevationState :: Fusion.Value<boolean>
         local strokeColorModifier =
             CalcColorModifier(scope, isHoverState, isFocusState, "Stroke")
         local strokeColor =
@@ -134,6 +144,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
         focusRing = FocusRing(scope, {
             IsFocus = isFocusState,
             CullWhenHidden = true,
+            TransitionTweenInfo = FocusRingTweenInfo,
             BaseSize = UDim2.new(1, 2, 1, 2),
             TopLeftRadius = Peek<<number>>(topLeftRadius),
             TopRightRadius = Peek<<number>>(topRightRadius),
@@ -143,9 +154,17 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
 
         local pendingFocusState = false
         local focusUpdateScheduled = false
+        local focusRevision = 0
+        local focusStateAlive = true
+
+        table.insert(scope, function()
+            focusStateAlive = false
+            focusRevision += 1
+        end)
 
         onFocusChanged = function(isFocused: boolean)
             pendingFocusState = isFocused
+            focusRevision += 1
             if focusUpdateScheduled then return end
 
             -- A virtualized row can receive focus while Fusion is mounting it.
@@ -153,11 +172,39 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
             focusUpdateScheduled = true
             task.defer(function()
                 focusUpdateScheduled = false
-                if Peek<<boolean>>(isFocusState) == pendingFocusState then
+                if not focusStateAlive then return end
+
+                local nextFocusState = pendingFocusState
+                local updateRevision = focusRevision
+
+                if nextFocusState then
+                    if not Peek<<boolean>>(isFocusElevationState) then
+                        isFocusElevationState:set(true)
+                    end
+
+                    if not Peek<<boolean>>(isFocusState) then
+                        isFocusState:set(true)
+                    end
                     return
                 end
 
-                isFocusState:set(pendingFocusState)
+                if Peek<<boolean>>(isFocusState) then
+                    isFocusState:set(false)
+                end
+
+                task.delay(
+                    FocusRingTweenInfo.Time + FocusElevationReleasePadding,
+                    function()
+                        if not focusStateAlive then return end
+                        if updateRevision ~= focusRevision then return end
+                        if Peek<<boolean>>(isFocusState) then return end
+                        if not Peek<<boolean>>(isFocusElevationState) then
+                            return
+                        end
+
+                        isFocusElevationState:set(false)
+                    end
+                )
             end)
         end
 
