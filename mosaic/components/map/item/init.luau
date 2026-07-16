@@ -144,23 +144,19 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
 
     local subItemsClip: Instance? = nil
     if hasSubItems then
+        local childrenReveal =
+            layout.ChildrenReveal :: Fusion.UsedAs<number>
+
         local subItemsVisible = Computed(scope, function(use): boolean
-            return use<<number>>(layout.AnimatedChildrenHeight) > 0
+            return use<<number>>(childrenReveal) > 0
         end)
 
-        -- Clip subitems during their height transition to prevent content
-        -- bleed, then unclip them so nested focus rings can render fully. The
-        -- zero-height wrapper is hidden separately so elevated rows cannot
-        -- reveal collapsed subitems.
+        -- Drive clipping from the reveal so moving child heights cannot toggle
+        -- it mid-animation. The zero-height wrapper is hidden separately, and
+        -- stable expanded bounds stay open for nested focus rings.
         local clipsDescendants = Computed(scope, function(use): boolean
-            local currentHeight =
-                use<<number>>(layout.AnimatedChildrenHeight)
-            local expandedHeight =
-                use<<number>>(layout.ChildrenContentHeight) + 1
-
-            return
-                currentHeight > 0 and
-                currentHeight < expandedHeight
+            local reveal = use<<number>>(childrenReveal)
+            return reveal > 0 and reveal < 1
         end)
 
         subItemsClip = New(scope, "Frame") {

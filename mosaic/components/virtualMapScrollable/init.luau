@@ -121,7 +121,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                 emptyText,
                 rowHeight
             )
-            local animatedMapSize = CreateMapSizeTween(
+            local animatedMapSize, mapReveal = CreateMapSizeTween(
                 scope,
                 width,
                 collapsedState,
@@ -208,6 +208,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                     VirtualListData = {
                         Layout = layout,
                         AnimatedMapSize = animatedMapSize,
+                        MapReveal = mapReveal,
                         GeometryReady = geometryReadyState,
                         ViewportCanvasPosition =
                             viewportCanvasPositionState,

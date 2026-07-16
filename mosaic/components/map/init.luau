@@ -83,32 +83,31 @@ return Component<<MapProps>>(function(scope, props)
         rowHeight
     )
 
-    -- The parent supplies this tween so unmounted maps continue animating.
-    local animatedMapSize =
-        if virtualListData and virtualListData.AnimatedMapSize
-        then virtualListData.AnimatedMapSize
-        else CreateMapSizeTween(
+    -- The parent supplies these states so unmounted maps continue animating.
+    local animatedMapSize: Fusion.UsedAs<UDim2>
+    local mapReveal: Fusion.UsedAs<number>
+
+    if virtualListData
+        and virtualListData.AnimatedMapSize
+        and virtualListData.MapReveal
+    then
+        animatedMapSize = virtualListData.AnimatedMapSize
+        mapReveal = virtualListData.MapReveal
+    else
+        animatedMapSize, mapReveal = CreateMapSizeTween(
             scope,
             width,
             collapsedState,
             layout.AnimatedExpandedHeight,
             height
         )
+    end
 
-    -- Clip content while the map changes height, but leave stable bounds
-    -- unclipped so value focus rings can render outside the map.
+    -- Drive clipping from the reveal so reactive height targets cannot toggle
+    -- it mid-animation. Stable bounds stay open for value focus rings.
     local clipsDescendants = Computed(scope, function(use): boolean
-        local currentHeight =
-            use<<UDim2>>(animatedMapSize).Height.Offset
-        local collapsedHeight = use<<number>>(height)
-        local expandedHeight =
-            use<<number>>(layout.AnimatedExpandedHeight)
-        local minHeight = math.min(collapsedHeight, expandedHeight)
-        local maxHeight = math.max(collapsedHeight, expandedHeight)
-
-        return
-            currentHeight > minHeight and
-            currentHeight < maxHeight
+        local reveal = use<<number>>(mapReveal)
+        return reveal > 0 and reveal < 1
     end)
 
     local visibleRows = ComputeVirtualizedRows(scope, {

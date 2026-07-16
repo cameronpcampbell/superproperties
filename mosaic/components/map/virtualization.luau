@@ -61,6 +61,7 @@ export type MapLayout = {
 export type VirtualListData = {
     Layout: MapLayout,
     AnimatedMapSize: Fusion.UsedAs<UDim2>?,
+    MapReveal: Fusion.UsedAs<number>?,
     GeometryReady: Fusion.UsedAs<boolean>,
     ViewportCanvasPosition: Fusion.UsedAs<Vector2>,
     ViewportAbsoluteSize: Fusion.UsedAs<Vector2>,
@@ -317,6 +318,7 @@ local function CreateItemLayout(
         Depth = depth,
         CanBecomeMapBottom = canBecomeMapBottom,
         CollapsedState = collapsedState,
+        ChildrenReveal = reveal,
         CornersCollapsed = cornersCollapsed,
         Children = children,
         ChildrenContentHeight = childrenContentHeight,
@@ -493,10 +495,10 @@ local function CreateMapSizeTween(
     collapsed: Fusion.UsedAs<boolean>,
     animatedExpandedHeight: Fusion.UsedAs<number>,
     height: Fusion.UsedAs<number>
-): Fusion.Computed<UDim2>
+): (Fusion.Computed<UDim2>, Fusion.Tween<number>)
     local reveal = CreateCollapseRevealTween(scope, collapsed)
 
-    return Computed(scope, function(use: Fusion.Use): UDim2
+    local size = Computed(scope, function(use: Fusion.Use): UDim2
         local usedHeight = use<<number>>(height)
 
         local resolvedHeight = usedHeight
@@ -505,6 +507,8 @@ local function CreateMapSizeTween(
 
         return UDim2.new(width, UDim.new(0, resolvedHeight))
     end)
+
+    return size, reveal
 end
 
 local function UseRootRowHeight(
