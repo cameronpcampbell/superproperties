@@ -20,18 +20,18 @@ stylua = [{ name = "pesde/stylua", version = "=2.1.0", index = "https://github.c
 ref_ty = "pesde"
 index_url = "https://github.com/pesde-pkg/index"
 
-[graph."cameronpcampbell/supercorner_fusion03@0.1.2 roblox"]
-direct = ["supercorner", { path = "/Volumes/T7/supercorner/supercorner_fusion03" }, "standard"]
+[graph."cameronpcampbell/supercorner_fusion03@0.1.3 roblox"]
+direct = ["supercorner", { name = "cameronpcampbell/supercorner_fusion03", version = "^0.1.3", index = "default" }, "standard"]
 
-[graph."cameronpcampbell/supercorner_fusion03@0.1.2 roblox".dependencies]
+[graph."cameronpcampbell/supercorner_fusion03@0.1.3 roblox".dependencies]
 fusion = ["wally#elttob/fusion@0.3.0 roblox", "standard"]
 supercorner = ["cameronpcampbell/supercorner@0.1.2 roblox", "standard"]
 
-[graph."cameronpcampbell/supercorner_fusion03@0.1.2 roblox".pkg_ref]
-ref_ty = "path"
-path = "/Volumes/T7/supercorner/supercorner_fusion03"
+[graph."cameronpcampbell/supercorner_fusion03@0.1.3 roblox".pkg_ref]
+ref_ty = "pesde"
+index_url = "https://github.com/pesde-pkg/index"
 
-[graph."cameronpcampbell/supercorner_fusion03@0.1.2 roblox".pkg_ref.dependencies]
+[graph."cameronpcampbell/supercorner_fusion03@0.1.3 roblox".pkg_ref.dependencies]
 fusion = [{ wally = "wally#elttob/fusion", version = "^0.3.0", index = "https://github.com/UpliftGames/wally-index" }, "standard"]
 rojo = [{ name = "pesde/rojo", version = "^7.5.1", index = "https://github.com/pesde-pkg/index", target = "lune" }, "dev"]
 scripts = [{ name = "pesde/scripts_rojo", version = "^0.2.0", index = "https://github.com/pesde-pkg/index", target = "lune" }, "dev"]
