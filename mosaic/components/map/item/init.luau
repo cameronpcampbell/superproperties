@@ -28,6 +28,7 @@ local MapItemValue = require(script.value)
 local HoverRowZIndex = 99
 local DisappearingFocusRowZIndex = HoverRowZIndex + 1
 local FocusRowZIndex = DisappearingFocusRowZIndex + 1
+local FocusRingActiveAlphaThreshold = .15
 
 type MapItemProps = Typeforge.Flatten<{
     Variant: ThemeUtils.BgVariantLayer,
@@ -49,16 +50,18 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
     local isHoverState: Fusion.Value<boolean>? = nil
     local isFocusState: Fusion.Value<boolean>? = nil
     local isFocusElevationState: Fusion.Value<boolean>? = nil
+    local focusRingAlphaState: Fusion.Value<number>? = nil
     local rowZIndex: Fusion.UsedAs<number> = 1
 
     if hasInteractiveValue then
         isHoverState = Value(scope, false)
         isFocusState = layout.ValueFocusState
         isFocusElevationState = Value(scope, false)
+        focusRingAlphaState = Value(scope, 0)
 
         rowZIndex = Computed(scope, function(use: Fusion.Use): number
-            local isFocused = use<<boolean>>(
-                isFocusState :: Fusion.Value<boolean>
+            local focusRingAlpha = use<<number>>(
+                focusRingAlphaState :: Fusion.Value<number>
             )
             local isFocusElevated = use<<boolean>>(
                 isFocusElevationState :: Fusion.Value<boolean>
@@ -67,7 +70,9 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
                 isHoverState :: Fusion.Value<boolean>
             )
 
-            if isFocused then return FocusRowZIndex end
+            if focusRingAlpha >= FocusRingActiveAlphaThreshold then
+                return FocusRowZIndex
+            end
             if isFocusElevated then return DisappearingFocusRowZIndex end
             if isHovered then return HoverRowZIndex end
             return 1
@@ -129,7 +134,8 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
             Redrawable = redrawable,
             HoverState = isHoverState,
             FocusState = isFocusState,
-            FocusElevationState = isFocusElevationState
+            FocusElevationState = isFocusElevationState,
+            FocusRingAlphaState = focusRingAlphaState
         }))
     end
 

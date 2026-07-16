@@ -5,7 +5,8 @@ local Packages = script.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local Tween, Computed = Fusion.Tween, Fusion.Computed
+local Tween, Computed, Observer, Peek =
+    Fusion.Tween, Fusion.Computed, Fusion.Observer, Fusion.peek
 
 local Utils = script.Parent.Parent.utils
 
@@ -28,7 +29,8 @@ type FocusRingProps = {
 	BottomLeftRadius: number?,
 	IsFocus: Fusion.UsedAs<boolean>,
 	CullWhenHidden: boolean?,
-	TransitionTweenInfo: Fusion.UsedAs<TweenInfo>?
+	TransitionTweenInfo: Fusion.UsedAs<TweenInfo>?,
+	AlphaOut: Fusion.Value<number>?
 }
 
 local DefaultTransitionTweenInfo = TweenInfo.new(
@@ -47,6 +49,7 @@ return Component<<FocusRingProps>>(function(scope, props)
     local props, bottomLeftRadius = TableExtract(props, "BottomLeftRadius")
     local props, isFocus = TableExtract(props, "IsFocus")
     local props, cullWhenHidden = TableExtract(props, "CullWhenHidden", false)
+    local props, alphaOut = TableExtract(props, "AlphaOut")
     local props, transitionTweenInfo =
         TableExtract(
             props,
@@ -65,6 +68,12 @@ return Component<<FocusRingProps>>(function(scope, props)
         end),
         transitionTweenInfo
     )
+
+    if alphaOut then
+        Observer(scope, computeAlpha):onBind(function()
+            alphaOut:set(Peek<<number>>(computeAlpha))
+        end)
+    end
 
     local computeSize = Computed(scope, function(use, scope)
         local usedBaseSize = use<<UDim2>>(baseSize)

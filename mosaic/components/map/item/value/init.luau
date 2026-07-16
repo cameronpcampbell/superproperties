@@ -42,7 +42,8 @@ type MapItemValueProps = Typeforge.Flatten<
         Redrawable: boolean,
         HoverState: Fusion.Value<boolean>?,
         FocusState: Fusion.Value<boolean>?,
-        FocusElevationState: Fusion.Value<boolean>?
+        FocusElevationState: Fusion.Value<boolean>?,
+        FocusRingAlphaState: Fusion.Value<number>?
     }
 >
 
@@ -89,6 +90,8 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
         local isFocusState = props.FocusState :: Fusion.Value<boolean>
         local isFocusElevationState =
             props.FocusElevationState :: Fusion.Value<boolean>
+        local focusRingAlphaState =
+            props.FocusRingAlphaState :: Fusion.Value<number>
         local strokeColorModifier =
             CalcColorModifier(scope, isHoverState, isFocusState, "Stroke")
         local strokeColor =
@@ -143,6 +146,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
 
         focusRing = FocusRing(scope, {
             IsFocus = isFocusState,
+            AlphaOut = focusRingAlphaState,
             CullWhenHidden = true,
             TransitionTweenInfo = FocusRingTweenInfo,
             BaseSize = UDim2.new(1, 2, 1, 2),
