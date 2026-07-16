@@ -6,7 +6,12 @@ local Typeforge = require(Packages.typeforge)
 
 local CombineProps = require(script.Parent.combineProps)
 
-type Props<P> = Typeforge.FlattenTable<P & Fusion.PropertyTable>
+type Props<P> = Typeforge.FlattenTable<
+    & P
+    & {
+        [string | Fusion.SpecialKey]: any
+    }
+>
 
 type Callback<P> = (
     scope: Fusion.Scope,
@@ -19,6 +24,9 @@ return function<P>(callback: Callback<P>)
         props: P,
         ...: Props<Typeforge.Partial<P>>
     ): Fusion.Child
-        return (callback :: any)(scope, CombineProps(props, ...))
+        return (callback :: any)(
+            scope,
+            CombineProps(props :: any, ...)
+        )
     end
 end

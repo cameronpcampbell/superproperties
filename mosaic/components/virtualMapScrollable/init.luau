@@ -217,6 +217,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                         Overdraw = overdrawState
                     }
                 }
+
                 local mapInstance = Map(
                     mapScope,
                     mapProps,

@@ -27,6 +27,21 @@ end
 type Pick<I, P> = Typeforge.Pick<I, P>
 type Omit<I, O> = Typeforge.Omit<I, O>
 
+type function OmitExceptIndexer(input: type, toOmit: type)
+    assert(input.tag, "table")
+
+    local indexer = input:indexer()
+
+    local omittedInput: type = types.copy(Omit(input, toOmit))
+
+    if indexer then
+        omittedInput
+            :setindexer(indexer.index, indexer.readresult)
+    end
+
+    return omittedInput
+end
+
 -- We need to make the return type optional only when a default value is not provided.
 type function ExtractReturnType(propValue: type, default: type)
     -- Typeforge's Pick and Omit types don't support singleton's as an input.
@@ -46,7 +61,7 @@ end
 local function Extract<T, P, D>(
     tble: T, prop: P | "",
     default: ((D & index<T, P>) | "")?
-): (Typeforge.Omit<T, P>, ExtractReturnType<index<T, P>, D>)
+): (OmitExceptIndexer<T, P>, ExtractReturnType<index<T, P>, D>)
     local value = (tble :: { [any]: any })[prop]
 
     if value ~= nil then
