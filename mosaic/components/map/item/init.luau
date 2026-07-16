@@ -52,7 +52,7 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
 
     if hasInteractiveValue then
         isHoverState = Value(scope, false)
-        isFocusState = Value(scope, false)
+        isFocusState = layout.ValueFocusState
         isFocusElevationState = Value(scope, false)
 
         rowZIndex = Computed(scope, function(use: Fusion.Use): number

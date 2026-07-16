@@ -43,6 +43,7 @@ export type ItemLayout = {
     ResolvedValue: any,
     ValueAccessor: IntrinsicAccessor?,
     Writable: boolean,
+    ValueFocusState: Fusion.Value<boolean>,
     Depth: number,
     CanBecomeMapBottom: boolean,
     CollapsedState: Fusion.Value<boolean>?,

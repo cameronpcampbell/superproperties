@@ -52,6 +52,7 @@ local EmptyRowDescriptor: "Empty" = "Empty"
 export type MapLayout = {
     RootItems: Fusion.UsedAs<{ ItemLayout }>,
     RootRows: Fusion.UsedAs<RootRowDescriptors>,
+    FocusedRootRange: Fusion.UsedAs<Vector2>,
     AnimatedExpandedHeight: Fusion.UsedAs<number>,
     Metadata: Fusion.UsedAs<RowMetadata>,
     CornerRowCount: Fusion.UsedAs<number>,
@@ -309,12 +310,14 @@ local function CreateItemLayout(
     local animatedHeight = Computed(scope, function(use: Fusion.Use): number
         return rowHeight + use<<number>>(animatedChildrenHeight)
     end)
+    local valueFocusState = Value<<boolean>>(scope, false)
 
     return {
         Item = item,
         ResolvedValue = resolvedItem.ResolvedValue,
         ValueAccessor = resolvedItem.ValueAccessor,
         Writable = resolvedItem.Writable,
+        ValueFocusState = valueFocusState,
         Depth = depth,
         CanBecomeMapBottom = canBecomeMapBottom,
         CollapsedState = collapsedState,
@@ -325,6 +328,19 @@ local function CreateItemLayout(
         AnimatedChildrenHeight = animatedChildrenHeight,
         AnimatedHeight = animatedHeight
     }
+end
+
+local function UseItemTreeFocus(
+    use: Fusion.Use,
+    layout: ItemLayout
+): boolean
+    if use<<boolean>>(layout.ValueFocusState) then return true end
+
+    for _, child in layout.Children do
+        if UseItemTreeFocus(use, child) then return true end
+    end
+
+    return false
 end
 
 local function ComputeRowMetadata(
@@ -429,6 +445,30 @@ local function CreateMapLayout(
         end
     )
 
+    local focusedRootRange = Computed(
+        mapLayoutScope,
+        function(use: Fusion.Use): Vector2
+            local usedRootRows = use<<RootRowDescriptors>>(rootRows)
+            local firstRow, lastRow: number? = nil, nil
+
+            for rootIdx, descriptor in usedRootRows do
+                if descriptor ~= HeaderRowDescriptor
+                    and descriptor ~= EmptyRowDescriptor
+                    and UseItemTreeFocus(use, descriptor :: ItemLayout)
+                then
+                    firstRow = firstRow or rootIdx
+                    lastRow = rootIdx
+                end
+            end
+
+            if not firstRow or not lastRow then
+                return Vector2.new(1, 0)
+            end
+
+            return Vector2.new(firstRow, lastRow)
+        end
+    )
+
     local animatedExpandedHeight = Computed(
         mapLayoutScope,
         function(use: Fusion.Use): number
@@ -482,6 +522,7 @@ local function CreateMapLayout(
     return {
         RootItems = rootItems,
         RootRows = rootRows,
+        FocusedRootRange = focusedRootRange,
         AnimatedExpandedHeight = animatedExpandedHeight,
         Metadata = metadata,
         CornerRowCount = cornerRowCount,
@@ -525,6 +566,20 @@ local function UseRootRowHeight(
     return use<<number>>((descriptor :: ItemLayout).AnimatedHeight)
 end
 
+local function IsEmptyRootRange(range: Vector2): boolean
+    return range.X > range.Y
+end
+
+local function UnionRootRanges(a: Vector2, b: Vector2): Vector2
+    if IsEmptyRootRange(a) then return b end
+    if IsEmptyRootRange(b) then return a end
+
+    return Vector2.new(
+        math.min(a.X, b.X),
+        math.max(a.Y, b.Y)
+    )
+end
+
 local function ComputeVirtualListVisibleRootRange(
     scope: Fusion.Scope,
     virtualListData: VirtualListData?,
@@ -534,12 +589,15 @@ local function ComputeVirtualListVisibleRootRange(
     if not virtualListData then return nil end
 
     return Computed(scope, function(use: Fusion.Use): Vector2
+        local focusedRootRange =
+            use<<Vector2>>(layout.FocusedRootRange)
+
         if not use<<boolean>>(virtualListData.GeometryReady) then
-            return Vector2.new(1, 0)
+            return focusedRootRange
         end
 
         local rootRows = use<<RootRowDescriptors>>(layout.RootRows)
-        if #rootRows == 0 then return Vector2.new(1, 0) end
+        if #rootRows == 0 then return focusedRootRange end
 
         local mapCanvasTop = use<<number>>(virtualListData.MapCanvasTop)
         local canvasPosition =
@@ -572,8 +630,12 @@ local function ComputeVirtualListVisibleRootRange(
             rowTop = rowBottom + RowGap
         end
 
-        if not firstRow or not lastRow then return Vector2.new(1, 0) end
-        return Vector2.new(firstRow, lastRow)
+        local visibleRootRange =
+            if firstRow and lastRow
+            then Vector2.new(firstRow, lastRow)
+            else Vector2.new(1, 0)
+
+        return UnionRootRanges(visibleRootRange, focusedRootRange)
     end)
 end
 

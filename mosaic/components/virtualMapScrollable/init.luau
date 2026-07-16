@@ -153,6 +153,13 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
             end)
 
             local mapOccluded = Computed(scope, function(use: Fusion.Use): boolean
+                local focusedRootRange =
+                    use<<Vector2>>(layout.FocusedRootRange)
+
+                if focusedRootRange.X <= focusedRootRange.Y then
+                    return false
+                end
+
                 local usedViewportSize =
                     use<<Vector2>>(viewportAbsoluteSizeState)
 
