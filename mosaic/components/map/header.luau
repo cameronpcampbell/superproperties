@@ -30,6 +30,7 @@ local Arrow = require(script.Parent.arrow)
 type MapHeaderProps = Typeforge.Flatten<
     Types.BaseMapProps & {
         Header: string,
+        HeaderChildrenFrame: Fusion.Child,
         CollapsedState: Fusion.Value<boolean>,
         TweenComputeMapSize: Fusion.UsedAs<UDim2>
     }
@@ -118,6 +119,8 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
 
             Text(scope, {
                 Text = props.Header,
+                Size = UDim2.fromScale(1, 0),
+                LayoutOrder = 1,
                 FontWeight = Enum.FontWeight.Medium,
 
                 [Children] = New(scope, "UIFlexItem") {
@@ -125,10 +128,13 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
                 }
             }),
 
+            props.HeaderChildrenFrame,
+
             New(scope, "UIListLayout") {
                 Padding = UDim.new(0, 6),
                 FillDirection = Enum.FillDirection.Horizontal,
-                VerticalAlignment = Enum.VerticalAlignment.Center
+                VerticalAlignment = Enum.VerticalAlignment.Center,
+                SortOrder = Enum.SortOrder.LayoutOrder
             },
 
             New(scope, "UIPadding") {

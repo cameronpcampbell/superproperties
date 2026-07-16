@@ -5,8 +5,13 @@ local Packages = script.Parent.Parent.Parent.Parent.Parent.packages
 local Fusion = require(Packages.fusion)
 local Value = Fusion.Value
 
+local Mosaic = require(Packages.mosaic)
+local IconButton = Mosaic.IconButton
+
 local Map = require(Packages.mosaic.components.map)
 type Item = Map.Item
+
+local Assets = require(script.Parent.Parent.Parent.Parent.Parent.assets)
 
 local Category = require(script.Parent.Parent.category)
 type CategoryState = Category.State
@@ -112,6 +117,11 @@ return function(
 
     return Category(scope, outerScope, collapsedStateScope, {
         Name = "Attributes",
+        HeaderChildren = {
+            IconButton(scope, {
+                Image = Assets.Add
+            })
+        },
         Items = attributeItemsState,
         EmptyText = "No Attributes have been added yet."
     })

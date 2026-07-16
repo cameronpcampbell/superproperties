@@ -27,7 +27,8 @@ type CategoryProps = {
     Presorted: boolean?,
     StableKeys: boolean?,
     HideValues: boolean?,
-    EmptyText: string?
+    EmptyText: string?,
+    HeaderChildren: { Fusion.Child }?
 }
 
 local function SortItems(
@@ -94,13 +95,14 @@ return function(
     -- The category state only changes when its visibility changes.
     local mapProps = {
         Header = name,
+        HeaderChildren = props.HeaderChildren,
         Items = filteredItems,
         LayoutOrder =
             CategoryOrder[name] or
             DefaultCategoryLayoutOrder,
         Collapsed = GetCollapsedState(collapsedStateScope, name),
         HideValues = props.HideValues,
-        EmptyText = props.EmptyText
+        EmptyText = props.EmptyText,
     }
     local categoryState = Value<<MapProps?>>(scope, nil)
     local categoryVisible = false

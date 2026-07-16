@@ -41,6 +41,7 @@ export type MapProps = {
     Variant: ThemeUtils.BgVariantLayer?,
     Width: UDim?,
     Header: string?,
+    HeaderChildren: { Fusion.Child }?,
     Items: Fusion.UsedAs<Items>?,
     HideValues: boolean?,
     EmptyText: string?,
@@ -49,9 +50,11 @@ export type MapProps = {
 }
 
 return Component<<MapProps>>(function(scope, props)
-    local props, variant = TableExtract(props, "Variant", "Secondary")
-    local props, width = TableExtract(props, "Width", UDim.new(1, 0))
-    local props, header = TableExtract(props, "Header")
+    -- TypeError: Code is too complex to typecheck!
+    local props: MapProps, variant = (TableExtract :: any)(props, "Variant", "Secondary")
+    local props: MapProps, width = (TableExtract :: any)(props, "Width", UDim.new(1, 0))
+    local props: MapProps, header = (TableExtract :: any)(props, "Header")
+    local props, headerChildren = TableExtract(props, "HeaderChildren")
     local props, items = TableExtract(props, "Items")
     local props, emptyText = TableExtract(props, "EmptyText")
     local props, hideValues = TableExtract(props, "HideValues", false)
@@ -94,6 +97,7 @@ return Component<<MapProps>>(function(scope, props)
     local visibleRows = ComputeVirtualizedRows(scope, {
         Variant = variant,
         Header = header,
+        HeaderChildren = headerChildren,
         HideValues = hideValues,
         EmptyText = emptyText,
         Layout = layout,
@@ -133,5 +137,5 @@ return Component<<MapProps>>(function(scope, props)
         RootChildren = New(scope, "UIFlexItem") {},
 
         [Children] = mapChildren
-    }, props))
+    }, props :: any))
 end)

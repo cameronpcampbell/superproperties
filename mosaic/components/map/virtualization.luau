@@ -3,9 +3,9 @@
 local Packages = script.Parent.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
-local Computed, New, Observer, Peek, Tween, Value =
-    Fusion.Computed, Fusion.New, Fusion.Observer, Fusion.peek,
-    Fusion.Tween, Fusion.Value
+local Children, Computed, New, Observer, Peek, Tween, Value =
+    Fusion.Children, Fusion.Computed, Fusion.New, Fusion.Observer,
+    Fusion.peek, Fusion.Tween, Fusion.Value
 
 local Utils = script.Parent.Parent.Parent.utils
 local ThemeUtils = require(Utils.themeUtils)
@@ -31,6 +31,10 @@ type RowMetadata = Types.RowMetadata
 type RootRowDescriptor = ItemLayout | string
 type RootRowDescriptors = { [number]: RootRowDescriptor }
 type RenderedRows = { [number]: Instance }
+type HeaderChildrenCache = {
+    CacheParent: Folder,
+    Frame: Frame
+}
 type ResolvedItem = {
     Item: ItemDefinition,
     ResolvedValue: any,
@@ -66,6 +70,7 @@ export type VirtualListData = {
 export type VirtualRowsConfig = {
     Variant: ThemeUtils.BgVariantLayer,
     Header: string?,
+    HeaderChildren: { Fusion.Child }?,
     HideValues: boolean,
     EmptyText: string?,
     Layout: MapLayout,
@@ -84,6 +89,42 @@ type MountedRow = {
 local function CalculateMapHeight(rowCount: number, height: number): number
     local rowHeight = height - 2
     return rowHeight * rowCount + rowCount + 1
+end
+
+local function CreateHeaderChildrenCache(
+    scope: Fusion.Scope,
+    headerChildren: { Fusion.Child }?
+): HeaderChildrenCache?
+    if not headerChildren or next(headerChildren) == nil then return nil end
+
+    local cacheParent = New(scope, "Folder") {
+        Name = "MapHeaderChildrenCache"
+    } :: Folder
+    local frame = New(scope, "Frame") {
+        Parent = cacheParent,
+        Size = UDim2.fromScale(0, 1),
+        AutomaticSize = Enum.AutomaticSize.X,
+        BackgroundTransparency = 1,
+        LayoutOrder = 2,
+
+        Name = "HeaderChildren",
+
+        [Children] = ({
+            headerChildren,
+
+            New(scope, "UIListLayout") {
+                Padding = UDim.new(0, 6),
+                FillDirection = Enum.FillDirection.Horizontal,
+                HorizontalAlignment = Enum.HorizontalAlignment.Right,
+                VerticalAlignment = Enum.VerticalAlignment.Center
+            }
+        } :: { Fusion.Child })
+    } :: Frame
+
+    return {
+        CacheParent = cacheParent,
+        Frame = frame
+    }
 end
 
 local function CreateCollapseRevealTween(
@@ -528,14 +569,28 @@ end
 local function CreateRow(
     scope: Fusion.Scope,
     config: VirtualRowsConfig,
+    headerChildrenCache: HeaderChildrenCache?,
     rootIdx: number,
     descriptor: RootRowDescriptor
 ): Instance
     local rowCount = config.Layout.RowCount
 
     if descriptor == HeaderRowDescriptor then
+        if headerChildrenCache then
+            local cache = headerChildrenCache
+
+            -- MapHeader's cleanup unparents the frame first. Since scopes clean
+            -- up in reverse order, this earlier task then returns it to cache.
+            table.insert(scope, function()
+                cache.Frame.Parent = cache.CacheParent
+            end)
+        end
+
         return MapHeader(scope, {
             Header = config.Header :: string,
+            HeaderChildrenFrame = (
+                if headerChildrenCache then headerChildrenCache.Frame else {}
+            ) :: Fusion.Child,
             Variant = config.Variant,
             RowCount = rowCount,
             RowIdx = 1,
@@ -591,7 +646,8 @@ end
 local function CreateRenderedRows(
     scope: Fusion.Scope,
     config: VirtualRowsConfig,
-    visibleDescriptors: Fusion.Computed<RootRowDescriptors>
+    visibleDescriptors: Fusion.Computed<RootRowDescriptors>,
+    headerChildrenCache: HeaderChildrenCache?
 ): Fusion.Value<RenderedRows>
     local renderedRows = Fusion.Value<<RenderedRows>>(scope, {})
     local mountedRows = {} :: { [number]: MountedRow }
@@ -614,6 +670,7 @@ local function CreateRenderedRows(
             local rowInstance = CreateRow(
                 rowScope,
                 config,
+                headerChildrenCache,
                 rootIdx,
                 descriptor
             )
@@ -691,8 +748,17 @@ local function ComputeRows(
     scope: Fusion.Scope,
     config: VirtualRowsConfig
 ): (Fusion.Child, Fusion.Value<RenderedRows>)
+    local headerChildrenCache =
+        if config.Header
+        then CreateHeaderChildrenCache(scope, config.HeaderChildren)
+        else nil
     local visibleDescriptors = ComputeVisibleRootDescriptors(scope, config)
-    local renderedRows = CreateRenderedRows(scope, config, visibleDescriptors)
+    local renderedRows = CreateRenderedRows(
+        scope,
+        config,
+        visibleDescriptors,
+        headerChildrenCache
+    )
     local spacerHeight = ComputeTopSpacerHeight(scope, config)
     local topSpacer = CreateTopSpacer(scope, config, spacerHeight)
 
