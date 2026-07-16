@@ -35,7 +35,8 @@ return function(scope: Fusion.Scope, props: Types.ValueVariantProps<string>)
     local font = theme:GetFont(scope, "Main", Enum.FontWeight.Regular)
     local fontSize = theme:GetFontSize(scope, "Main", "Body")
 
-    return New(scope, "TextBox") {
+    local textBox: TextBox
+    textBox = New(scope, "TextBox") {
         Size = UDim2.fromScale(1, 1),
         BackgroundTransparency = 1,
         Text = textState,
@@ -49,6 +50,9 @@ return function(scope: Fusion.Scope, props: Types.ValueVariantProps<string>)
         Name = "StringValueInput",
 
         [OnEvent "Focused"] = function()
+            textBox.CursorPosition = #textBox.Text + 1
+            textBox.SelectionStart = 1
+
             if props.OnFocusChanged then props.OnFocusChanged(true) end
         end,
 
@@ -70,5 +74,7 @@ return function(scope: Fusion.Scope, props: Types.ValueVariantProps<string>)
         [Children] = New(scope, "UIFlexItem") {
             FlexMode = Enum.UIFlexMode.Shrink
         }
-    }
+    } :: TextBox
+
+    return textBox
 end
