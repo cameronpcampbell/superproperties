@@ -87,7 +87,7 @@ return Component<<ButtonProps>>(function(scope, props)
         [OnEvent "MouseEnter"] = function() isHoverState:set(true) end,
         [OnEvent "MouseLeave"] = function() isHoverState:set(false) end,
 
-        [OnEvent "MouseButton1Down"] = function() isFocusState:set(true) end,
+        [OnEvent "MouseButton1Down"] = function() print(":)"); isFocusState:set(true) end,
         [OnEvent "MouseButton1Up"] = function() isFocusState:set(false) end,
 
         RootChildren = New(scope, "UIFlexItem") {},

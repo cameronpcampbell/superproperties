@@ -68,27 +68,31 @@ local Widget = Scope:Widget {
             Name = "Content",
 
             [Children] = {
-                Properties.Input(Scope),
+                --[[Properties.Input(Scope),
 
                 Properties.Maps(Scope, {
                     SelectedInstanceValue = SelectedInstanceValue,
                     OmitRbxAttributes = true
-                }),
+                }),]]
+
+                Scope:Button {
+                    [Children] = "Click Me!"
+                },
 
                 Scope:New "UIPadding" {
-                    PaddingLeft = UDim.new(0, 4),
-                    PaddingRight = UDim.new(0, 4),
-                    PaddingTop = UDim.new(0, 4),
+                    PaddingLeft = UDim.new(0, 4 + 20),
+                    PaddingRight = UDim.new(0, 4 + 20),
+                    PaddingTop = UDim.new(0, 4 + 20),
                     -- For some reason plugin gui's are
                     -- clipped 1 pixel at the bottom.
-                    PaddingBottom = UDim.new(0, 5),
+                    PaddingBottom = UDim.new(0, 5 + 20),
                 },
 
                 Scope:New "UIListLayout" {
                     FillDirection = Enum.FillDirection.Vertical,
                     SortOrder = Enum.SortOrder.LayoutOrder,
                     VerticalFlex = Enum.UIFlexAlignment.Fill,
-                    Padding = UDim.new(0, 4)
+                    Padding = UDim.new(0, 4 + 20)
                 }
             }
         }

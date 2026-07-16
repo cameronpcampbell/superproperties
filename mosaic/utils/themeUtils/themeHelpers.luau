@@ -13,7 +13,7 @@ local Computed, New = Fusion.Computed, Fusion.New
 local function LerpColor(from: Color3, to: Color3, alpha: number)
     return
         ColorSpace.Oklab.From(from)
-            :Lerp(ColorSpace.Oklab.From(to), .1)
+            :Lerp(ColorSpace.Oklab.From(to), alpha)
             :ToColor3()
 end
 
