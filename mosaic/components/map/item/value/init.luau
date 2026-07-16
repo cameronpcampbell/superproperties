@@ -25,6 +25,9 @@ local GetThemeForScope, GetNextVariant, CalcColorModifier =
 
 local Types = require(script.Parent.Parent.types)
 
+local Components = script.Parent.Parent.Parent
+local FocusRing = require(Components.focusRing)
+
 local CalculateRowCornerRadii =
     require(script.Parent.Parent.cornerRadii)
 
@@ -70,6 +73,8 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
         )
 
     local border: Fusion.Child? = nil
+    local focusRing: Fusion.Child? = nil
+    local onFocusChanged: ((isFocused: boolean) -> ())? = nil
     local interactionProps: { [any]: any } = {}
 
     if props.Writable then
@@ -81,6 +86,22 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
             CalcColorModifier(scope, isHoverState, isFocusState, "Stroke")
         local strokeColor =
             theme:GetBg(scope, GetNextVariant(variant), strokeColorModifier)
+        local accentColor =
+            theme:GetAccent(scope, "Primary", strokeColorModifier)
+
+        local tweenStrokeColor = Tween<<Color3>>(
+            scope,
+            Computed(scope, function(use, scope): Color3
+                return
+                    if use<<boolean>>(isFocusState) then
+                        use<<Color3>>(accentColor)
+                    else
+                        use<<Color3>>(strokeColor)
+            end),
+            TweenInfo.new(
+                .18, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
+            )
+        )
 
         local tweenStrokeTransparency = Tween<<number>>(
             scope,
@@ -115,7 +136,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
 
             return Supercorner.new(scope, {
                 BackgroundTransparency = 1,
-                StrokeColor = strokeColor,
+                StrokeColor = tweenStrokeColor,
                 StrokeTransparency = tweenStrokeTransparency,
                 StrokeThickness = 1,
                 Size = UDim2.new(1, 2, 1, 2),
@@ -130,6 +151,19 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
                 AnchorPoint = Vector2.new(.5, .5)
             })
         end) :: any
+
+        focusRing = FocusRing(scope, {
+            IsFocus = isFocusState,
+            CullWhenHidden = true,
+            TopLeftRadius = Peek<<number>>(topLeftRadius),
+            TopRightRadius = Peek<<number>>(topRightRadius),
+            BottomLeftRadius = Peek<<number>>(bottomLeftRadius),
+            BottomRightRadius = Peek<<number>>(bottomRightRadius)
+        })
+
+        onFocusChanged = function(isFocused: boolean)
+            isFocusState:set(isFocused)
+        end
 
         interactionProps = {
             [OnEvent "MouseEnter"] = function() isHoverState:set(true) end,
@@ -150,13 +184,17 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
 
         Name = "MapItemValue",
 
-        RootChildren = border :: any,
+        RootChildren = {
+            border :: any,
+            focusRing
+        },
 
         [Children] = {
             valueVariant(scope, {
                 Value = value,
                 Writable = props.Writable,
-                TrySetValue = props.TrySetValue
+                TrySetValue = props.TrySetValue,
+                OnFocusChanged = onFocusChanged
             }),
 
             New(scope, "UIListLayout") {

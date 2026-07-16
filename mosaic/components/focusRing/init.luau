@@ -25,7 +25,8 @@ type FocusRingProps = {
 	TopRightRadius: number?,
 	BottomRightRadius: number?,
 	BottomLeftRadius: number?,
-	IsFocus: Fusion.UsedAs<boolean>
+	IsFocus: Fusion.UsedAs<boolean>,
+	CullWhenHidden: boolean?
 }
 
 return Component<<FocusRingProps>>(function(scope, props)
@@ -35,6 +36,7 @@ return Component<<FocusRingProps>>(function(scope, props)
     local props, bottomRightRadius = TableExtract(props, "BottomRightRadius")
     local props, bottomLeftRadius = TableExtract(props, "BottomLeftRadius")
     local props, isFocus = TableExtract(props, "IsFocus")
+    local props, cullWhenHidden = TableExtract(props, "CullWhenHidden", false)
 
     local ringThickness = 2
     local ringInset = .5
@@ -66,25 +68,40 @@ return Component<<FocusRingProps>>(function(scope, props)
     local theme = GetThemeForScope(scope)
     local accentColor = theme:GetAccent(scope, "Primary")
 
-    return Supercorner.new(scope, CombineProps({
-        Size = computeSize,
-        Position = UDim2.fromScale(.5, .5),
-        AnchorPoint = Vector2.new(.5, .5),
-        StrokeThickness = ringThickness + ringInset,
-        StrokeTransparency = computeTransparency,
-        StrokeColor = accentColor,
-        BackgroundTransparency = 1,
-        CornerRadius =
-            if cornerRadius then cornerRadius + ringThickness else nil,
-        TopLeftRadius =
-            if topLeftRadius then topLeftRadius + ringThickness else nil,
-        TopRightRadius =
-            if topRightRadius then topRightRadius + ringThickness else nil,
-        BottomRightRadius =
-            if bottomRightRadius then bottomRightRadius + ringThickness else nil,
-        BottomLeftRadius =
-            if bottomLeftRadius then bottomLeftRadius + ringThickness else nil,
-        CornerSmoothing = 1,
-        ZIndex = 0,
-    }, props :: any))
+    local function createRing(ringScope: Fusion.Scope): Fusion.Child
+        return Supercorner.new(ringScope, CombineProps({
+            Size = computeSize,
+            Position = UDim2.fromScale(.5, .5),
+            AnchorPoint = Vector2.new(.5, .5),
+            StrokeThickness = ringThickness + ringInset,
+            StrokeTransparency = computeTransparency,
+            StrokeColor = accentColor,
+            BackgroundTransparency = 1,
+            CornerRadius =
+                if cornerRadius then cornerRadius + ringThickness else nil,
+            TopLeftRadius =
+                if topLeftRadius then topLeftRadius + ringThickness else nil,
+            TopRightRadius =
+                if topRightRadius then topRightRadius + ringThickness else nil,
+            BottomRightRadius =
+                if bottomRightRadius then bottomRightRadius + ringThickness else nil,
+            BottomLeftRadius =
+                if bottomLeftRadius then bottomLeftRadius + ringThickness else nil,
+            CornerSmoothing = 1,
+            ZIndex = 0,
+        }, props :: any))
+    end
+
+    if not cullWhenHidden then return createRing(scope) end
+
+    local shouldShow = Computed(scope, function(use, scope): boolean
+        return
+            use<<boolean>>(isFocus) or
+            use<<number>>(computeAlpha) > .001
+    end)
+
+    return Computed(scope, function(use, scope): Fusion.Child?
+        if not use<<boolean>>(shouldShow) then return nil end
+        return createRing(scope)
+    end)
 end)
