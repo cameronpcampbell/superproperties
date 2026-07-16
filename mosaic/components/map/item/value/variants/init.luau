@@ -7,6 +7,7 @@ export type ValueVariantFn<T> = Types.ValueVariantFn<T>
 
 return {
     string = require(script.string),
+    number = require(script.number),
     boolean = require(script.boolean),
     EnumItem = require(script.enumItem),
     Color3 = require(script.color),
