@@ -25,8 +25,9 @@ local Types = require(script.Parent.types)
 local MapItemKey = require(script.key)
 local MapItemValue = require(script.value)
 
-local HoverRowZIndex = 100
-local FocusRowZIndex = HoverRowZIndex + 1
+local HoverRowZIndex = 99
+local DisappearingFocusRowZIndex = HoverRowZIndex + 1
+local FocusRowZIndex = DisappearingFocusRowZIndex + 1
 
 type MapItemProps = Typeforge.Flatten<{
     Variant: ThemeUtils.BgVariantLayer,
@@ -56,16 +57,20 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
         isFocusElevationState = Value(scope, false)
 
         rowZIndex = Computed(scope, function(use: Fusion.Use): number
-            if use<<boolean>>(
+            local isFocused = use<<boolean>>(
+                isFocusState :: Fusion.Value<boolean>
+            )
+            local isFocusElevated = use<<boolean>>(
                 isFocusElevationState :: Fusion.Value<boolean>
-            ) then
-                return FocusRowZIndex
-            end
+            )
+            local isHovered = use<<boolean>>(
+                isHoverState :: Fusion.Value<boolean>
+            )
 
-            return
-                if use<<boolean>>(isHoverState :: Fusion.Value<boolean>) then
-                    HoverRowZIndex
-                else 1
+            if isFocused then return FocusRowZIndex end
+            if isFocusElevated then return DisappearingFocusRowZIndex end
+            if isHovered then return HoverRowZIndex end
+            return 1
         end)
     end
 
