@@ -5,8 +5,8 @@ local Packages = script.Parent.Parent.Parent.Parent
 local Typeforge = require(Packages.typeforge)
 
 local Fusion = require(Packages.fusion)
-local Computed, New, Children =
-    Fusion.Computed, Fusion.New, Fusion.Children
+local Computed, New, Children, Value =
+    Fusion.Computed, Fusion.New, Fusion.Children, Fusion.Value
 
 local Utils = script.Parent.Parent.Parent.utils
 
@@ -25,6 +25,8 @@ local Types = require(script.Parent.types)
 local MapItemKey = require(script.key)
 local MapItemValue = require(script.value)
 
+local ActiveRowZIndex = 100
+
 type MapItemProps = Typeforge.Flatten<{
     Variant: ThemeUtils.BgVariantLayer,
     Layout: Types.ItemLayout,
@@ -40,6 +42,27 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
     local children = layout.Children
     local hasSubItems = #children > 0
     local redrawable = layout.CanBecomeMapBottom
+    local hasInteractiveValue = layout.Writable and not props.HideValue
+
+    local isHoverState: Fusion.Value<boolean>? = nil
+    local isFocusState: Fusion.Value<boolean>? = nil
+    local isBorderVisibleState: Fusion.Value<boolean>? = nil
+    local rowZIndex: Fusion.UsedAs<number> = 1
+
+    if hasInteractiveValue then
+        isHoverState = Value(scope, false)
+        isFocusState = Value(scope, false)
+        isBorderVisibleState = Value(scope, false)
+
+        rowZIndex = Computed(scope, function(use: Fusion.Use): number
+            local shouldElevate =
+                use<<boolean>>(isHoverState :: Fusion.Value<boolean>) or
+                use<<boolean>>(isFocusState :: Fusion.Value<boolean>) or
+                use<<boolean>>(isBorderVisibleState :: Fusion.Value<boolean>)
+
+            return if shouldElevate then ActiveRowZIndex else 1
+        end)
+    end
 
     local rowIdx = Computed(scope, function(use: Fusion.Use): number
         local metadata = use<<Types.RowMetadata>>(props.RowMetadata)
@@ -93,7 +116,10 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
             Variant = props.Variant,
             RowCount = props.RowCount,
             RowIdx = rowIdx,
-            Redrawable = redrawable
+            Redrawable = redrawable,
+            HoverState = isHoverState,
+            FocusState = isFocusState,
+            BorderVisibleState = isBorderVisibleState
         }))
     end
 
@@ -160,6 +186,7 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
             )
         end),
         LayoutOrder = props.LayoutOrder,
+        ZIndex = rowZIndex,
 
         Name = `MapItem [{item.Key}]`,
 

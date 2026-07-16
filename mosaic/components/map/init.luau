@@ -125,8 +125,6 @@ return Component<<MapProps>>(function(scope, props)
 
     return Supercorner.new(scope, CombineProps({
         BackgroundColor3 = strokeColor,
-        StrokeColor = strokeColor,
-        StrokeThickness = 1,
         Size = animatedMapSize,
         ClipsDescendants = true,
         CornerRadius = Peek<<number>>(cornerRadius),
