@@ -2,7 +2,6 @@
 
 local Packages =
     script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.packages
-local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
 local New, Children, Peek = Fusion.New, Fusion.Children, Fusion.peek
@@ -17,6 +16,7 @@ local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
 
 local Components = script.Parent.Parent.Parent.Parent.Parent
+local HighlightGradient = require(Components.highlightGradient)
 local Text = require(Components.text)
 
 local Types = require(script.Parent.types)
@@ -27,13 +27,12 @@ local function Color(scope: Fusion.Scope, color: Color3 | BrickColor)
     end
 
     local theme = GetThemeForScope(scope)
-    local highlightGradient = theme:HighlightGradient(scope, 0.78)
     local height = theme:GetHeight(scope, "Sm")
     local cornerRadius = theme:GetCornerRadius(scope, "Sm")
 
-    return Supercorner.new(scope, {
+    return HighlightGradient(scope, {
+        GradientTransparency = 0.78,
         BackgroundColor3 = color :: Color3,
-        StrokeGradient = highlightGradient,
         StrokeThickness = 1,
         Size = ComputeUDim2FromOffset(scope, height, height),
         CornerRadius = Peek<<number>>(cornerRadius),

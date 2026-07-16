@@ -29,8 +29,10 @@ type HighlightGradientProps = {
     FollowSpringSpeed: Fusion.UsedAs<number>?,
     ReturnSpringSpeed: Fusion.UsedAs<number>?,
     SpringDamping: Fusion.UsedAs<number>?,
-    [Fusion.SpecialKey]: any
+    [string | Fusion.SpecialKey]: any
 }
+
+type MouseCallback = (x: number, y: number) -> ()
 
 local GradientName = "MosaicHighlightGradient"
 
@@ -51,7 +53,7 @@ local function GetPointerRotation(
     y: number
 ): (number?, number?)
     local halfSize = root.AbsoluteSize / 2
-    if halfSize.X <= 0 or halfSize.Y <= 0 then return nil end
+    if halfSize.X <= 0 or halfSize.Y <= 0 then return nil, nil end
 
     local center = root.AbsolutePosition + halfSize
     local direction = Vector2.new(
@@ -92,9 +94,15 @@ return Component<<HighlightGradientProps>>(function(scope, props)
         TableExtract(props, "ReturnSpringSpeed", 10)
     local props, springDamping =
         TableExtract(props, "SpringDamping", 1)
-    local props, onMouseEnter = TableExtract(props, OnEvent "MouseEnter")
-    local props, onMouseMoved = TableExtract(props, OnEvent "MouseMoved")
-    local props, onMouseLeave = TableExtract(props, OnEvent "MouseLeave")
+    local props, onMouseEnterValue =
+        TableExtract(props, OnEvent "MouseEnter")
+    local props, onMouseMovedValue =
+        TableExtract(props, OnEvent "MouseMoved")
+    local props, onMouseLeaveValue =
+        TableExtract(props, OnEvent "MouseLeave")
+    local onMouseEnter = onMouseEnterValue :: MouseCallback?
+    local onMouseMoved = onMouseMovedValue :: MouseCallback?
+    local onMouseLeave = onMouseLeaveValue :: MouseCallback?
 
     local isEnabled = Computed(scope, function(use): boolean
         return use<<boolean>>(enabled)
