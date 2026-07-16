@@ -5,7 +5,8 @@ local Packages = script.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local New, Children, Peek = Fusion.New, Fusion.Children, Fusion.peek
+local New, Children, Computed, Peek =
+    Fusion.New, Fusion.Children, Fusion.Computed, Fusion.peek
 
 local Utils = script.Parent.Parent.utils
 
@@ -94,6 +95,22 @@ return Component<<MapProps>>(function(scope, props)
             height
         )
 
+    -- Clip content while the map changes height, but leave stable bounds
+    -- unclipped so value focus rings can render outside the map.
+    local clipsDescendants = Computed(scope, function(use): boolean
+        local currentHeight =
+            use<<UDim2>>(animatedMapSize).Height.Offset
+        local collapsedHeight = use<<number>>(height)
+        local expandedHeight =
+            use<<number>>(layout.AnimatedExpandedHeight)
+        local minHeight = math.min(collapsedHeight, expandedHeight)
+        local maxHeight = math.max(collapsedHeight, expandedHeight)
+
+        return
+            currentHeight > minHeight and
+            currentHeight < maxHeight
+    end)
+
     local visibleRows = ComputeVirtualizedRows(scope, {
         Variant = variant,
         Header = header,
@@ -126,7 +143,7 @@ return Component<<MapProps>>(function(scope, props)
     return Supercorner.new(scope, CombineProps({
         BackgroundColor3 = strokeColor,
         Size = animatedMapSize,
-        ClipsDescendants = true,
+        ClipsDescendants = clipsDescendants,
         CornerRadius = Peek<<number>>(cornerRadius),
         CornerSmoothing = 1,
 

@@ -25,7 +25,8 @@ local Types = require(script.Parent.types)
 local MapItemKey = require(script.key)
 local MapItemValue = require(script.value)
 
-local ActiveRowZIndex = 100
+local HoverRowZIndex = 100
+local FocusRowZIndex = HoverRowZIndex + 1
 
 type MapItemProps = Typeforge.Flatten<{
     Variant: ThemeUtils.BgVariantLayer,
@@ -55,12 +56,15 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
         isBorderVisibleState = Value(scope, false)
 
         rowZIndex = Computed(scope, function(use: Fusion.Use): number
+            if use<<boolean>>(isFocusState :: Fusion.Value<boolean>) then
+                return FocusRowZIndex
+            end
+
             local shouldElevate =
                 use<<boolean>>(isHoverState :: Fusion.Value<boolean>) or
-                use<<boolean>>(isFocusState :: Fusion.Value<boolean>) or
                 use<<boolean>>(isBorderVisibleState :: Fusion.Value<boolean>)
 
-            return if shouldElevate then ActiveRowZIndex else 1
+            return if shouldElevate then HoverRowZIndex else 1
         end)
     end
 
@@ -140,6 +144,25 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
 
     local subItemsClip: Instance? = nil
     if hasSubItems then
+        local subItemsVisible = Computed(scope, function(use): boolean
+            return use<<number>>(layout.AnimatedChildrenHeight) > 0
+        end)
+
+        -- Clip subitems during their height transition to prevent content
+        -- bleed, then unclip them so nested focus rings can render fully. The
+        -- zero-height wrapper is hidden separately so elevated rows cannot
+        -- reveal collapsed subitems.
+        local clipsDescendants = Computed(scope, function(use): boolean
+            local currentHeight =
+                use<<number>>(layout.AnimatedChildrenHeight)
+            local expandedHeight =
+                use<<number>>(layout.ChildrenContentHeight) + 1
+
+            return
+                currentHeight > 0 and
+                currentHeight < expandedHeight
+        end)
+
         subItemsClip = New(scope, "Frame") {
             Position = ComputeUDim2FromOffset(scope, 0, rowHeight),
             Size = Computed(scope, function(use: Fusion.Use): UDim2
@@ -151,7 +174,8 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
                 )
             end),
             BackgroundTransparency = 1,
-            ClipsDescendants = true,
+            ClipsDescendants = clipsDescendants,
+            Visible = subItemsVisible,
             Name = "SubItemsClip",
 
             [Children] = New(scope, "Frame") {

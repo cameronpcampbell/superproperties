@@ -77,6 +77,7 @@ return Component<<FocusRingProps>>(function(scope, props)
             StrokeTransparency = computeTransparency,
             StrokeColor = accentColor,
             BackgroundTransparency = 1,
+            ForceSupercorner = true,
             CornerRadius =
                 if cornerRadius then cornerRadius + ringThickness else nil,
             TopLeftRadius =
@@ -100,8 +101,8 @@ return Component<<FocusRingProps>>(function(scope, props)
             use<<number>>(computeAlpha) > .001
     end)
 
-    return Computed(scope, function(use, scope): Fusion.Child?
-        if not use<<boolean>>(shouldShow) then return nil end
+    return Computed(scope, function(use, scope): Fusion.Child
+        if not use<<boolean>>(shouldShow) then return nil :: any end
         return createRing(scope)
     end)
 end)

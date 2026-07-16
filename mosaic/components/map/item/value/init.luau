@@ -161,8 +161,24 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
             BottomRightRadius = Peek<<number>>(bottomRightRadius)
         })
 
+        local pendingFocusState = false
+        local focusUpdateScheduled = false
+
         onFocusChanged = function(isFocused: boolean)
-            isFocusState:set(isFocused)
+            pendingFocusState = isFocused
+            if focusUpdateScheduled then return end
+
+            -- A virtualized row can receive focus while Fusion is mounting it.
+            -- Defer the state write to avoid mutating the graph mid-evaluation.
+            focusUpdateScheduled = true
+            task.defer(function()
+                focusUpdateScheduled = false
+                if Peek<<boolean>>(isFocusState) == pendingFocusState then
+                    return
+                end
+
+                isFocusState:set(pendingFocusState)
+            end)
         end
 
         interactionProps = {
