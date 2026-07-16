@@ -28,13 +28,15 @@ local Assets = require(script.Parent.Parent.assets)
 
 type CheckboxProps = {
     Checked: Fusion.UsedAs<boolean>?,
-    Disabled: Fusion.UsedAs<boolean>?
+    Disabled: Fusion.UsedAs<boolean>?,
+    OnChanged: ((checked: boolean) -> ())?
 }
 
 return Component<<CheckboxProps>>(function(scope, props)
 
     local props, checked = TableExtract(props, "Checked", true)
     local props, disabled = TableExtract(props, "Disabled", true)
+    local props, onChanged = TableExtract(props, "OnChanged")
 
     local checkedState = CoerceToValue<<boolean>>(scope, checked)
 
@@ -75,33 +77,35 @@ return Component<<CheckboxProps>>(function(scope, props)
         CornerSmoothing = 1,
 
         [OnEvent "MouseEnter"] = function()
-            --if Peek<<boolean>>(disabled) then return end
+            if Peek<<boolean>>(disabled) then return end
 
             isHoverState:set(true)
         end,
 
         [OnEvent "MouseLeave"] = function()
-            --if Peek<<boolean>>(disabled) then return end
-
             isHoverState:set(false)
         end,
 
         [OnEvent "MouseButton1Down"] = function()
-            --if Peek<<boolean>>(disabled) then return end
+            if Peek<<boolean>>(disabled) then return end
 
             isFocusState:set(true)
         end,
 
         [OnEvent "MouseButton1Up"] = function()
-            --if Peek<<boolean>>(disabled) then return end
-
             isFocusState:set(false)
         end,
 
         [OnEvent "MouseButton1Click"] = function()
             if Peek<<boolean>>(disabled) then return end
 
-            checkedState:set(not Peek<<boolean>>(checkedState))
+            local nextChecked = not Peek<<boolean>>(checkedState)
+            if onChanged then
+                onChanged(nextChecked)
+                return
+            end
+
+            checkedState:set(nextChecked)
         end,
 
         RootChildren = {

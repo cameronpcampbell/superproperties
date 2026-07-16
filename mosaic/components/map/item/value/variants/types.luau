@@ -5,7 +5,8 @@ local Packages =
 local Fusion = require(Packages.fusion)
 
 export type ValueVariantProps<T> = {
-    Value: T
+    Value: T,
+    TrySetValue: ((value: T) -> (boolean, string?))?
 }
 
 export type ValueVariantFn<T> =

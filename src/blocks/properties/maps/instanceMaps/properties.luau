@@ -13,6 +13,7 @@ type CategoryState = Category.State
 
 local GetProperties = require(script.Parent.Parent.getProperties)
 type Snapshot = GetProperties.Snapshot
+local CommitProperty = require(script.Parent.commitProperty)
 local LongPoll = require(script.Parent.Parent.longPoll)
 type LongPollOptions = LongPoll.Options
 
@@ -109,17 +110,6 @@ return function(
 
         categoryItems[categoryIndex] = items
         categoryItemStates[categoryIndex] = itemsState
-        categoryStates[categoryIndex] = Category(
-            scope,
-            outerScope,
-            collapsedStateScope,
-            {
-                Name = categorySnapshot.Name,
-                Items = itemsState,
-                Presorted = true,
-                StableKeys = true
-            }
-        )
     end
 
     local function refreshProperty(propertyName: string): boolean
@@ -139,6 +129,40 @@ return function(
         item.Value = value
         categoryItemStates[location.CategoryIndex]:set(items)
         return true
+    end
+
+    for propertyName, location in snapshot.LocationsByName do
+        if not location.Plan.Writable then continue end
+
+        local items = categoryItems[location.CategoryIndex]
+        local item = items[location.ItemIndex]
+
+        item.TrySetValue = function(value: any): (boolean, string?)
+            if item.Value == value then return true, nil end
+
+            local success, err = CommitProperty(
+                instance,
+                location.Plan,
+                value
+            )
+
+            refreshProperty(propertyName)
+            return success, err
+        end
+    end
+
+    for categoryIndex, categorySnapshot in snapshot.Categories do
+        categoryStates[categoryIndex] = Category(
+            scope,
+            outerScope,
+            collapsedStateScope,
+            {
+                Name = categorySnapshot.Name,
+                Items = categoryItemStates[categoryIndex],
+                Presorted = true,
+                StableKeys = true
+            }
+        )
     end
 
     ObservePropertyChanges(

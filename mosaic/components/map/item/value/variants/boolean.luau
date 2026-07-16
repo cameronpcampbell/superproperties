@@ -10,7 +10,19 @@ local Components = script.Parent.Parent.Parent.Parent.Parent
 local Checkbox = require(Components.checkbox)
 
 return function(scope: Fusion.Scope, props: Types.ValueVariantProps<boolean>)
+    local trySetValue = props.TrySetValue
+
     return Checkbox(scope, {
-        Checked = props.Value
+        Checked = props.Value,
+        Disabled = trySetValue == nil,
+        OnChanged =
+            if trySetValue then
+                function(value: boolean)
+                    local success, err = trySetValue(value)
+                    if success then return end
+
+                    warn(`SuperProperties: {err or "Could not set value."}`)
+                end
+            else nil
     })
 end

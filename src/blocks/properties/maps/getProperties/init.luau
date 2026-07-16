@@ -15,6 +15,8 @@ type Item = Map.Item
 export type PropertyPlan = {
     Name: string,
     Read: ((Instance) -> any)?,
+    Write: ((Instance, any) -> ())?,
+    Writable: boolean,
     Poll: boolean
 }
 
@@ -140,6 +142,11 @@ local function BuildClassPlan(className: string): ClassPlan
             Read =
                 if customReadWrite then customReadWrite.Read
                 else nil,
+            Write =
+                if customReadWrite then customReadWrite.Write
+                else nil,
+            Writable = customReadWrite ~= nil or
+                item.Permits.Write ~= nil,
             Poll = customReadWrite ~= nil and
                 customReadWrite.Poll == true
         }
@@ -182,6 +189,30 @@ local function ReadPlannedProperty(
     end
 
     return pcall(ReadProperty, instance, propertyPlan.Name)
+end
+
+local function WriteProperty(
+    instance: Instance,
+    name: string,
+    value: any
+)
+    (instance :: any)[name] = value
+end
+
+local function WritePlannedProperty(
+    instance: Instance,
+    propertyPlan: PropertyPlan,
+    value: any
+): (boolean, any)
+    if not propertyPlan.Writable then
+        return false, `Property '{propertyPlan.Name}' is read-only.`
+    end
+
+    if propertyPlan.Write then
+        return pcall(propertyPlan.Write, instance, value)
+    end
+
+    return pcall(WriteProperty, instance, propertyPlan.Name, value)
 end
 
 local function GetProperties(instance: Instance): Snapshot
@@ -230,5 +261,6 @@ end
 
 return {
     Read = GetProperties,
-    ReadProperty = ReadPlannedProperty
+    ReadProperty = ReadPlannedProperty,
+    WriteProperty = WritePlannedProperty
 }

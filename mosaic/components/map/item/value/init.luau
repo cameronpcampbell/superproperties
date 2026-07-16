@@ -29,6 +29,7 @@ local DefaultValueVariant = ValueVariants.string
 type MapItemValueProps = Typeforge.Flatten<
     Types.BaseMapProps & {
         Value: any,
+        TrySetValue: Types.TrySetValue<any>?,
         Redrawable: boolean
     }
 >
@@ -74,7 +75,8 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
 
         [Children] = {
             valueVariant(scope, {
-                Value = value
+                Value = value,
+                TrySetValue = props.TrySetValue
             }),
 
             New(scope, "UIListLayout") {
