@@ -6,9 +6,9 @@ local Supercorner = require(Packages.supercorner)
 local Typeforge = require(Packages.typeforge)
 
 local Fusion = require(Packages.fusion)
-local New, Children, Computed, OnEvent, Tween, Observer, Peek =
+local New, Children, Computed, OnEvent, Tween, Peek =
     Fusion.New, Fusion.Children, Fusion.Computed, Fusion.OnEvent,
-    Fusion.Tween, Fusion.Observer, Fusion.peek
+    Fusion.Tween, Fusion.peek
 
 local Utils = script.Parent.Parent.Parent.Parent.utils
 
@@ -41,8 +41,7 @@ type MapItemValueProps = Typeforge.Flatten<
         TrySetValue: Types.TrySetValue<any>?,
         Redrawable: boolean,
         HoverState: Fusion.Value<boolean>?,
-        FocusState: Fusion.Value<boolean>?,
-        BorderVisibleState: Fusion.Value<boolean>?
+        FocusState: Fusion.Value<boolean>?
     }
 >
 
@@ -80,8 +79,6 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
     if props.Writable then
         local isHoverState = props.HoverState :: Fusion.Value<boolean>
         local isFocusState = props.FocusState :: Fusion.Value<boolean>
-        local borderVisibleState =
-            props.BorderVisibleState :: Fusion.Value<boolean>
         local strokeColorModifier =
             CalcColorModifier(scope, isHoverState, isFocusState, "Stroke")
         local strokeColor =
@@ -117,40 +114,22 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
             )
         )
 
-        local shouldShowBorder = Computed(scope, function(use, scope): boolean
-            local transparency = use<<number>>(tweenStrokeTransparency)
-
-            return
-                use<<boolean>>(isHoverState) or
-                use<<boolean>>(isFocusState) or
-                transparency < .999
-        end)
-
-        Observer(scope, shouldShowBorder):onBind(function()
-            borderVisibleState:set(Peek<<boolean>>(shouldShowBorder))
-        end)
-
-        border = Computed(scope, function(use, scope: Fusion.Scope): Fusion.Child?
-            local usedShouldShowBorder = use<<boolean>>(shouldShowBorder)
-            if not usedShouldShowBorder then return nil end
-
-            return Supercorner.new(scope, {
-                BackgroundTransparency = 1,
-                StrokeColor = tweenStrokeColor,
-                StrokeTransparency = tweenStrokeTransparency,
-                StrokeThickness = 1,
-                Size = UDim2.new(1, 2, 1, 2),
-                TopLeftRadius = topLeftRadius,
-                TopRightRadius = topRightRadius,
-                BottomLeftRadius = bottomLeftRadius,
-                BottomRightRadius = bottomRightRadius,
-                MaxCornerRadius =
-                    if props.Redrawable then innerCornerRadius else nil,
-                Redrawable = props.Redrawable,
-                Position = UDim2.fromScale(.5, .5),
-                AnchorPoint = Vector2.new(.5, .5)
-            })
-        end) :: any
+        border = Supercorner.new(scope, {
+            BackgroundTransparency = 1,
+            StrokeColor = tweenStrokeColor,
+            StrokeTransparency = tweenStrokeTransparency,
+            StrokeThickness = 1,
+            Size = UDim2.new(1, 2, 1, 2),
+            TopLeftRadius = topLeftRadius,
+            TopRightRadius = topRightRadius,
+            BottomLeftRadius = bottomLeftRadius,
+            BottomRightRadius = bottomRightRadius,
+            MaxCornerRadius =
+                if props.Redrawable then innerCornerRadius else nil,
+            Redrawable = props.Redrawable,
+            Position = UDim2.fromScale(.5, .5),
+            AnchorPoint = Vector2.new(.5, .5)
+        })
 
         focusRing = FocusRing(scope, {
             IsFocus = isFocusState,
