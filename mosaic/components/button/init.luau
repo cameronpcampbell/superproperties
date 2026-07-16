@@ -2,7 +2,6 @@
 --!nolint LocalShadow
 
 local Packages = script.Parent.Parent.Parent
-local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
 local New, Children, Value, Peek, OnEvent, Tween =
@@ -25,6 +24,7 @@ local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
 local Components = script.Parent
+local HighlightGradient = require(Components.highlightGradient)
 local Text = require(Components.text)
 
 type ButtonProps = {
@@ -66,19 +66,18 @@ return Component<<ButtonProps>>(function(scope, props)
 
     local theme = GetThemeForScope(scope)
     local accentColor = theme:GetAccent(scope, variant, themeColorModifier)
-    local highlightGradient = theme:HighlightGradient(scope, 0.78)
     local cornerRadius = theme:GetCornerRadius(scope, "Md")
     local height = theme:GetHeight(scope, "Lg")
 
-    return Supercorner.new(scope :: any, CombineProps({
+    return HighlightGradient(scope, CombineProps({
         Button = true,
+        GradientTransparency = 0.78,
         BackgroundColor3 = Tween<<Color3>>(
             scope, accentColor,
             TweenInfo.new(
                 .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
             )
         ),
-        StrokeGradient = highlightGradient,
         StrokeThickness = 1,
         Size = ComputeUDim2(scope, width, ComputeUDim(scope, 0, height)),
         CornerRadius = Peek<<number>>(cornerRadius),

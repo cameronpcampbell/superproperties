@@ -24,6 +24,9 @@ local GetThemeForScope, CalcColorModifier =
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
+local Components = script.Parent
+local HighlightGradient = require(Components.highlightGradient)
+
 local Assets = require(script.Parent.Parent.assets)
 
 type CheckboxProps = {
@@ -76,12 +79,17 @@ return Component<<CheckboxProps>>(function(scope, props)
     local theme = GetThemeForScope(scope)
     local accentColor = theme:GetAccent(scope, "Primary", themeColorModifier)
     local fgColor = theme:GetFg(scope, "Primary", themeColorModifier)
-    local highlightGradient = theme:HighlightGradient(scope, 0.78)
     local height = theme:GetHeight(scope, "Sm")
     local cornerRadius = theme:GetCornerRadius(scope, "Sm")
 
-    return Supercorner.new(scope, CombineProps({
+    local gradientEnabled = Computed(scope, function(use): boolean
+        return not use<<boolean>>(disabled)
+    end)
+
+    return HighlightGradient(scope, CombineProps({
         Button = true,
+        Enabled = gradientEnabled,
+        GradientTransparency = 0.78,
         BackgroundColor3 = Tween<<Color3>>(
             scope, accentColor,
             TweenInfo.new(
@@ -90,7 +98,6 @@ return Component<<CheckboxProps>>(function(scope, props)
         ),
         BackgroundTransparency = checkedTransparency,
         StrokeTransparency = checkedTransparency,
-        StrokeGradient = highlightGradient,
         StrokeThickness = 1,
         Size = ComputeUDim2FromOffset(scope, height, height),
         CornerRadius = Peek<<number>>(cornerRadius),
