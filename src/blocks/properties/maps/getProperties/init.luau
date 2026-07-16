@@ -46,6 +46,11 @@ export type Snapshot = {
 }
 
 local ClassPlansByName: { [string]: ClassPlan } = {}
+local PluginReflectionSecurity = SecurityCapabilities.fromCurrent():Add(
+    Enum.SecurityCapability.Basic,
+    Enum.SecurityCapability.Plugin,
+    Enum.SecurityCapability.PluginOrOpenCloud
+)
 
 local function MergeTables(
     target: { [any]: any },
@@ -121,7 +126,10 @@ local function BuildClassPlan(className: string): ClassPlan
         Categories = {}
     }
 
-    local reflectedProperties = ReflectionService:GetPropertiesOfClass(className)
+    local reflectedProperties = ReflectionService:GetPropertiesOfClass(
+        className,
+        { Security = PluginReflectionSecurity }
+    )
 
     for _, reflectedItem in reflectedProperties do
         local item = ApplyPatches(reflectedItem)

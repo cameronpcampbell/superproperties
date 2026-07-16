@@ -49,17 +49,38 @@ local Patches: Patches = {
             }
         },
         BaseScript = {
-            Disabled = CreateDeprecationPatch("Enabled"),
-            RunContext = {
-                Permits = {
-                    Write = SecurityCapabilities.new(
-                        Enum.SecurityCapability.Plugin
-                    )
-                }
-            }
+            Disabled = CreateDeprecationPatch("Enabled")
         },
     },
     Data = {
+        Instance = {
+            RobloxLocked = {
+                Display = {
+                    DeprecationMessage = "Hidden from the properties explorer."
+                }
+            }
+        },
+        Script = {
+            Source = {
+                Display = {
+                    DeprecationMessage = "Hidden from the properties explorer."
+                }
+            }
+        },
+        LocalScript = {
+            Source = {
+                Display = {
+                    DeprecationMessage = "Hidden from the properties explorer."
+                }
+            }
+        },
+        ModuleScript = {
+            Source = {
+                Display = {
+                    DeprecationMessage = "Hidden from the properties explorer."
+                }
+            }
+        },
         GuiObject = {
             BackgroundColor = CreateDeprecationPatch("BackgroundColor3"),
             BorderColor = CreateDeprecationPatch("BorderColor3"),
@@ -109,6 +130,15 @@ local Patches: Patches = {
                     end,
 
                     Poll = true
+                }
+            }
+        }
+    },
+    Permissions = {
+        ["*"] = {
+            Capabilities = {
+                Display = {
+                    DeprecationMessage = "Deprecated in the properties explorer."
                 }
             }
         }

@@ -32,8 +32,14 @@ type CheckboxProps = {
     OnChanged: ((checked: boolean) -> ())?
 }
 
-return Component<<CheckboxProps>>(function(scope, props)
+local DisabledTransparency = 0.5
+local TransparencyTweenInfo = TweenInfo.new(
+    0.25,
+    Enum.EasingStyle.Exponential,
+    Enum.EasingDirection.InOut
+)
 
+return Component<<CheckboxProps>>(function(scope, props)
     local props, checked = TableExtract(props, "Checked", true)
     local props, disabled = TableExtract(props, "Disabled", true)
     local props, onChanged = TableExtract(props, "OnChanged")
@@ -43,14 +49,28 @@ return Component<<CheckboxProps>>(function(scope, props)
     local isHoverState, isFocusState = Value(scope, false), Value(scope, false)
     local themeColorModifier = CalcColorModifier(scope, isHoverState, isFocusState)
 
-    local computeTruthyTransparency = Tween<<number>>(
+    local checkedTransparency = Tween<<number>>(
         scope,
         Computed(scope, function(use, scope)
-            return if use<<boolean>>(checkedState) then 0 else 1
+            if not use<<boolean>>(checkedState) then return 1 end
+
+            return
+                if use<<boolean>>(disabled) then DisabledTransparency
+                else 0
         end),
-        TweenInfo.new(
-            .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
-        )
+        TransparencyTweenInfo
+    )
+
+    local uncheckedTransparency = Tween<<number>>(
+        scope,
+        Computed(scope, function(use, scope)
+            if use<<boolean>>(checkedState) then return 1 end
+
+            return
+                if use<<boolean>>(disabled) then DisabledTransparency
+                else 0
+        end),
+        TransparencyTweenInfo
     )
 
     local theme = GetThemeForScope(scope)
@@ -68,8 +88,8 @@ return Component<<CheckboxProps>>(function(scope, props)
                 .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
             )
         ),
-        BackgroundTransparency = computeTruthyTransparency,
-        StrokeTransparency = computeTruthyTransparency,
+        BackgroundTransparency = checkedTransparency,
+        StrokeTransparency = checkedTransparency,
         StrokeGradient = highlightGradient,
         StrokeThickness = 1,
         Size = ComputeUDim2FromOffset(scope, height, height),
@@ -120,15 +140,7 @@ return Component<<CheckboxProps>>(function(scope, props)
                     )
                 ),
                 CornerRadius = Peek<<number>>(cornerRadius),
-                StrokeTransparency = Tween<<number>>(
-                    scope,
-                    Computed(scope, function(use: any, scope)
-                        return if use(checkedState) then 1 else 0
-                    end),
-                    TweenInfo.new(
-                        .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
-                    )
-                )
+                StrokeTransparency = uncheckedTransparency
             }),
 
             New(scope, "UIFlexItem") {},
@@ -140,7 +152,7 @@ return Component<<CheckboxProps>>(function(scope, props)
                 ImageColor3 = fgColor,
                 Size = UDim2.fromScale(1, 1),
                 BackgroundTransparency = 1,
-                ImageTransparency = computeTruthyTransparency
+                ImageTransparency = checkedTransparency
             },
         },
 
