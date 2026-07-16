@@ -235,7 +235,8 @@ local function GetProperties(instance: Instance): Snapshot
             itemCount += 1
             items[itemCount] = {
                 Key = name,
-                Value = value
+                Value = value,
+                Writable = propertyPlan.Writable
             }
 
             locationsByName[name] = {

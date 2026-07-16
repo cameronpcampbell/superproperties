@@ -15,7 +15,7 @@ return function(scope: Fusion.Scope, props: Types.ValueVariantProps<EnumItem>)
 
     return Text(scope, {
         Text = value.Name,
-        Variant = "Primary",
+        Variant = if props.Writable then "Primary" else "Secondary",
         Size = UDim2.fromScale(1, 0),
     })
 end

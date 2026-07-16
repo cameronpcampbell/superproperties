@@ -22,7 +22,7 @@ return function(scope: Fusion.Scope, props: Types.ValueVariantProps<Instance>)
     return {
         Text(scope, {
             Text = value.Name,
-            Variant = "Primary",
+            Variant = if props.Writable then "Primary" else "Secondary",
             Size = UDim2.fromScale(1, 0),
             LayoutOrder = 0,
 

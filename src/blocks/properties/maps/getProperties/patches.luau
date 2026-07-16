@@ -49,7 +49,14 @@ local Patches: Patches = {
             }
         },
         BaseScript = {
-            Disabled = CreateDeprecationPatch("Enabled")
+            Disabled = CreateDeprecationPatch("Enabled"),
+            RunContext = {
+                Permits = {
+                    Write = SecurityCapabilities.new(
+                        Enum.SecurityCapability.Plugin
+                    )
+                }
+            }
         },
     },
     Data = {

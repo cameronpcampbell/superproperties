@@ -15,7 +15,7 @@ return function(scope: Fusion.Scope, props: Types.ValueVariantProps<any>)
 
     return Text(scope, {
         Text = tostring(value),
-        Variant = "Primary",
+        Variant = if props.Writable then "Primary" else "Secondary",
         Size = UDim2.fromScale(1, 0),
     })
 end

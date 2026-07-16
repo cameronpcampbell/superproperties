@@ -14,7 +14,7 @@ return function(scope: Fusion.Scope, props: Types.ValueVariantProps<boolean>)
 
     return Checkbox(scope, {
         Checked = props.Value,
-        Disabled = trySetValue == nil,
+        Disabled = not props.Writable or trySetValue == nil,
         OnChanged =
             if trySetValue then
                 function(value: boolean)

@@ -70,6 +70,7 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
     local itemContentChildren = {
         MapItemKey(scope, {
             Key = item.Key,
+            Writable = layout.Writable,
             Variant = props.Variant,
             RowCount = props.RowCount,
             RowIdx = rowIdx,
@@ -87,6 +88,7 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
 
         table.insert(itemContentChildren, MapItemValue(scope, {
             Value = layout.ResolvedValue,
+            Writable = layout.Writable,
             TrySetValue = trySetValue,
             Variant = props.Variant,
             RowCount = props.RowCount,

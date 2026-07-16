@@ -38,7 +38,8 @@ type HeaderChildrenCache = {
 type ResolvedItem = {
     Item: ItemDefinition,
     ResolvedValue: any,
-    ValueAccessor: IntrinsicAccessor?
+    ValueAccessor: IntrinsicAccessor?,
+    Writable: boolean
 }
 type CollapseStateNode = {
     IsCollapsed: boolean?,
@@ -178,20 +179,23 @@ local function ResolveItem(item: Item): ResolvedItem
     return {
         Item = item,
         ResolvedValue = item.Value,
-        ValueAccessor = nil
+        ValueAccessor = nil,
+        Writable = item.Writable ~= false
     }
 end
 
 local function ResolveIntrinsicItem(
     item: IntrinsicItem,
-    parentValue: any
+    parentValue: any,
+    parentWritable: boolean
 ): ResolvedItem
     local valueAccessor = item.Value
 
     return {
         Item = item,
         ResolvedValue = valueAccessor.Read(parentValue),
-        ValueAccessor = valueAccessor
+        ValueAccessor = valueAccessor,
+        Writable = parentWritable
     }
 end
 
@@ -208,7 +212,8 @@ local function GetChildItems(item: ResolvedItem): { ResolvedItem }
     for childIdx, childItem in intrinsicItems do
         childItems[childIdx] = ResolveIntrinsicItem(
             childItem,
-            resolvedValue
+            resolvedValue,
+            item.Writable
         )
     end
 
@@ -220,7 +225,8 @@ local function GetChildItems(item: ResolvedItem): { ResolvedItem }
         for childIdx, childItem in suppliedIntrinsicItems do
             childItems[#intrinsicItems + childIdx] = ResolveIntrinsicItem(
                 childItem,
-                resolvedValue
+                resolvedValue,
+                item.Writable
             )
         end
     else
@@ -307,6 +313,7 @@ local function CreateItemLayout(
         Item = item,
         ResolvedValue = resolvedItem.ResolvedValue,
         ValueAccessor = resolvedItem.ValueAccessor,
+        Writable = resolvedItem.Writable,
         Depth = depth,
         CanBecomeMapBottom = canBecomeMapBottom,
         CollapsedState = collapsedState,

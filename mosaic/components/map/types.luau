@@ -17,6 +17,7 @@ export type TrySetValue<T> = (value: T) -> (boolean, string?)
 export type Item = {
 	Key: string,
 	Value: any,
+	Writable: boolean?,
 	TrySetValue: TrySetValue<any>?,
 	SubItems: { Item }?,
 	Collapsed: Fusion.Value<boolean>?,
@@ -41,6 +42,7 @@ export type ItemLayout = {
     Item: Item | IntrinsicItem,
     ResolvedValue: any,
     ValueAccessor: IntrinsicAccessor?,
+    Writable: boolean,
     Depth: number,
     CanBecomeMapBottom: boolean,
     CollapsedState: Fusion.Value<boolean>?,

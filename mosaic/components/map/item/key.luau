@@ -34,6 +34,7 @@ local IndicatorGap = 6
 type MapItemKeyProps = Typeforge.Flatten<
     Types.BaseMapProps & {
         Key: string,
+        Writable: boolean,
         HasSubItems: boolean,
         Nestedness: number,
         CollapsedState: Fusion.Value<boolean>?,
@@ -100,6 +101,9 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
 
             Text(scope, {
                 Text = props.Key,
+                Variant =
+                    if props.Writable then "Primary"
+                    else "Secondary",
                 Size = UDim2.fromScale(1, 0),
 
                 [Children] = New(scope, "UIFlexItem") {
