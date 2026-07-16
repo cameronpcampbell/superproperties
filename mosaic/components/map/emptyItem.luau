@@ -46,10 +46,10 @@ local function MapEmptyItem(scope: Fusion.Scope, props: MapEmptyItemProps)
     local topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius =
         CalculateRowCornerRadii(
             scope,
-            "Left",
+            "Both",
             rowCount,
             rowIdx,
-            false,
+            true,
             innerCornerRadius
         )
 
@@ -60,6 +60,8 @@ local function MapEmptyItem(scope: Fusion.Scope, props: MapEmptyItemProps)
         TopRightRadius = topRightRadius,
         BottomLeftRadius = bottomLeftRadius,
         BottomRightRadius = bottomRightRadius,
+        MaxCornerRadius = innerCornerRadius,
+        Redrawable = true,
         LayoutOrder = rowIdx,
 
         Name = "MapEmptyItem",

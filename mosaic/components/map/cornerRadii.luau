@@ -4,7 +4,7 @@ local Packages = script.Parent.Parent.Parent.Parent
 local Fusion = require(Packages.fusion)
 local Computed, Peek = Fusion.Computed, Fusion.peek
 
-export type RowSide = "Left" | "Right"
+export type RowSide = "Left" | "Right" | "Both"
 
 local function CalculateRowCornerRadii(
     scope: Fusion.Scope,
@@ -37,19 +37,13 @@ local function CalculateRowCornerRadii(
             else Peek<<number>>(radiusState)
     end
 
-    if side == "Left" then
-        return
-            resolve(topRadius),
-            resolve(0),
-            resolve(bottomRadius),
-            resolve(0)
-    end
-
+    local useLeft = side ~= "Right"
+    local useRight = side ~= "Left"
     return
-        resolve(0),
-        resolve(topRadius),
-        resolve(0),
-        resolve(bottomRadius)
+        resolve(if useLeft then topRadius else 0),
+        resolve(if useRight then topRadius else 0),
+        resolve(if useLeft then bottomRadius else 0),
+        resolve(if useRight then bottomRadius else 0)
 end
 
 return CalculateRowCornerRadii
