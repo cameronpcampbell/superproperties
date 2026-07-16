@@ -29,7 +29,7 @@ local CalculateRowCornerRadii =
     require(script.Parent.Parent.cornerRadii)
 
 local ValueVariants = require(script.variants)
-local DefaultValueVariant = ValueVariants.string
+local DefaultValueVariant = ValueVariants.Default
 
 type MapItemValueProps = Typeforge.Flatten<
     Types.BaseMapProps & {
