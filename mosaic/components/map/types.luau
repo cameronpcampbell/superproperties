@@ -26,7 +26,7 @@ export type Item = {
 export type Items = { Item }
 
 export type IntrinsicAccessor = {
-	Read: (parentValue: any) -> any,
+	Read: (rootValue: any) -> any,
 }
 
 export type IntrinsicItem = {

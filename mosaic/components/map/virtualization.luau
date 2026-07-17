@@ -37,6 +37,7 @@ type HeaderChildrenCache = {
 }
 type ResolvedItem = {
     Item: ItemDefinition,
+    RootValue: any,
     ResolvedValue: any,
     ValueAccessor: IntrinsicAccessor?,
     Writable: boolean
@@ -180,6 +181,7 @@ end
 local function ResolveItem(item: Item): ResolvedItem
     return {
         Item = item,
+        RootValue = item.Value,
         ResolvedValue = item.Value,
         ValueAccessor = nil,
         Writable = item.Writable ~= false
@@ -188,56 +190,56 @@ end
 
 local function ResolveIntrinsicItem(
     item: IntrinsicItem,
-    parentValue: any,
+    rootValue: any,
     parentWritable: boolean
 ): ResolvedItem
     local valueAccessor = item.Value
 
     return {
         Item = item,
-        ResolvedValue = valueAccessor.Read(parentValue),
+        RootValue = rootValue,
+        ResolvedValue = valueAccessor.Read(rootValue),
         ValueAccessor = valueAccessor,
         Writable = parentWritable
     }
 end
 
 local function GetChildItems(item: ResolvedItem): { ResolvedItem }
-    local resolvedValue = item.ResolvedValue
+    if item.ValueAccessor then
+        local intrinsicParent = item.Item :: IntrinsicItem
+        local intrinsicItems: IntrinsicItems =
+            intrinsicParent.SubItems or {}
+        local childItems = table.create(#intrinsicItems) :: { ResolvedItem }
+
+        for childIdx, childItem in intrinsicItems do
+            childItems[childIdx] = ResolveIntrinsicItem(
+                childItem,
+                item.RootValue,
+                item.Writable
+            )
+        end
+
+        return childItems
+    end
+
     local intrinsicItems: IntrinsicItems =
-        IntrinsicSubItems[typeof(resolvedValue)] or {}
-    local suppliedItems = item.Item.SubItems
-    local suppliedCount = if suppliedItems then #suppliedItems else 0
+        IntrinsicSubItems[typeof(item.ResolvedValue)] or {}
+    local suppliedParent = item.Item :: Item
+    local suppliedMapItems: Items = suppliedParent.SubItems or {}
     local childItems = table.create(
-        #intrinsicItems + suppliedCount
+        #intrinsicItems + #suppliedMapItems
     ) :: { ResolvedItem }
 
     for childIdx, childItem in intrinsicItems do
         childItems[childIdx] = ResolveIntrinsicItem(
             childItem,
-            resolvedValue,
+            item.RootValue,
             item.Writable
         )
     end
 
-    if item.ValueAccessor then
-        local intrinsicParent = item.Item :: IntrinsicItem
-        local suppliedIntrinsicItems: IntrinsicItems =
-            intrinsicParent.SubItems or {}
-
-        for childIdx, childItem in suppliedIntrinsicItems do
-            childItems[#intrinsicItems + childIdx] = ResolveIntrinsicItem(
-                childItem,
-                resolvedValue,
-                item.Writable
-            )
-        end
-    else
-        local suppliedParent = item.Item :: Item
-        local suppliedMapItems: Items = suppliedParent.SubItems or {}
-
-        for childIdx, childItem in suppliedMapItems do
-            childItems[#intrinsicItems + childIdx] = ResolveItem(childItem)
-        end
+    for childIdx, childItem in suppliedMapItems do
+        childItems[#intrinsicItems + childIdx] = ResolveItem(childItem)
     end
 
     return childItems
