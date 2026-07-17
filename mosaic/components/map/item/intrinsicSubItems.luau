@@ -3,9 +3,11 @@
 local Types = require(script.Parent.Parent.types)
 
 type Reader<T> = (rootValue: any) -> T
+type Writer<T> = (rootValue: any, value: T) -> any
 
 local function CreateVector3Items(
-    readVector: Reader<Vector3>
+    readVector: Reader<Vector3>,
+    writeVector: Writer<Vector3>
 ): Types.IntrinsicItems
     return {
         {
@@ -13,6 +15,14 @@ local function CreateVector3Items(
             Value = {
                 Read = function(rootValue: any)
                     return readVector(rootValue).X
+                end,
+                Write = function(rootValue: any, value: number)
+                    local vector = readVector(rootValue)
+
+                    return writeVector(
+                        rootValue,
+                        Vector3.new(value, vector.Y, vector.Z)
+                    )
                 end
             }
         },
@@ -21,6 +31,14 @@ local function CreateVector3Items(
             Value = {
                 Read = function(rootValue: any)
                     return readVector(rootValue).Y
+                end,
+                Write = function(rootValue: any, value: number)
+                    local vector = readVector(rootValue)
+
+                    return writeVector(
+                        rootValue,
+                        Vector3.new(vector.X, value, vector.Z)
+                    )
                 end
             }
         },
@@ -29,6 +47,14 @@ local function CreateVector3Items(
             Value = {
                 Read = function(rootValue: any)
                     return readVector(rootValue).Z
+                end,
+                Write = function(rootValue: any, value: number)
+                    local vector = readVector(rootValue)
+
+                    return writeVector(
+                        rootValue,
+                        Vector3.new(vector.X, vector.Y, value)
+                    )
                 end
             }
         }
@@ -36,7 +62,8 @@ local function CreateVector3Items(
 end
 
 local function CreateVector2Items(
-    readVector: Reader<Vector2>
+    readVector: Reader<Vector2>,
+    writeVector: Writer<Vector2>
 ): Types.IntrinsicItems
     return {
         {
@@ -44,6 +71,14 @@ local function CreateVector2Items(
             Value = {
                 Read = function(rootValue: any)
                     return readVector(rootValue).X
+                end,
+                Write = function(rootValue: any, value: number)
+                    local vector = readVector(rootValue)
+
+                    return writeVector(
+                        rootValue,
+                        Vector2.new(value, vector.Y)
+                    )
                 end
             }
         },
@@ -52,6 +87,14 @@ local function CreateVector2Items(
             Value = {
                 Read = function(rootValue: any)
                     return readVector(rootValue).Y
+                end,
+                Write = function(rootValue: any, value: number)
+                    local vector = readVector(rootValue)
+
+                    return writeVector(
+                        rootValue,
+                        Vector2.new(vector.X, value)
+                    )
                 end
             }
         }
@@ -59,7 +102,8 @@ local function CreateVector2Items(
 end
 
 local function CreateUDimItems(
-    readUDim: Reader<UDim>
+    readUDim: Reader<UDim>,
+    writeUDim: Writer<UDim>
 ): Types.IntrinsicItems
     return {
         {
@@ -67,6 +111,14 @@ local function CreateUDimItems(
             Value = {
                 Read = function(rootValue: any)
                     return readUDim(rootValue).Scale
+                end,
+                Write = function(rootValue: any, value: number)
+                    local uDim = readUDim(rootValue)
+
+                    return writeUDim(
+                        rootValue,
+                        UDim.new(value, uDim.Offset)
+                    )
                 end
             }
         },
@@ -75,6 +127,14 @@ local function CreateUDimItems(
             Value = {
                 Read = function(rootValue: any)
                     return readUDim(rootValue).Offset
+                end,
+                Write = function(rootValue: any, value: number)
+                    local uDim = readUDim(rootValue)
+
+                    return writeUDim(
+                        rootValue,
+                        UDim.new(uDim.Scale, value)
+                    )
                 end
             }
         }
@@ -82,7 +142,8 @@ local function CreateUDimItems(
 end
 
 local function CreateUDim2Items(
-    readUDim2: Reader<UDim2>
+    readUDim2: Reader<UDim2>,
+    writeUDim2: Writer<UDim2>
 ): Types.IntrinsicItems
     local function readX(rootValue: any): UDim
         return readUDim2(rootValue).X
@@ -90,27 +151,40 @@ local function CreateUDim2Items(
     local function readY(rootValue: any): UDim
         return readUDim2(rootValue).Y
     end
+    local function writeX(rootValue: any, value: UDim): any
+        local uDim2 = readUDim2(rootValue)
+
+        return writeUDim2(rootValue, UDim2.new(value, uDim2.Y))
+    end
+    local function writeY(rootValue: any, value: UDim): any
+        local uDim2 = readUDim2(rootValue)
+
+        return writeUDim2(rootValue, UDim2.new(uDim2.X, value))
+    end
 
     return {
         {
             Key = "X",
             Value = {
-                Read = readX
+                Read = readX,
+                Write = writeX
             },
-            SubItems = CreateUDimItems(readX)
+            SubItems = CreateUDimItems(readX, writeX)
         },
         {
             Key = "Y",
             Value = {
-                Read = readY
+                Read = readY,
+                Write = writeY
             },
-            SubItems = CreateUDimItems(readY)
+            SubItems = CreateUDimItems(readY, writeY)
         }
     }
 end
 
 local function CreateCFrameItems(
-    readCFrame: Reader<CFrame>
+    readCFrame: Reader<CFrame>,
+    writeCFrame: Writer<CFrame>
 ): Types.IntrinsicItems
     local function readPosition(rootValue: any): Vector3
         return readCFrame(rootValue).Position
@@ -124,27 +198,50 @@ local function CreateCFrameItems(
             math.deg(z)
         )
     end
+    local function writePosition(rootValue: any, value: Vector3): any
+        local cFrame = readCFrame(rootValue)
+
+        return writeCFrame(
+            rootValue,
+            CFrame.new(value) * cFrame.Rotation
+        )
+    end
+    local function writeOrientation(rootValue: any, value: Vector3): any
+        local cFrame = readCFrame(rootValue)
+
+        return writeCFrame(
+            rootValue,
+            CFrame.new(cFrame.Position) * CFrame.fromOrientation(
+                math.rad(value.X),
+                math.rad(value.Y),
+                math.rad(value.Z)
+            )
+        )
+    end
 
     return {
         {
             Key = "Position",
             Value = {
-                Read = readPosition
+                Read = readPosition,
+                Write = writePosition
             },
-            SubItems = CreateVector3Items(readPosition)
+            SubItems = CreateVector3Items(readPosition, writePosition)
         },
         {
             Key = "Orientation",
             Value = {
-                Read = readOrientation
+                Read = readOrientation,
+                Write = writeOrientation
             },
-            SubItems = CreateVector3Items(readOrientation)
+            SubItems = CreateVector3Items(readOrientation, writeOrientation)
         }
     }
 end
 
 local function CreateFontItems(
-    readFont: Reader<Font>
+    readFont: Reader<Font>,
+    writeFont: Writer<Font>
 ): Types.IntrinsicItems
     return {
         {
@@ -152,6 +249,14 @@ local function CreateFontItems(
             Value = {
                 Read = function(rootValue: any)
                     return readFont(rootValue).Style
+                end,
+                Write = function(rootValue: any, value: Enum.FontStyle)
+                    local font = readFont(rootValue)
+
+                    return writeFont(
+                        rootValue,
+                        Font.new(font.Family, font.Weight, value :: Enum.FontStyle)
+                    )
                 end
             }
         },
@@ -160,38 +265,34 @@ local function CreateFontItems(
             Value = {
                 Read = function(rootValue: any)
                     return readFont(rootValue).Weight
+                end,
+                Write = function(rootValue: any, value: Enum.FontWeight)
+                    local font = readFont(rootValue)
+
+                    return writeFont(
+                        rootValue,
+                        Font.new(font.Family, value :: Enum.FontWeight, font.Style)
+                    )
                 end
             }
         }
     }
 end
 
-local function ReadCFrame(rootValue: any): CFrame
-    return rootValue :: CFrame
+local function ReadRoot<T>(rootValue: any): T
+    return rootValue :: T
 end
 
-local function ReadVector3(rootValue: any): Vector3
-    return rootValue :: Vector3
-end
-
-local function ReadVector2(rootValue: any): Vector2
-    return rootValue :: Vector2
-end
-
-local function ReadUDim2(rootValue: any): UDim2
-    return rootValue :: UDim2
-end
-
-local function ReadFont(rootValue: any): Font
-    return rootValue :: Font
+local function WriteRoot<T>(_rootValue: any, value: T): T
+    return value
 end
 
 local IntrinsicSubItems: { [string]: Types.IntrinsicItems } = {
-    CFrame = CreateCFrameItems(ReadCFrame),
-    Vector3 = CreateVector3Items(ReadVector3),
-    Vector2 = CreateVector2Items(ReadVector2),
-    UDim2 = CreateUDim2Items(ReadUDim2),
-    Font = CreateFontItems(ReadFont)
+    CFrame = CreateCFrameItems(ReadRoot, WriteRoot),
+    Vector3 = CreateVector3Items(ReadRoot, WriteRoot),
+    Vector2 = CreateVector2Items(ReadRoot, WriteRoot),
+    UDim2 = CreateUDim2Items(ReadRoot, WriteRoot),
+    Font = CreateFontItems(ReadRoot, WriteRoot)
 }
 
 return IntrinsicSubItems

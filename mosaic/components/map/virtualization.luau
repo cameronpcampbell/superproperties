@@ -22,6 +22,7 @@ local MapContentPadding = 1
 
 type Item = Types.Item
 type Items = Types.Items
+type TrySetValue<T> = Types.TrySetValue<T>
 type IntrinsicAccessor = Types.IntrinsicAccessor
 type IntrinsicItem = Types.IntrinsicItem
 type IntrinsicItems = Types.IntrinsicItems
@@ -37,9 +38,11 @@ type HeaderChildrenCache = {
 }
 type ResolvedItem = {
     Item: ItemDefinition,
+    RootItem: Item,
     RootValue: any,
     ResolvedValue: any,
     ValueAccessor: IntrinsicAccessor?,
+    TrySetValue: TrySetValue<any>?,
     Writable: boolean
 }
 type CollapseStateNode = {
@@ -181,25 +184,43 @@ end
 local function ResolveItem(item: Item): ResolvedItem
     return {
         Item = item,
+        RootItem = item,
         RootValue = item.Value,
         ResolvedValue = item.Value,
         ValueAccessor = nil,
+        TrySetValue = item.TrySetValue,
         Writable = item.Writable ~= false
     }
 end
 
 local function ResolveIntrinsicItem(
     item: IntrinsicItem,
+    rootItem: Item,
     rootValue: any,
     parentWritable: boolean
 ): ResolvedItem
     local valueAccessor = item.Value
+    local trySetRootValue = rootItem.TrySetValue
+    local trySetValue: TrySetValue<any>? = nil
+
+    if parentWritable and trySetRootValue then
+        trySetValue = function(value: any): (boolean, string?)
+            local nextRootValue = valueAccessor.Write(
+                rootItem.Value,
+                value
+            )
+
+            return trySetRootValue(nextRootValue)
+        end
+    end
 
     return {
         Item = item,
+        RootItem = rootItem,
         RootValue = rootValue,
         ResolvedValue = valueAccessor.Read(rootValue),
         ValueAccessor = valueAccessor,
+        TrySetValue = trySetValue,
         Writable = parentWritable
     }
 end
@@ -214,6 +235,7 @@ local function GetChildItems(item: ResolvedItem): { ResolvedItem }
         for childIdx, childItem in intrinsicItems do
             childItems[childIdx] = ResolveIntrinsicItem(
                 childItem,
+                item.RootItem,
                 item.RootValue,
                 item.Writable
             )
@@ -233,6 +255,7 @@ local function GetChildItems(item: ResolvedItem): { ResolvedItem }
     for childIdx, childItem in intrinsicItems do
         childItems[childIdx] = ResolveIntrinsicItem(
             childItem,
+            item.RootItem,
             item.RootValue,
             item.Writable
         )
@@ -317,7 +340,7 @@ local function CreateItemLayout(
     return {
         Item = item,
         ResolvedValue = resolvedItem.ResolvedValue,
-        ValueAccessor = resolvedItem.ValueAccessor,
+        TrySetValue = resolvedItem.TrySetValue,
         Writable = resolvedItem.Writable,
         ValueFocusState = valueFocusState,
         Depth = depth,

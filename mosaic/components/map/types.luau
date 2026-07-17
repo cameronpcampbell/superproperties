@@ -27,6 +27,7 @@ export type Items = { Item }
 
 export type IntrinsicAccessor = {
 	Read: (rootValue: any) -> any,
+	Write: (rootValue: any, value: any) -> any,
 }
 
 export type IntrinsicItem = {
@@ -41,7 +42,7 @@ export type IntrinsicItems = { IntrinsicItem }
 export type ItemLayout = {
     Item: Item | IntrinsicItem,
     ResolvedValue: any,
-    ValueAccessor: IntrinsicAccessor?,
+    TrySetValue: TrySetValue<any>?,
     Writable: boolean,
     ValueFocusState: Fusion.Value<boolean>,
     Depth: number,

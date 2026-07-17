@@ -120,14 +120,10 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
     } :: { Fusion.Child }
 
     if not props.HideValue then
-        local trySetValue =
-            if layout.ValueAccessor then nil
-            else (item :: Types.Item).TrySetValue
-
         table.insert(itemContentChildren, MapItemValue(scope, {
             Value = layout.ResolvedValue,
             Writable = layout.Writable,
-            TrySetValue = trySetValue,
+            TrySetValue = layout.TrySetValue,
             Variant = props.Variant,
             RowCount = props.RowCount,
             RowIdx = rowIdx,
