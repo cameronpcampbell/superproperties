@@ -17,9 +17,12 @@ return function(scope: Fusion.Scope, props: Types.ValueVariantProps<boolean>)
     local disabled = not props.Writable or trySetValue == nil
 
     local function trySetChecked(value: boolean)
-        if disabled or not trySetValue then return end
+        if disabled then return end
 
-        local success, err, savedValue = trySetValue(value)
+        local setValue = trySetValue
+        if setValue == nil then return end
+
+        local success, err, savedValue = setValue(value)
         if success then
             checkedState:set(
                 if savedValue ~= nil then savedValue else value

@@ -90,7 +90,7 @@ local function SplitComponents(tokens: { Token }): { string }
 
     for _, token in tokens do
         if token.Kind == "comma" then
-            table.insert(componentParts, {})
+            table.insert(componentParts, {} :: { string })
             continue
         end
 
@@ -98,7 +98,7 @@ local function SplitComponents(tokens: { Token }): { string }
         table.insert(currentParts, token.Value)
     end
 
-    local components = {}
+    local components: { string } = {}
     for _, parts in componentParts do
         table.insert(components, table.concat(parts, " "))
     end

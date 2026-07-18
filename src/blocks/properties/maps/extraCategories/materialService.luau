@@ -44,7 +44,7 @@ local function GetMaterials(): { Item }
 end
 
 local MaterialItems = GetMaterials()
-table.sort(MaterialItems, function(leftItem, rightItem)
+table.sort(MaterialItems, function(leftItem: Item, rightItem: Item): boolean
     return leftItem.Key < rightItem.Key
 end)
 

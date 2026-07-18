@@ -128,8 +128,9 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
         virtualViewportCanvasPositionState:set(current)
     end
 
-    Observer(scope, viewportCanvasPositionState)
-        :onBind(publishVirtualCanvasPosition)
+    Observer(scope, viewportCanvasPositionState):onBind(function()
+        publishVirtualCanvasPosition()
+    end)
     Observer(scope, overdrawState):onChange(function()
         publishVirtualCanvasPosition(true)
     end)

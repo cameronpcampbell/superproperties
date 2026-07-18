@@ -123,7 +123,7 @@ local function CreateMapItem(
                 SortOrder = Enum.SortOrder.LayoutOrder
             })
 
-            return mountedChildren
+            return (mountedChildren :: unknown) :: Fusion.Child
         end)
     end
 
