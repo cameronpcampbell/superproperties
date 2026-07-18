@@ -39,7 +39,15 @@ type MapItemProps = Typeforge.Flatten<{
     HideValue: boolean?
 }>
 
-local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
+type MapItemResult = {
+    Instance: Instance,
+    BottomRowZIndex: Fusion.UsedAs<number>
+}
+
+local function CreateMapItem(
+    scope: Fusion.Scope,
+    props: MapItemProps
+): MapItemResult
     local layout = props.Layout
     local item = layout.Item
     local children = layout.Children
@@ -84,9 +92,10 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
         return metadata.RowIndices[layout] or 0
     end)
 
+    local bottomRowZIndex: Fusion.UsedAs<number> = rowZIndex
     local nestedChildren = table.create(#children + 1) :: { Fusion.Child }
     for childIdx, childLayout in children do
-        nestedChildren[childIdx] = MapItem(scope, {
+        local childResult = CreateMapItem(scope, {
             Variant = props.Variant,
             Layout = childLayout,
             LayoutOrder = childIdx,
@@ -94,6 +103,21 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
             RowMetadata = props.RowMetadata,
             HideValue = props.HideValue
         })
+
+        nestedChildren[childIdx] = childResult.Instance
+        if childIdx == #children then
+            bottomRowZIndex = childResult.BottomRowZIndex
+        end
+    end
+
+    local containerZIndex: Fusion.UsedAs<number> = rowZIndex
+    if hasSubItems then
+        containerZIndex = Computed(scope, function(use: Fusion.Use): number
+            return math.max(
+                use<<number>>(rowZIndex),
+                use<<number>>(bottomRowZIndex)
+            )
+        end)
     end
 
     local theme = GetThemeForScope(scope)
@@ -203,7 +227,7 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
     local rootChildren = { itemContent } :: { Fusion.Child }
     if subItemsClip then table.insert(rootChildren, subItemsClip) end
 
-    return New(scope, "Frame") {
+    local instance = New(scope, "Frame") {
         BackgroundTransparency = 1,
         Size = Computed(scope, function(use: Fusion.Use): UDim2
             return UDim2.new(
@@ -214,12 +238,21 @@ local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
             )
         end),
         LayoutOrder = props.LayoutOrder,
-        ZIndex = rowZIndex,
+        ZIndex = containerZIndex,
 
         Name = `MapItem [{item.Key}]`,
 
         [Children] = rootChildren
     }
+
+    return {
+        Instance = instance,
+        BottomRowZIndex = bottomRowZIndex
+    }
+end
+
+local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
+    return CreateMapItem(scope, props).Instance
 end
 
 return MapItem
