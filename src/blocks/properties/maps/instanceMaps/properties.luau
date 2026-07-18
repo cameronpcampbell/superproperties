@@ -132,10 +132,9 @@ return function(
     end
 
     for propertyName, location in snapshot.LocationsByName do
-        if not location.Plan.Writable then continue end
-
         local items = categoryItems[location.CategoryIndex]
         local item = items[location.ItemIndex]
+        if not item.Writable then continue end
 
         item.TrySetValue = function(value: any): (boolean, string?, any?)
             if item.Value == value then return true, nil, item.Value end

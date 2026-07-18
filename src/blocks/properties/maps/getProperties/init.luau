@@ -2,6 +2,7 @@
 --!nolint LocalShadow
 
 local ReflectionService = game:GetService("ReflectionService")
+local Workspace = game:GetService("Workspace")
 
 local Packages = script.Parent.Parent.Parent.Parent.packages
 
@@ -207,12 +208,22 @@ local function WriteProperty(
     (instance :: any)[name] = value
 end
 
+local function IsPropertyWritable(
+    instance: Instance,
+    propertyPlan: PropertyPlan
+): boolean
+    if not propertyPlan.Writable then return false end
+    if propertyPlan.Name ~= "Parent" then return true end
+
+    return instance.Parent ~= game and instance ~= Workspace.Terrain
+end
+
 local function WritePlannedProperty(
     instance: Instance,
     propertyPlan: PropertyPlan,
     value: any
 ): (boolean, any)
-    if not propertyPlan.Writable then
+    if not IsPropertyWritable(instance, propertyPlan) then
         return false, `Property '{propertyPlan.Name}' is read-only.`
     end
 
@@ -244,7 +255,7 @@ local function GetProperties(instance: Instance): Snapshot
             items[itemCount] = {
                 Key = name,
                 Value = value,
-                Writable = propertyPlan.Writable
+                Writable = IsPropertyWritable(instance, propertyPlan)
             }
 
             locationsByName[name] = {
