@@ -15,6 +15,7 @@ local MapTweenInfo = require(script.Parent.animation)
 local MapHeader = require(script.Parent.header)
 local MapItem = require(script.Parent.item)
 local IntrinsicSubItems = require(script.Parent.item.intrinsicSubItems)
+local IntrinsicSubItemDefinitions = IntrinsicSubItems.Definitions
 local MapEmptyItem = require(script.Parent.emptyItem)
 
 local RowGap = 1
@@ -253,7 +254,7 @@ local function GetChildItems(item: ResolvedItem): { ResolvedItem }
     end
 
     local intrinsicItems: IntrinsicItems =
-        IntrinsicSubItems[typeof(item.ResolvedValue)] or {}
+        IntrinsicSubItemDefinitions[typeof(item.ResolvedValue)] or {}
     local suppliedParent = item.Item :: Item
     local suppliedMapItems: Items = suppliedParent.SubItems or {}
     local childItems = table.create(

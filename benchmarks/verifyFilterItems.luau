@@ -2,13 +2,43 @@
 
 local CreateItemFilter =
     require("../src/blocks/properties/maps/category/filterItems")
+local IntrinsicSubItems =
+    require("../mosaic/components/map/item/intrinsicSubItems")
+local GetFlattenedDefinitionsList =
+    IntrinsicSubItems.GetFlattenedDefinitionsList
 
 type Item = { Key: string, Value: any }
 type ItemFilter = (query: string?) -> { Item }
 
 local function CreateFilter(items: { Item }): ItemFilter
-    return CreateItemFilter(items)
+    local itemFilter = CreateItemFilter(items)
+
+    return function(query: string?): { Item }
+        return itemFilter(query, items)
+    end
 end
+
+local function AssertKeys(items: { any }, expectedKeys: { string })
+    assert(
+        #items == #expectedKeys,
+        `expected {#expectedKeys} items, got {#items}`
+    )
+
+    for idx, expectedKey in expectedKeys do
+        assert(
+            items[idx].Key == expectedKey,
+            `expected key '{expectedKey}' at index {idx}, got '{items[idx].Key}'`
+        )
+    end
+end
+
+AssertKeys(GetFlattenedDefinitionsList("UDim2"), {
+    "X", "Scale", "Offset", "Y", "Scale", "Offset"
+})
+AssertKeys(GetFlattenedDefinitionsList("CFrame"), {
+    "Position", "X", "Y", "Z", "Orientation", "X", "Y", "Z"
+})
+assert(#GetFlattenedDefinitionsList("UnsupportedType") == 0)
 
 local HashModulus = 2_147_483_647
 local hash = 5381
@@ -88,6 +118,23 @@ assert(artResults[1].Key == "Articulation", "expected prefix match first")
 assert(artResults[2].Key == "Part", "expected contiguous substring second")
 assert(#CreateFilter({ { Key = "Parent", Value = 1 } })("art") == 0)
 assert(#CreateFilter({ { Key = "Transparency", Value = 1 } })("trnsp") == 1)
+
+local intrinsicItems = {
+    { Key = "LayoutBounds", Value = UDim2.new(0, 0, 0, 0) },
+    { Key = "PlainValue", Value = 0 }
+}
+local intrinsicFilter = CreateFilter(intrinsicItems)
+local scaleResults = intrinsicFilter("scale")
+assert(#scaleResults == 1, `expected one scale result, got {#scaleResults}`)
+assert(scaleResults[1] == intrinsicItems[1])
+
+local mutableIntrinsicItems = {
+    { Key = "Bounds", Value = 0 }
+}
+local mutableIntrinsicFilter = CreateFilter(mutableIntrinsicItems)
+assert(#mutableIntrinsicFilter("scale") == 0)
+mutableIntrinsicItems[1].Value = UDim2.new(0, 0, 0, 0)
+assert(#mutableIntrinsicFilter("scale") == 1)
 
 math.randomseed(0x5EED)
 

@@ -1,6 +1,6 @@
 --!strict
 
-local Types = require(script.Parent.Parent.types)
+local Types = require(script.Parent.Parent.Parent.types)
 
 type Reader<T> = (rootValue: any) -> T
 type Writer<T> = (rootValue: any, value: T) -> any

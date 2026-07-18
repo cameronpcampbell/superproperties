@@ -4,6 +4,11 @@
 local Packages = script.Parent.Parent.Parent.Parent.Parent.packages
 
 local Map = require(Packages.mosaic.components.map)
+local IntrinsicSubItems =
+    require(Packages.mosaic.components.map.item.intrinsicSubItems)
+
+local GetFlattenedDefinitionsList =
+    IntrinsicSubItems.GetFlattenedDefinitionsList
 
 type PreparedQuery = {
     Text: string,
@@ -308,6 +313,21 @@ local function ScoreCandidate(
     return SubsequenceScore + subsequence * 10 - lengthPenalty
 end
 
+local function ScoreIntrinsicSubItems(
+    value: any,
+    query: PreparedQuery
+): number?
+    local intrinsicSubItems =
+        GetFlattenedDefinitionsList(typeof(value))
+
+    for _, subItem in intrinsicSubItems do
+        local score = ScoreCandidate(GetCandidate(subItem.Key), query)
+        if score then return score end
+    end
+
+    return nil
+end
+
 local function CompareScoredItems(
     leftScoredItem: ScoredItem,
     rightScoredItem: ScoredItem
@@ -357,6 +377,12 @@ local function CreateItemFilter(items: { Item }): ItemFilter
 
             local score =
                 ScoreCandidate(preparedItem.Candidate, preparedQuery)
+            if not score then
+                score = ScoreIntrinsicSubItems(
+                    currentItem.Value,
+                    preparedQuery
+                )
+            end
             if not score then continue end
 
             scoredItemCount += 1
