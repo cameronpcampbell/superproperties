@@ -19,15 +19,19 @@ type PropertiesMapsProps = {
 }
 
 local ExtraCategories = require(script.extraCategories)
+local GetFilterState = require(script.Parent.getFilterState)
 local InstanceMaps = require(script.instanceMaps)
 
 local function TableBulkInsert<T>(target: { T }, source: { T })
     table.move(source, 1, #source, #target + 1, target)
 end
 
-local function CreateNoInstanceSelected(scope: Fusion.Scope): Fusion.Child
+local function CreateEmptyMessage(
+    scope: Fusion.Scope,
+    message: string
+): Fusion.Child
     return Text(scope, {
-        Text = "No Instance selected.",
+        Text = message,
         Variant = "Secondary",
         Size = UDim2.fromScale(1, 1),
         AutomaticSize = Enum.AutomaticSize.None,
@@ -88,6 +92,7 @@ return function(
     local outerScope = scope
     local collapsedStateScope = Fusion.innerScope(outerScope)
     local mapsScope = Fusion.innerScope(outerScope)
+    local filterState = GetFilterState(outerScope)
 
     local computeCategoryStates = Computed(mapsScope, function(
         use,
@@ -122,19 +127,30 @@ return function(
         return mapPropsList
     end)
 
-    local computeNoInstanceSelected = Computed(mapsScope, function(
+    local computeEmptyMessage = Computed(mapsScope, function(
         use,
         scope: Fusion.Scope
     ): Fusion.Child?
-        if use<<Instance?>>(selectedInstanceValue) then return nil end
-        return CreateNoInstanceSelected(scope)
+        if not use<<Instance?>>(selectedInstanceValue) then
+            return CreateEmptyMessage(scope, "No Instance selected.")
+        end
+
+        local filter = use<<string?>>(filterState)
+        local hasActiveFilter =
+            filter ~= nil and filter:match("%S") ~= nil
+        if not hasActiveFilter then return nil end
+
+        local mapProps = use<<{ MapProps }>>(computeMapProps)
+        if #mapProps > 0 then return nil end
+
+        return CreateEmptyMessage(scope, "No results found.")
     end)
 
     return VirtualMapScrollable(mapsScope, {
         Maps = computeMapProps,
 
         [Children] = {
-            computeNoInstanceSelected
+            computeEmptyMessage
         }
     })
 end
