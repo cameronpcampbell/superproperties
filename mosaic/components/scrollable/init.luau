@@ -29,6 +29,7 @@ export type ScrollableProps = {
     OutAbsolutePosition: Fusion.Value<Vector2>?,
     OutAbsoluteSize: Fusion.Value<Vector2>?,
     CanvasSize: Fusion.UsedAs<UDim2>?,
+    AutomaticSize: Fusion.UsedAs<Enum.AutomaticSize>?,
     AutomaticCanvasSize: Fusion.UsedAs<Enum.AutomaticSize>?,
     Padding: Fusion.UsedAs<UDim>?,
     RootChildren: Fusion.Child?,
@@ -42,9 +43,11 @@ return Component<<ScrollableProps>>(function(scope, props)
     local props, outAbsoluteSize = TableExtract(props, "OutAbsoluteSize")
     local props, outCanvasPosition = TableExtract(props, "OutCanvasPosition")
     local props, canvasSize = TableExtract(props, "CanvasSize", UDim2.fromScale(0, 0))
+    local props, automaticSize =
+        TableExtract(props, "AutomaticSize", Enum.AutomaticSize.None)
     local props, automaticCanvasSize =
         TableExtract(props, "AutomaticCanvasSize", Enum.AutomaticSize.Y)
-    local props, padding = TableExtract(props, "Padding", UDim.new(0, 4))å
+    local props, padding = TableExtract(props, "Padding", UDim.new(0, 4))
 
     local theme = GetThemeForScope(scope)
     local scrollBarColor = theme:GetBgHighlight(scope, GetNextVariant(scope, variant))
@@ -58,6 +61,7 @@ return Component<<ScrollableProps>>(function(scope, props)
 
     return New(scope, "Frame") (CombineProps({
         Size = UDim2.fromScale(1, 1),
+        AutomaticSize = automaticSize,
         BackgroundTransparency = 1,
 
         Name = "Scrollable",
@@ -67,6 +71,7 @@ return Component<<ScrollableProps>>(function(scope, props)
 
             New(scope, "ScrollingFrame") {
                 Size = UDim2.fromScale(1, 1),
+                AutomaticSize = automaticSize,
                 CanvasSize = canvasSize,
                 AutomaticCanvasSize = automaticCanvasSize,
                 ScrollBarThickness = 4,

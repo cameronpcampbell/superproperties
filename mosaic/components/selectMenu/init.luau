@@ -83,7 +83,18 @@ return Component<<SelectMenuProps>>(function(scope, props)
         [Children] = {
             Scrollable(scope, {
                 Variant = GetNextVariant(scope, variant),
+                Size = UDim2.new(1, 0, 0, 0),
+                AutomaticSize = Enum.AutomaticSize.Y,
                 Padding = UDim.new(0, 3),
+
+                RootChildren = New(scope, "UISizeConstraint") {
+                    MaxSize = Computed(scope, function(use: Fusion.Use)
+                        return Vector2.new(
+                            math.huge,
+                            math.max(use<<number>>(maxHeight) - 8, 0)
+                        )
+                    end)
+                },
 
                 [Children] = {
                     Fusion.ForPairs(scope, items, function(use, scope, key, value)
