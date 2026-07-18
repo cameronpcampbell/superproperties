@@ -205,13 +205,20 @@ local function ResolveIntrinsicItem(
     local trySetValue: TrySetValue<any>? = nil
 
     if parentWritable and trySetRootValue then
-        trySetValue = function(value: any): (boolean, string?)
+        trySetValue = function(value: any): (boolean, string?, any?)
             local nextRootValue = writeValue(
                 rootItem.Value,
                 value
             )
 
-            return trySetRootValue(nextRootValue)
+            local success, err, savedRootValue =
+                trySetRootValue(nextRootValue)
+
+            if not success or savedRootValue == nil then
+                return success, err, nil
+            end
+
+            return true, nil, valueAccessor.Read(savedRootValue)
         end
     end
 

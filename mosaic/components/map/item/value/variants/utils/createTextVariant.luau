@@ -78,9 +78,12 @@ local function CreateTextVariant<T>(
                     return
                 end
 
-                local success, err = trySetValue(nextValue)
+                local success, err, savedValue = trySetValue(nextValue)
                 if success then
-                    textState:set(config.Format(nextValue))
+                    local valueToDisplay =
+                        if savedValue ~= nil then savedValue else nextValue
+
+                    textState:set(config.Format(valueToDisplay))
                     return
                 end
 

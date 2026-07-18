@@ -12,7 +12,7 @@ export type BaseMapProps = {
 	RowIdx: Fusion.UsedAs<number>,
 }
 
-export type TrySetValue<T> = (value: T) -> (boolean, string?)
+export type TrySetValue<T> = (value: T) -> (boolean, string?, T?)
 
 export type Item = {
 	Key: string,

@@ -112,23 +112,23 @@ return function(
         categoryItemStates[categoryIndex] = itemsState
     end
 
-    local function refreshProperty(propertyName: string): boolean
+    local function refreshProperty(propertyName: string): (boolean, any?)
         local location = snapshot.LocationsByName[propertyName]
-        if not location then return false end
+        if not location then return false, nil end
 
         local readSuccess, value = GetProperties.ReadProperty(
             instance,
             location.Plan
         )
-        if not readSuccess then return false end
+        if not readSuccess then return false, nil end
 
         local items = categoryItems[location.CategoryIndex]
         local item = items[location.ItemIndex]
-        if item.Value == value then return false end
+        if item.Value == value then return false, value end
 
         item.Value = value
         categoryItemStates[location.CategoryIndex]:set(items)
-        return true
+        return true, value
     end
 
     for propertyName, location in snapshot.LocationsByName do
@@ -137,8 +137,8 @@ return function(
         local items = categoryItems[location.CategoryIndex]
         local item = items[location.ItemIndex]
 
-        item.TrySetValue = function(value: any): (boolean, string?)
-            if item.Value == value then return true, nil end
+        item.TrySetValue = function(value: any): (boolean, string?, any?)
+            if item.Value == value then return true, nil, item.Value end
 
             local success, err = CommitProperty(
                 instance,
@@ -146,8 +146,8 @@ return function(
                 value
             )
 
-            refreshProperty(propertyName)
-            return success, err
+            local _, savedValue = refreshProperty(propertyName)
+            return success, err, if success then savedValue else nil
         end
     end
 
