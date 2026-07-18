@@ -23,7 +23,7 @@ local function GenPalette(
 	palette[1] = color
 
 	for idx = 2, amount do
-		local progress: number = (idx - 1) / (amount - 1)
+		local progress: number = (idx - 1) / (5 - 1)
 		local newLightness: number = lightness + lightnessRange * progress * lightnessIntensity
 		local newChroma: number = chroma + progress * chromaIntensity
 		palette[idx] = ColorSpace.Oklch.new(newLightness, newChroma, hue):ToColor3()
@@ -67,11 +67,9 @@ const CORNER_RADIUS_MD = 6
 const CORNER_RADIUS_LG = 9
 
 local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
-    print(":)")
-
     local bgBaseColor = config.BgBaseColor
 
-    local bgColors = GenPalette(bgBaseColor, 5, .225, .017)
+    local bgColors = GenPalette(bgBaseColor, 6, .225, .017)
     local bgHighlightColors = GenLerpedPalette(bgColors, .5)
 
     local baseBgContrastColor, lightnessDirection
@@ -83,6 +81,8 @@ local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
 
     local baseFgColor = ApplyChroma(bgBaseColor, baseBgContrastColor, 1)
     local fgColors = GenPalette(baseFgColor, 3, .32 * lightnessDirection, .017)
+
+    print(ColorSpace.Stringify.Hex(bgColors[5]), ColorSpace.Stringify.Hex(bgHighlightColors[5]))
 
     return {
         BgPrimary = bgColors[1],
