@@ -5,8 +5,9 @@ local Packages = script.Parent.Parent.Parent.Parent
 local Typeforge = require(Packages.typeforge)
 
 local Fusion = require(Packages.fusion)
-local Computed, New, Children, Value =
-    Fusion.Computed, Fusion.New, Fusion.Children, Fusion.Value
+local Computed, New, Children, Observer, Peek, Value =
+    Fusion.Computed, Fusion.New, Fusion.Children, Fusion.Observer,
+    Fusion.peek, Fusion.Value
 
 local Utils = script.Parent.Parent.Parent.utils
 
@@ -39,15 +40,11 @@ type MapItemProps = Typeforge.Flatten<{
     HideValue: boolean?
 }>
 
-type MapItemResult = {
-    Instance: Instance,
-    BottomRowZIndex: Fusion.UsedAs<number>
-}
-
 local function CreateMapItem(
     scope: Fusion.Scope,
-    props: MapItemProps
-): MapItemResult
+    props: MapItemProps,
+    bottomRowZIndexOut: Fusion.Value<number>?
+): Instance
     local layout = props.Layout
     local item = layout.Item
     local children = layout.Children
@@ -92,42 +89,88 @@ local function CreateMapItem(
         return metadata.RowIndices[layout] or 0
     end)
 
-    local bottomRowZIndex: Fusion.UsedAs<number> = rowZIndex
-    local nestedChildren = table.create(#children + 1) :: { Fusion.Child }
-    for childIdx, childLayout in children do
-        local childResult = CreateMapItem(scope, {
-            Variant = props.Variant,
-            Layout = childLayout,
-            LayoutOrder = childIdx,
-            RowCount = props.RowCount,
-            RowMetadata = props.RowMetadata,
-            HideValue = props.HideValue
-        })
+    local bottomRowZIndex = bottomRowZIndexOut
+    local nestedChildren: Fusion.Child = {}
 
-        nestedChildren[childIdx] = childResult.Instance
-        if childIdx == #children then
-            bottomRowZIndex = childResult.BottomRowZIndex
+    if hasSubItems then
+        local nestedBottomRowZIndex: Fusion.Value<number> =
+            bottomRowZIndex or Value<<number>>(scope, 1)
+        bottomRowZIndex = nestedBottomRowZIndex
+
+        nestedChildren = Computed(scope, function(
+            use: Fusion.Use,
+            nestedScope: Fusion.Scope
+        ): Fusion.Child
+            if not use<<boolean>>(layout.ChildrenMounted) then return {} end
+
+            local mountedChildren =
+                table.create(#children + 1) :: { Fusion.Child }
+
+            for childIdx, childLayout in children do
+                mountedChildren[childIdx] = CreateMapItem(nestedScope, {
+                    Variant = props.Variant,
+                    Layout = childLayout,
+                    LayoutOrder = childIdx,
+                    RowCount = props.RowCount,
+                    RowMetadata = props.RowMetadata,
+                    HideValue = props.HideValue
+                }, if childIdx == #children then nestedBottomRowZIndex else nil)
+            end
+
+            table.insert(mountedChildren, New(nestedScope, "UIListLayout") {
+                Padding = UDim.new(0, 1),
+                FillDirection = Enum.FillDirection.Vertical,
+                SortOrder = Enum.SortOrder.LayoutOrder
+            })
+
+            return mountedChildren
+        end)
+    end
+
+    if bottomRowZIndex then
+        local usedBottomRowZIndex = bottomRowZIndex
+        local computeOwnBottomRowZIndex = Computed(
+            scope,
+            function(use: Fusion.Use): number?
+                if hasSubItems
+                    and use<<boolean>>(layout.ChildrenMounted)
+                then
+                    return nil
+                end
+
+                return use<<number>>(rowZIndex)
+            end
+        )
+
+        local function publishOwnBottomRowZIndex()
+            local ownBottomRowZIndex =
+                Peek<<number?>>(computeOwnBottomRowZIndex)
+            if ownBottomRowZIndex == nil then return end
+            if Peek<<number>>(usedBottomRowZIndex) == ownBottomRowZIndex then
+                return
+            end
+
+            usedBottomRowZIndex:set(ownBottomRowZIndex)
         end
+
+        Observer(scope, computeOwnBottomRowZIndex)
+            :onBind(publishOwnBottomRowZIndex)
     end
 
     local containerZIndex: Fusion.UsedAs<number> = rowZIndex
     if hasSubItems then
+        local usedBottomRowZIndex =
+            bottomRowZIndex :: Fusion.Value<number>
         containerZIndex = Computed(scope, function(use: Fusion.Use): number
             return math.max(
                 use<<number>>(rowZIndex),
-                use<<number>>(bottomRowZIndex)
+                use<<number>>(usedBottomRowZIndex)
             )
         end)
     end
 
     local theme = GetThemeForScope(scope)
     local rowHeight = ComputeAdd(scope, theme:GetHeight(scope, "Lg"), - 2)
-
-    table.insert(nestedChildren, New(scope, "UIListLayout") {
-        Padding = UDim.new(0, 1),
-        FillDirection = Enum.FillDirection.Vertical,
-        SortOrder = Enum.SortOrder.LayoutOrder
-    })
 
     local itemContentChildren = {
         MapItemKey(scope, {
@@ -245,14 +288,11 @@ local function CreateMapItem(
         [Children] = rootChildren
     }
 
-    return {
-        Instance = instance,
-        BottomRowZIndex = bottomRowZIndex
-    }
+    return instance
 end
 
 local function MapItem(scope: Fusion.Scope, props: MapItemProps): Instance
-    return CreateMapItem(scope, props).Instance
+    return CreateMapItem(scope, props, nil)
 end
 
 return MapItem

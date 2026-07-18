@@ -13,7 +13,7 @@ local FusionUtils = require(Utils.fusionUtils)
 local Component, CoerceToValue =
     FusionUtils.Component, FusionUtils.CoerceToValue
 local ComputeMath = FusionUtils.ComputeMath
-local ComputeAdd = ComputeMath.Add
+local ComputeAdd, ComputeMultiply = ComputeMath.Add, ComputeMath.Multiply
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
@@ -43,7 +43,8 @@ type VirtualMapScrollableProps = {
 }
 
 local DefaultPadding = 4
-local DefaultOverdraw = 50
+local DefaultOverdrawRows = 6
+local VirtualizationStepRows = 1
 local BottomPadding = 2
 
 local function GetLayoutOrder(mapProps: MapProps): number
@@ -74,9 +75,10 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
         Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
     local viewportCanvasPositionState =
         Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
+    local virtualViewportCanvasPositionState =
+        Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
     local canvasHeightState = Fusion.Value<<number>>(scope, 0)
 
-    local overdrawState: Fusion.UsedAs<number> = overdraw or DefaultOverdraw
     local paddingState: Fusion.UsedAs<number> = padding
 
     local computeSortedMapsProps: Fusion.Computed<{ MapProps }> = Computed(
@@ -93,6 +95,47 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
     local theme = GetThemeForScope(scope)
     local height = theme:GetHeight(scope, "Lg")
     local rowHeight = ComputeAdd(scope, height, - 2)
+    local defaultOverdraw = ComputeMultiply(
+        scope,
+        rowHeight,
+        DefaultOverdrawRows
+    )
+    local overdrawState: Fusion.UsedAs<number> =
+        overdraw or defaultOverdraw
+
+    -- CanvasPosition can change many times while the rendered window remains
+    -- valid. Keep that hot engine output separate from the state consumed by
+    -- every map and only move the virtual window by roughly one row at a time.
+    local function publishVirtualCanvasPosition(force: boolean?)
+        local current = Peek<<Vector2>>(viewportCanvasPositionState)
+        local published = Peek<<Vector2>>(
+            virtualViewportCanvasPositionState
+        )
+        local usedOverdraw = math.max(Peek<<number>>(overdrawState), 0)
+        local usedRowHeight = math.max(Peek<<number>>(rowHeight), 0)
+        local threshold = math.min(
+            usedOverdraw / 2,
+            usedRowHeight * VirtualizationStepRows
+        )
+
+        if not force
+            and current.X == published.X
+            and math.abs(current.Y - published.Y) < threshold
+        then
+            return
+        end
+
+        virtualViewportCanvasPositionState:set(current)
+    end
+
+    Observer(scope, viewportCanvasPositionState)
+        :onBind(publishVirtualCanvasPosition)
+    Observer(scope, overdrawState):onChange(function()
+        publishVirtualCanvasPosition(true)
+    end)
+    Observer(scope, rowHeight):onChange(function()
+        publishVirtualCanvasPosition(true)
+    end)
 
     local computeMapInstances = Computed(scope, function(
         use: Fusion.Use,
@@ -173,7 +216,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                 end
 
                 local usedCanvasPosition =
-                    use<<Vector2>>(viewportCanvasPositionState)
+                    use<<Vector2>>(virtualViewportCanvasPositionState)
                 local usedOverdraw =
                     math.max(use<<number>>(overdrawState), 0)
                 local usedMapTop = use<<number>>(mapTop)
@@ -221,7 +264,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                         MapReveal = mapReveal,
                         GeometryReady = geometryReadyState,
                         ViewportCanvasPosition =
-                            viewportCanvasPositionState,
+                            virtualViewportCanvasPositionState,
                         ViewportAbsoluteSize = viewportAbsoluteSizeState,
                         MapCanvasTop = mapTop,
                         Overdraw = overdrawState

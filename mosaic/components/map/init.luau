@@ -79,8 +79,7 @@ return Component<<MapProps>>(function(scope, props)
     local visibleRootRange = ComputeVirtualListVisibleRootRange(
         scope,
         virtualListData,
-        layout,
-        rowHeight
+        layout
     )
 
     -- The parent supplies these states so unmounted maps continue animating.
