@@ -36,6 +36,7 @@ local function CreateEmptyMessage(
         Size = UDim2.fromScale(1, 1),
         AutomaticSize = Enum.AutomaticSize.None,
         TextXAlignment = Enum.TextXAlignment.Center,
+        TextWrapped = true
     })
 end
 
