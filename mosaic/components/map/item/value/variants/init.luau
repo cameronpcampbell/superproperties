@@ -17,6 +17,7 @@ return {
     Vector2 = Vector2,
     Vector3 = Vector,
     vector = Vector,
+    UDim = require(script.udim),
     Instance = require(script.instance),
     Default = require(script.default)
 }
