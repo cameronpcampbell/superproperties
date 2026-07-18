@@ -369,9 +369,12 @@ local function WriteRoot<T>(_rootValue: any, value: T): T
     return value
 end
 
+local VectorItems = CreateVector3Items(ReadRoot, WriteRoot)
+
 local IntrinsicSubItems: { [string]: Types.IntrinsicItems } = {
     CFrame = CreateCFrameItems(ReadRoot, WriteRoot),
-    Vector3 = CreateVector3Items(ReadRoot, WriteRoot),
+    Vector3 = VectorItems,
+    vector = VectorItems,
     Vector2 = CreateVector2Items(ReadRoot, WriteRoot),
     UDim2 = CreateUDim2Items(ReadRoot, WriteRoot),
     Faces = CreateFacesItems(ReadRoot, WriteRoot),
