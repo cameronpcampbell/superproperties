@@ -33,6 +33,7 @@ local CreateMapLayout, CreateMapSizeTween,
     Virtualization.CreateMapSizeTween,
     Virtualization.ComputeVirtualListVisibleRootRange,
     Virtualization.ComputeVirtualizedRows
+local ZIndices = require(script.zIndices)
 
 export type Item = Types.Item
 export type Items = Types.Items
@@ -122,6 +123,14 @@ return Component<<MapProps>>(function(scope, props)
         RowHeight = height
     })
 
+    local mapZIndex = Computed(scope, function(use: Fusion.Use): number
+        local focusedRootRange =
+            use<<Vector2>>(layout.FocusedRootRange)
+        local hasFocusedRow = focusedRootRange.X <= focusedRootRange.Y
+
+        return if hasFocusedRow then ZIndices.Focus else ZIndices.Default
+    end)
+
     local mapChildren: { Fusion.Child } = {
         visibleRows,
 
@@ -142,6 +151,7 @@ return Component<<MapProps>>(function(scope, props)
         BackgroundColor3 = strokeColor,
         Size = animatedMapSize,
         ClipsDescendants = clipsDescendants,
+        ZIndex = mapZIndex,
         CornerRadius = Peek<<number>>(cornerRadius),
         CornerSmoothing = 1,
 

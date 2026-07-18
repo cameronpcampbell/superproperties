@@ -25,10 +25,8 @@ local GetThemeForScope = ThemeUtils.GetThemeForScope
 local Types = require(script.Parent.types)
 local MapItemKey = require(script.key)
 local MapItemValue = require(script.value)
+local ZIndices = require(script.Parent.zIndices)
 
-local HoverRowZIndex = 99
-local DisappearingFocusRowZIndex = HoverRowZIndex + 1
-local FocusRowZIndex = DisappearingFocusRowZIndex + 1
 local FocusRingActiveAlphaThreshold = .15
 
 type MapItemProps = Typeforge.Flatten<{
@@ -56,7 +54,7 @@ local function CreateMapItem(
     local isFocusState: Fusion.Value<boolean>? = nil
     local isFocusElevationState: Fusion.Value<boolean>? = nil
     local focusRingAlphaState: Fusion.Value<number>? = nil
-    local rowZIndex: Fusion.UsedAs<number> = 1
+    local rowZIndex: Fusion.UsedAs<number> = ZIndices.Default
 
     if hasInteractiveValue then
         isHoverState = Value(scope, false)
@@ -76,11 +74,11 @@ local function CreateMapItem(
             )
 
             if focusRingAlpha >= FocusRingActiveAlphaThreshold then
-                return FocusRowZIndex
+                return ZIndices.Focus
             end
-            if isFocusElevated then return DisappearingFocusRowZIndex end
-            if isHovered then return HoverRowZIndex end
-            return 1
+            if isFocusElevated then return ZIndices.DisappearingFocus end
+            if isHovered then return ZIndices.Hover end
+            return ZIndices.Default
         end)
     end
 
@@ -94,7 +92,7 @@ local function CreateMapItem(
 
     if hasSubItems then
         local nestedBottomRowZIndex: Fusion.Value<number> =
-            bottomRowZIndex or Value<<number>>(scope, 1)
+            bottomRowZIndex or Value<<number>>(scope, ZIndices.Default)
         bottomRowZIndex = nestedBottomRowZIndex
 
         nestedChildren = Computed(scope, function(
