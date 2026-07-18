@@ -66,6 +66,7 @@ local function CreateTextVariant<T>(
             TextSize = fontSize,
             ClearTextOnFocus = false,
             TextXAlignment = Enum.TextXAlignment.Left,
+            ClipsDescendants = true,
             TextTruncate = textTruncate,
 
             Name = config.InputName,

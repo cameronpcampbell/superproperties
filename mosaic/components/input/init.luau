@@ -139,6 +139,7 @@ return Component<<InputProps>>(function(scope, props)
                 PlaceholderColor3 = textPlaceholderColor,
                 FontFace = font,
                 ClearTextOnFocus = false,
+                ClipsDescendants = true,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 TextTruncate = computeTextTruncate,
 
