@@ -2,6 +2,8 @@
 
 return {
     Arrow = "rbxassetid://137576406570664",
+    ArrowThin = "rbxassetid://98440150303753",
+
     Dot = "rbxassetid://116942102031970",
 
     -- Sharper replacements for ScrollingFrame's scrollbar assets.

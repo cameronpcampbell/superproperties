@@ -14,14 +14,17 @@ local MapTweenInfo = require(script.Parent.animation)
 
 export type ArrowProps = {
     CollapsedState: Fusion.Value<boolean>,
-    Variant: "Primary" | "Secondary"?
+    Variant: "Primary" | "Secondary"?,
+    Thin: boolean?
 }
 
 return function(scope: Fusion.Scope, props: ArrowProps)
     local collapsedState = props.CollapsedState
 
     return IconButton(scope, {
-        Image = Assets.Arrow,
+        Image = if props.Thin then
+            Assets.ArrowThin
+            else Assets.Arrow,
         Variant = props.Variant,
         Rotation = Tween<<number>>(
             scope,
