@@ -99,6 +99,9 @@ local Patches: Patches = {
         }
     },
     Transform = {
+        BasePart = {
+            ExtentsSize = CreateDeprecationPatch("Size")
+        },
         PVInstance = {
             Origin = {
                 CustomReadWrite = {
@@ -115,6 +118,11 @@ local Patches: Patches = {
                     Poll = true
                 }
             }
+        }
+    },
+    Part = {
+        BasePart = {
+            size = CreateDeprecationPatch("Size")
         }
     },
     Pivot = {
