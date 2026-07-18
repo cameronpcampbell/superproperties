@@ -7,6 +7,7 @@ local Utils = script.Parent.Parent
 local ColorSpace = require(Utils.colorSpace)
 
 local Types = require(script.Parent.types)
+local Constants = require(script.Parent.constants)
 
 local Computed, New = Fusion.Computed, Fusion.New
 
@@ -219,20 +220,21 @@ local function GetFontSize(
 end
 
 local function HighlightGradient(
-    theme: Types.Theme,
+    _theme: Types.Theme,
     scope: Fusion.Scope,
     transparency: Fusion.UsedAs<number>
 )
-    local bgColor = theme:GetBg(scope, "Primary")
-    local fgColor = theme:GetAccentFg(scope, "Primary")
-
     return New(scope, "UIGradient") {
-        Color = Computed(scope, function(use, scope)
-            return ColorSequence.new({
-                ColorSequenceKeypoint.new(0, use(fgColor)),
-                ColorSequenceKeypoint.new(1, use(bgColor)),
-            })
-        end),
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(
+                0,
+                Constants.BASE_LIGHT_TEXT_COLOR
+            ),
+            ColorSequenceKeypoint.new(
+                1,
+                Constants.BASE_DARK_TEXT_COLOR
+            ),
+        }),
         Rotation = 90,
         Transparency = Computed(scope, function(use, scope)
             return NumberSequence.new(use(transparency))

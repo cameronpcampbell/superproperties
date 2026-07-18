@@ -5,6 +5,7 @@ local Utils = script.Parent.Parent
 local ColorSpace = require(Utils.colorSpace)
 
 local Types = require(script.Parent.types)
+local Constants = require(script.Parent.constants)
 
 local function GenPalette(
 	color: Color3,
@@ -61,8 +62,8 @@ local function GenLerpedPalette(colors: { Color3 }, alpha: number): { Color3 }
 	return palette
 end
 
-const BASE_LIGHT_TEXT_COLOR = Color3.fromHex("#F8FAFC")
-const BASE_DARK_TEXT_COLOR = Color3.fromHex("#09090b")
+const BASE_LIGHT_TEXT_COLOR = Constants.BASE_LIGHT_TEXT_COLOR
+const BASE_DARK_TEXT_COLOR = Constants.BASE_DARK_TEXT_COLOR
 const BASE_BG_TINT_COLOR = Color3.fromRGB(25, 26, 31)
 
 local _, _, BASE_BG_TINT_HUE =

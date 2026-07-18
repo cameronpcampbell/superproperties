@@ -1,0 +1,9 @@
+--!strict
+
+const BASE_LIGHT_TEXT_COLOR = Color3.fromHex("#F8FAFC")
+const BASE_DARK_TEXT_COLOR = Color3.fromHex("#09090b")
+
+return {
+	BASE_LIGHT_TEXT_COLOR = BASE_LIGHT_TEXT_COLOR,
+	BASE_DARK_TEXT_COLOR = BASE_DARK_TEXT_COLOR,
+}
