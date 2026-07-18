@@ -240,10 +240,38 @@ local function CreateCFrameItems(
 end
 
 local function CreateFacesItems(
-    readFaces: Reader<Faces>
+    readFaces: Reader<Faces>,
+    writeFaces: Writer<Faces>
 ): Types.IntrinsicItems
+    local function writeFace(
+        rootValue: any,
+        targetFace: Enum.NormalId,
+        value: boolean
+    ): any
+        local faces = readFaces(rootValue)
+        local normalIds = {} :: { Enum.NormalId }
+
+        local function addFace(
+            normalId: Enum.NormalId,
+            isEnabled: boolean
+        )
+            if normalId == targetFace then isEnabled = value end
+            if isEnabled then table.insert(normalIds, normalId) end
+        end
+
+        addFace(Enum.NormalId.Back, faces.Back)
+        addFace(Enum.NormalId.Bottom, faces.Bottom)
+        addFace(Enum.NormalId.Front, faces.Front)
+        addFace(Enum.NormalId.Left, faces.Left)
+        addFace(Enum.NormalId.Right, faces.Right)
+        addFace(Enum.NormalId.Top, faces.Top)
+
+        return writeFaces(rootValue, Faces.new(table.unpack(normalIds)))
+    end
+
     local function createFaceItem(
         key: string,
+        normalId: Enum.NormalId,
         readFace: (faces: Faces) -> boolean
     ): Types.IntrinsicItem
         return {
@@ -251,30 +279,45 @@ local function CreateFacesItems(
             Value = {
                 Read = function(rootValue: any): boolean
                     return readFace(readFaces(rootValue))
+                end,
+                Write = function(rootValue: any, value: boolean): any
+                    return writeFace(rootValue, normalId, value)
                 end
             }
         }
     end
 
     return {
-        createFaceItem("Back", function(faces: Faces): boolean
-            return faces.Back
-        end),
-        createFaceItem("Bottom", function(faces: Faces): boolean
-            return faces.Bottom
-        end),
-        createFaceItem("Front", function(faces: Faces): boolean
-            return faces.Front
-        end),
-        createFaceItem("Left", function(faces: Faces): boolean
-            return faces.Left
-        end),
-        createFaceItem("Right", function(faces: Faces): boolean
-            return faces.Right
-        end),
-        createFaceItem("Top", function(faces: Faces): boolean
-            return faces.Top
-        end)
+        createFaceItem(
+            "Back",
+            Enum.NormalId.Back,
+            function(faces: Faces): boolean return faces.Back end
+        ),
+        createFaceItem(
+            "Bottom",
+            Enum.NormalId.Bottom,
+            function(faces: Faces): boolean return faces.Bottom end
+        ),
+        createFaceItem(
+            "Front",
+            Enum.NormalId.Front,
+            function(faces: Faces): boolean return faces.Front end
+        ),
+        createFaceItem(
+            "Left",
+            Enum.NormalId.Left,
+            function(faces: Faces): boolean return faces.Left end
+        ),
+        createFaceItem(
+            "Right",
+            Enum.NormalId.Right,
+            function(faces: Faces): boolean return faces.Right end
+        ),
+        createFaceItem(
+            "Top",
+            Enum.NormalId.Top,
+            function(faces: Faces): boolean return faces.Top end
+        )
     }
 end
 
@@ -331,7 +374,7 @@ local IntrinsicSubItems: { [string]: Types.IntrinsicItems } = {
     Vector3 = CreateVector3Items(ReadRoot, WriteRoot),
     Vector2 = CreateVector2Items(ReadRoot, WriteRoot),
     UDim2 = CreateUDim2Items(ReadRoot, WriteRoot),
-    Faces = CreateFacesItems(ReadRoot),
+    Faces = CreateFacesItems(ReadRoot, WriteRoot),
     Font = CreateFontItems(ReadRoot, WriteRoot)
 }
 
