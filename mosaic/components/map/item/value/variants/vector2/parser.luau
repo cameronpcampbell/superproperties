@@ -5,8 +5,7 @@ local DelimitedNumbersLexer =
 
 export type Components = {
     X: number,
-    Y: number,
-    Z: number
+    Y: number
 }
 
 type Token = {
@@ -111,7 +110,7 @@ local function Tokenize(text: string): { Token }
     return tokens
 end
 
-local function ParseVector(text: string): (Components?, string?)
+local function ParseVector2(text: string): (Components?, string?)
     local parser: Parser = {
         Tokens = Tokenize(text),
         Position = 1
@@ -125,8 +124,7 @@ local function ParseVector(text: string): (Components?, string?)
     if Peek(parser) == nil then
         return {
             X = x,
-            Y = x,
-            Z = x
+            Y = x
         }, nil
     end
 
@@ -142,36 +140,16 @@ local function ParseVector(text: string): (Components?, string?)
         return nil, parseError
     end
 
-    if Peek(parser) == nil then
-        return {
-            X = x,
-            Y = y,
-            Z = 0.001
-        }, nil
-    end
-
-    success, parseError = ParseComma(parser, "y")
-    if not success then
-        return nil, parseError
-    end
-
-    local z
-    z, parseError = ParseComponent(parser, "z")
-    if z == nil then
-        return nil, parseError
-    end
-
     local trailingToken = Peek(parser)
     if trailingToken ~= nil then
         return nil,
-            `Expected end of input after the z component, found {DescribeToken(trailingToken)}.`
+            `Expected end of input after the y component, found {DescribeToken(trailingToken)}.`
     end
 
     return {
         X = x,
-        Y = y,
-        Z = z
+        Y = y
     }, nil
 end
 
-return ParseVector
+return ParseVector2
