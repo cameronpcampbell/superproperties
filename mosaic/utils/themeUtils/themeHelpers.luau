@@ -81,11 +81,11 @@ end
 local function GetBgHighlight(
     theme: Types.Theme,
     scope: Fusion.Scope,
-    variant: Fusion.UsedAs<Types.BgVariantLayer>,
+    variant: Fusion.UsedAs<Types.BgVariant>,
     modifier: Fusion.UsedAs<Types.ThemeColorModifier?>
 ): Fusion.UsedAs<Color3>
     local computeName = Computed(scope, function(use, scope)
-        local usedVariant = use<<Types.BgVariantLayer>>(variant)
+        local usedVariant = use<<Types.BgVariant>>(variant)
 
         return `Bg{usedVariant}Highlight`
     end)

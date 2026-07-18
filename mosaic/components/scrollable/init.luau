@@ -4,7 +4,6 @@
 local Packages = script.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
-local Typeforge = require(Packages.typeforge)
 local New, Children, Out =
     Fusion.New, Fusion.Children, Fusion.Out
 
@@ -15,7 +14,8 @@ local Component, CombineProps =
     FusionUtils.Component, FusionUtils.CombineProps
 
 local ThemeUtils = require(Utils.themeUtils)
-local GetThemeForScope = ThemeUtils.GetThemeForScope
+local GetThemeForScope, GetNextVariant =
+    ThemeUtils.GetThemeForScope, ThemeUtils.GetNextVariant
 
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
@@ -23,6 +23,7 @@ local TableExtract = TableUtils.Extract
 local Assets = require(script.Parent.Parent.assets)
 
 export type ScrollableProps = {
+    Variant: Fusion.UsedAs<ThemeUtils.BgVariantLayer>?,
     OutCanvasPosition: Fusion.Value<Vector2>?,
     OutAbsolutePosition: Fusion.Value<Vector2>?,
     OutAbsoluteSize: Fusion.Value<Vector2>?,
@@ -30,11 +31,8 @@ export type ScrollableProps = {
     AutomaticCanvasSize: Fusion.UsedAs<Enum.AutomaticSize>?
 }
 
-export type ScrollableOverrides = Typeforge.FlattenTable<
-    Typeforge.Partial<ScrollableProps> & Fusion.PropertyTable
->
-
 return Component<<ScrollableProps>>(function(scope, props)
+    local props, variant = TableExtract(props, "Variant", "Tertiary")
     local props, children = TableExtract(props, Children)
     local props, outAbsolutePosition = TableExtract(props, "OutAbsolutePosition")
     local props, outAbsoluteSize = TableExtract(props, "OutAbsoluteSize")
@@ -44,8 +42,8 @@ return Component<<ScrollableProps>>(function(scope, props)
         TableExtract(props, "AutomaticCanvasSize", Enum.AutomaticSize.Y)
 
     local theme = GetThemeForScope(scope)
-    local scrollBarColor = theme:GetBgHighlight(scope, "Tertiary")
-    local scrollBarUnderlayColor = theme:GetBgHighlight(scope, "Secondary")
+    local scrollBarColor = theme:GetBgHighlight(scope, GetNextVariant(scope, variant))
+    local scrollBarUnderlayColor = theme:GetBgHighlight(scope, variant)
 
     return New(scope, "Frame") (CombineProps({
         Size = UDim2.fromScale(1, 1),

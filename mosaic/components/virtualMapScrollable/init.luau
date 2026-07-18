@@ -372,5 +372,5 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
         OutCanvasPosition = viewportCanvasPositionState,
 
         [Children] = computeMapInstances
-    }, (props :: unknown) :: Scrollable.ScrollableOverrides)
+    }, (props :: any))
 end)

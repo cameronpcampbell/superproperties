@@ -62,7 +62,7 @@ return Component<<MapProps>>(function(scope, props)
     local props: MapProps, collapsed = (TableExtract :: any)(props, "Collapsed", false)
     local props: MapProps, virtualListData = (TableExtract :: any)(props, "VirtualListData")
 
-    local strokeVariant = GetNextVariant(variant)
+    local strokeVariant = GetNextVariant(scope, variant)
     local collapsedState = CoerceToValue<<boolean>>(scope, collapsed)
 
     local theme = GetThemeForScope(scope)

@@ -72,12 +72,16 @@ local Widget = Scope:Widget {
             Name = "Content",
 
             [Children] = {
-                Properties.Input(Scope),
+                --[[Properties.Input(Scope),
 
                 Properties.Maps(Scope, {
                     SelectedInstanceValue = SelectedInstanceValue,
                     OmitRbxAttributes = true
-                }),
+                }),]]
+
+                Scope:SelectMenu {
+
+                },
 
                 Scope:New "UIPadding" {
                     PaddingLeft = UDim.new(0, 4),

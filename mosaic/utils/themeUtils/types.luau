@@ -9,6 +9,7 @@ export type BgVariant = "Primary" | "Secondary" | "Tertiary" | "Quaternary" | "Q
 export type BgFirstVariant = "Primary"
 export type BgLastVariant = "Quinary"
 export type BgVariantLayer = Typeforge.Omit<BgVariant, BgLastVariant>
+export type BgVariantSubLayer = Typeforge.Omit<BgVariantLayer, "Quaternary">
 
 export type FgVariant = "Primary" | "Secondary" | "Tertiary"
 
@@ -166,14 +167,20 @@ export type Theme = {
     GetBg: (
         theme: Theme,
         scope: Fusion.Scope,
-        variant: Fusion.UsedAs<BgVariant>,
+        variant:
+            | Fusion.UsedAs<BgVariant>
+            | Fusion.UsedAs<BgVariantLayer>
+            | Fusion.UsedAs<BgVariantSubLayer>,
         modifier: Fusion.UsedAs<ThemeColorModifier?>
     ) -> Fusion.UsedAs<Color3>,
 
     GetBgHighlight: (
         theme: Theme,
         scope: Fusion.Scope,
-        variant: Fusion.UsedAs<BgVariantLayer>,
+        variant:
+            | Fusion.UsedAs<BgVariant>
+            | Fusion.UsedAs<BgVariantLayer>
+            | Fusion.UsedAs<BgVariantSubLayer>,
         modifier: Fusion.UsedAs<ThemeColorModifier?>
     ) -> Fusion.UsedAs<Color3>,
 

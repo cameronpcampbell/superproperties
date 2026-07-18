@@ -157,10 +157,10 @@ pathfs = [{ name = "jiwonz/pathfs", version = "^0.6.0", index = "https://github.
 result = [{ name = "lukadev_0/result", version = "^1.2.1", index = "https://github.com/pesde-pkg/index" }, "peer"]
 unzip = [{ name = "0x5eal/unzip", version = "^0.2.0", index = "https://github.com/pesde-pkg/index", target = "luau" }, "standard"]
 
-[graph."wally#cameronpcampbell/typeforge@3.0.4 roblox"]
-direct = ["typeforge", { wally = "wally#cameronpcampbell/typeforge", version = "^3.0.4", index = "default" }, "standard"]
+[graph."wally#cameronpcampbell/typeforge@3.0.5 roblox"]
+direct = ["typeforge", { wally = "wally#cameronpcampbell/typeforge", version = "^3.0.5", index = "default" }, "standard"]
 
-[graph."wally#cameronpcampbell/typeforge@3.0.4 roblox".pkg_ref]
+[graph."wally#cameronpcampbell/typeforge@3.0.5 roblox".pkg_ref]
 ref_ty = "wally"
 index_url = "https://github.com/UpliftGames/wally-index"
 

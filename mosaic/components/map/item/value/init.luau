@@ -95,7 +95,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
         local strokeColorModifier =
             CalcColorModifier(scope, isHoverState, isFocusState, "Stroke")
         local strokeColor =
-            theme:GetBg(scope, GetNextVariant(variant), strokeColorModifier)
+            theme:GetBg(scope, GetNextVariant(scope, variant), strokeColorModifier)
         local accentColor =
             theme:GetAccent(scope, "Primary", strokeColorModifier)
 

@@ -26,7 +26,7 @@ rojo = { name = "pesde/rojo", version = "^7.5.1", target = "lune" }
 fusion = { wally = "elttob/fusion", version = "0.3.0" }
 supercorner = { name = "cameronpcampbell/supercorner_fusion03", version = "0.1.3" }
 lexuau = { name = "cameronpcampbell/lexuau", version = "0.1.0" }
-typeforge = { wally = "cameronpcampbell/typeforge", version = "3.0.4" }
+typeforge = { wally = "cameronpcampbell/typeforge", version = "3.0.5" }
 
 [engines]
 pesde = "^0.7.0"
