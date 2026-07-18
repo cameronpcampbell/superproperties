@@ -63,6 +63,16 @@ local function ExpectToken(
     return token, nil
 end
 
+local function TokensToText(tokens: { Token }): string
+    local parts: { string } = {}
+
+    for _, token in tokens do
+        table.insert(parts, token.Value)
+    end
+
+    return table.concat(parts, " ")
+end
+
 local function ParseAxisUDim(
     text: string,
     axisName: string
@@ -73,67 +83,6 @@ local function ParseAxisUDim(
     end
 
     return components, nil
-end
-
-local function ParseBracedUDim(
-    parser: Parser,
-    axisName: string
-): (UDimComponents?, string?)
-    local _, parseError =
-        ExpectToken(parser, "leftBrace", `a left brace before the {axisName} UDim`)
-    if parseError ~= nil then
-        return nil, parseError
-    end
-
-    local parts: { string } = {}
-
-    while true do
-        local token = Peek(parser)
-        if token == nil then
-            return nil,
-                `Expected a right brace after the {axisName} UDim, found end of input.`
-        end
-
-        if token.Kind == "rightBrace" then
-            Advance(parser)
-            break
-        end
-
-        table.insert(parts, token.Value)
-        Advance(parser)
-    end
-
-    return ParseAxisUDim(table.concat(parts, " "), axisName)
-end
-
-local function ParseBracedUDim2(parser: Parser): (Components?, string?)
-    local x, parseError = ParseBracedUDim(parser, "x")
-    if x == nil then
-        return nil, parseError
-    end
-
-    local _
-    _, parseError = ExpectToken(parser, "comma", `"," after the x UDim`)
-    if parseError ~= nil then
-        return nil, parseError
-    end
-
-    local y
-    y, parseError = ParseBracedUDim(parser, "y")
-    if y == nil then
-        return nil, parseError
-    end
-
-    local trailingToken = Peek(parser)
-    if trailingToken ~= nil then
-        return nil,
-            `Expected end of input after the y UDim, found {DescribeToken(trailingToken)}.`
-    end
-
-    return {
-        X = x,
-        Y = y
-    }, nil
 end
 
 local function SplitComponents(tokens: { Token }): { string }
@@ -157,8 +106,9 @@ local function SplitComponents(tokens: { Token }): { string }
     return components
 end
 
-local function ParseFlatUDim2(tokens: { Token }): (Components?, string?)
-    local components = SplitComponents(tokens)
+local function ParseFlatComponents(
+    components: { string }
+): (Components?, string?)
     local componentCount = #components
 
     if componentCount ~= 1 and componentCount ~= 2 and componentCount ~= 4 then
@@ -188,6 +138,105 @@ local function ParseFlatUDim2(tokens: { Token }): (Components?, string?)
     y, parseError = ParseAxisUDim(yText, "y")
     if y == nil then
         return nil, parseError
+    end
+
+    return {
+        X = x,
+        Y = y
+    }, nil
+end
+
+local function ParseFlatUDim2(tokens: { Token }): (Components?, string?)
+    return ParseFlatComponents(SplitComponents(tokens))
+end
+
+local function ReadBracedTokens(
+    parser: Parser,
+    axisName: string
+): ({ Token }?, string?)
+    local _, parseError =
+        ExpectToken(parser, "leftBrace", `a left brace before the {axisName} UDim`)
+    if parseError ~= nil then
+        return nil, parseError
+    end
+
+    local tokens: { Token } = {}
+
+    while true do
+        local token = Peek(parser)
+        if token == nil then
+            return nil,
+                `Expected a right brace after the {axisName} UDim, found end of input.`
+        end
+
+        if token.Kind == "rightBrace" then
+            Advance(parser)
+            break
+        end
+
+        table.insert(tokens, token)
+        Advance(parser)
+    end
+
+    return tokens, nil
+end
+
+local function ParseBracedUDim2(parser: Parser): (Components?, string?)
+    local xTokens, parseError = ReadBracedTokens(parser, "x")
+    if xTokens == nil then
+        return nil, parseError
+    end
+
+    if Peek(parser) == nil then
+        local components = SplitComponents(xTokens)
+        if #components ~= 2 then
+            return nil,
+                "Enter exactly 2 numerical components inside a single pair of braces."
+        end
+
+        local sharedUDim
+        sharedUDim, parseError = ParseAxisUDim(TokensToText(xTokens), "shared")
+        if sharedUDim == nil then
+            return nil, parseError
+        end
+
+        return {
+            X = sharedUDim,
+            Y = {
+                Scale = sharedUDim.Scale,
+                Offset = sharedUDim.Offset
+            }
+        }, nil
+    end
+
+    local x
+    x, parseError = ParseAxisUDim(TokensToText(xTokens), "x")
+    if x == nil then
+        return nil, parseError
+    end
+
+    local _
+    _, parseError = ExpectToken(parser, "comma", `"," after the x UDim`)
+    if parseError ~= nil then
+        return nil, parseError
+    end
+
+    local yTokens
+    yTokens, parseError = ReadBracedTokens(parser, "y")
+    if yTokens == nil then
+        return nil, parseError
+    end
+
+    local y
+    y, parseError = ParseAxisUDim(TokensToText(yTokens), "y")
+    if y == nil then
+        return nil, parseError
+    end
+
+    local trailingToken = Peek(parser)
+    if trailingToken ~= nil then
+        return nil,
+            `Expected end of input after the y UDim, found {DescribeToken(trailingToken)}.`
     end
 
     return {
