@@ -17,11 +17,11 @@ luau-lsp = [{ name = "pesde/luau_lsp", version = "=1.53.2", index = "https://git
 stylua = [{ name = "pesde/stylua", version = "=2.1.0", index = "https://github.com/pesde-pkg/index", target = "lune" }, "dev"]
 
 [graph."cameronpcampbell/lexuau@0.1.0 roblox"]
-direct = ["lexuau", { path = "/Volumes/T7/lexuau" }, "standard"]
+direct = ["lexuau", { name = "cameronpcampbell/lexuau", version = "^0.1.0", index = "default" }, "standard"]
 
 [graph."cameronpcampbell/lexuau@0.1.0 roblox".pkg_ref]
-ref_ty = "path"
-path = "/Volumes/T7/lexuau"
+ref_ty = "pesde"
+index_url = "https://github.com/pesde-pkg/index"
 
 [graph."cameronpcampbell/supercorner@0.1.2 roblox".pkg_ref]
 ref_ty = "pesde"
