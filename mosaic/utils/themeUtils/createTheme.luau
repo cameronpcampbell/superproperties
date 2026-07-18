@@ -67,9 +67,11 @@ const CORNER_RADIUS_MD = 6
 const CORNER_RADIUS_LG = 9
 
 local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
+    print(":)")
+
     local bgBaseColor = config.BgBaseColor
 
-    local bgColors = GenPalette(bgBaseColor, 6, .225, .017)
+    local bgColors = GenPalette(bgBaseColor, 5, .225, .017)
     local bgHighlightColors = GenLerpedPalette(bgColors, .5)
 
     local baseBgContrastColor, lightnessDirection

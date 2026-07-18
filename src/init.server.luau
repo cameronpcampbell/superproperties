@@ -16,6 +16,12 @@ local Properties = require(Blocks.properties)
 
 local Scope = Fusion.scoped(Fusion, Mosaic)
 
+local function SyncTheme()
+    Mosaic.SetTheme(Scope, Mosaic.DefaultThemeConfig())
+end
+
+SyncTheme()
+
 local Debug = script.debug.Value:gsub("\n", "") == "true"
 
 --[[local theme = Scope:DefaultThemeConfig()
@@ -26,9 +32,7 @@ for key, value in (theme :: { [string]: any }) do
 end
 print(theme)]]
 
-settings().Studio.ThemeChanged:Connect(function()
-	Scope:SetTheme(Scope:DefaultThemeConfig())
-end)
+settings().Studio.ThemeChanged:Connect(SyncTheme)
 
 local function GetSelectedInstanceValue(
     scope: Fusion.Scope

@@ -10,6 +10,12 @@ local CreateTheme = require(script.Parent.createTheme)
 
 local Peek, Value = Fusion.peek, Fusion.Value
 
+local THEME_CONTEXT_KEY = {}
+
+type ThemeContext = {
+    Theme: Types.Theme,
+}
+
 local THEME_TOKEN_KEYS: { [number]: keyof<Types.ThemeSource> } = {
     "BgPrimary",
     "BgSecondary",
@@ -52,15 +58,11 @@ local THEME_TOKEN_KEYS: { [number]: keyof<Types.ThemeSource> } = {
 
 local ThemeForScopes: { [Fusion.Scope]: Types.Theme } = {}
 
-local function CreateThemeForScope(
+local function CreateThemeState(
     scope: Fusion.Scope,
     config: Types.ThemeConfig
 ): Types.Theme
     local source = CreateTheme(config)
-
-    table.insert(scope, function()
-        ThemeForScopes[scope] = nil
-    end)
 
     local theme = {
         GetBg = ThemeHelpers.GetBg,
@@ -78,19 +80,46 @@ local function CreateThemeForScope(
         theme[key] = Value(scope, Peek((source :: any)[key]))
     end
 
+    return theme
+end
+
+local function CreateThemeForScope(
+    scope: Fusion.Scope,
+    config: Types.ThemeConfig
+): Types.Theme
+    local theme = CreateThemeState(scope, config)
+
+    local scopeMetatable = getmetatable(scope)
+    local scopeMethods =
+        if typeof(scopeMetatable) == "table"
+        then (scopeMetatable :: any).__index
+        else nil
+
+    if typeof(scopeMethods) == "table" then
+        scopeMethods[THEME_CONTEXT_KEY] = {
+            Theme = theme,
+        } :: ThemeContext
+
+        return theme
+    end
+
+    table.insert(scope, function()
+        ThemeForScopes[scope] = nil
+    end)
+
     ThemeForScopes[scope] = theme
 
     return theme
 end
 
-local function SetThemeForScope(scope: Fusion.Scope, config: Types.ThemeConfig)
-    local theme = ThemeForScopes[scope]
+local function GetInheritedTheme(scope: Fusion.Scope): Types.Theme?
+    local context =
+        (scope :: any)[THEME_CONTEXT_KEY] :: ThemeContext?
 
-    if not theme then
-        CreateThemeForScope(scope, config)
-        return
-    end
+    return if context then context.Theme else nil
+end
 
+local function UpdateTheme(theme: Types.Theme, config: Types.ThemeConfig)
     local source = CreateTheme(config)
 
     for _, key in THEME_TOKEN_KEYS do
@@ -99,8 +128,19 @@ local function SetThemeForScope(scope: Fusion.Scope, config: Types.ThemeConfig)
     end
 end
 
+local function SetThemeForScope(scope: Fusion.Scope, config: Types.ThemeConfig)
+    local theme = GetInheritedTheme(scope) or ThemeForScopes[scope]
+
+    if not theme then
+        CreateThemeForScope(scope, config)
+        return
+    end
+
+    UpdateTheme(theme, config)
+end
+
 local function GetThemeForScope(scope: Fusion.Scope): Types.Theme
-    local theme = ThemeForScopes[scope]
+    local theme = GetInheritedTheme(scope) or ThemeForScopes[scope]
 
     if not theme then
         theme = CreateThemeForScope(scope, DefaultThemeConfig())
