@@ -1,6 +1,6 @@
 --!strict
 
-local DecimalScale = 100
+local DecimalScale = 1000
 
 local function NormalizeNumber(value: number): number
     local normalizedValue = math.round(value * DecimalScale) / DecimalScale
