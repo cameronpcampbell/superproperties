@@ -20,6 +20,24 @@ local HighlightGradient = require(Components.highlightGradient)
 local Text = require(Components.text)
 
 local Types = require(script.Parent.types)
+local CreateTextVariant = require(script.Parent.utils.createTextVariant)
+local ParseColor = require(script.parser)
+
+local function FormatColorComponents(color: Color3): string
+    return
+        `{math.round(color.R * 255)}, {math.round(color.G * 255)}, {math.round(color.B * 255)}`
+end
+
+local function FormatColor(color: Color3): string
+    return `[{FormatColorComponents(color)}]`
+end
+
+local ColorTextVariant = CreateTextVariant<<Color3>>({
+    InputName = "Color3ValueInput",
+    Format = FormatColor,
+    FormatFocused = FormatColorComponents,
+    Parse = ParseColor
+})
 
 local function Color(scope: Fusion.Scope, color: Color3 | BrickColor)
     if typeof(color) == "BrickColor" then
@@ -45,22 +63,34 @@ end
 
 return function(scope: Fusion.Scope, props: Types.ValueVariantProps<Color3 | BrickColor>)
     local value = props.Value
+    local valueText: Fusion.Child
 
-    return {
-        Text(scope, {
+    if
+        typeof(value) == "Color3" and
+        props.Writable and
+        props.TrySetValue ~= nil
+    then
+        valueText = ColorTextVariant(scope, {
+            Value = value,
+            Writable = props.Writable,
+            TrySetValue = props.TrySetValue :: any,
+            OnFocusChanged = props.OnFocusChanged
+        })
+    else
+        valueText = Text(scope, {
             Text =
-                if typeof(value) == "Color3" then
-                    `[{math.round(value.G * 255)}, {math.round(value.G * 255)}, {math.round(value.G * 255)}]`
-                else value.Name,
+                if typeof(value) == "Color3" then FormatColor(value) else value.Name,
             Variant = if props.Writable then "Primary" else "Secondary",
             Size = UDim2.fromScale(1, 0),
-            LayoutOrder = 0,
 
             [Children] = New(scope, "UIFlexItem") {
                 FlexMode = Enum.UIFlexMode.Shrink
             }
-        }),
+        })
+    end
 
+    return {
+        valueText,
         Color(scope, value),
     }
 end

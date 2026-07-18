@@ -19,6 +19,7 @@ local Text = require(Components.text)
 type TextVariantConfig<T> = {
     InputName: string,
     Format: (value: T) -> string,
+    FormatFocused: ((value: T) -> string)?,
     Parse: (text: string) -> (T?, string?)
 }
 
@@ -29,6 +30,9 @@ local function CreateTextVariant<T>(
         local value = props.Value
         local trySetValue = props.TrySetValue
         local displayedValue = config.Format(value)
+        local formatFocused = config.FormatFocused
+        local focusedValue =
+            if formatFocused ~= nil then formatFocused(value) else displayedValue
 
         if not props.Writable or trySetValue == nil then
             return Text(scope, {
@@ -59,7 +63,8 @@ local function CreateTextVariant<T>(
             Name = config.InputName,
 
             [OnEvent "Focused"] = function()
-                textBox.CursorPosition = #textBox.Text + 1
+                textState:set(focusedValue)
+                textBox.CursorPosition = #focusedValue + 1
                 textBox.SelectionStart = 1
 
                 if props.OnFocusChanged then props.OnFocusChanged(true) end
@@ -69,7 +74,10 @@ local function CreateTextVariant<T>(
                 if props.OnFocusChanged then props.OnFocusChanged(false) end
 
                 local nextText = Peek<<string>>(textState)
-                if nextText == displayedValue then return end
+                if nextText == focusedValue then
+                    textState:set(displayedValue)
+                    return
+                end
 
                 local nextValue, parseError = config.Parse(nextText)
                 if nextValue == nil then
