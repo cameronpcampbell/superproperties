@@ -60,7 +60,8 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
     local indicator: Fusion.Child
     if hasSubItems then
         indicator = Arrow(scope, {
-            CollapsedState = props.CollapsedState :: Fusion.Value<boolean>
+            CollapsedState = props.CollapsedState :: Fusion.Value<boolean>,
+            Variant = if props.Writable then "Primary" else "Secondary"
         })
 
     else
