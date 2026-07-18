@@ -200,12 +200,14 @@ local function ResolveIntrinsicItem(
     parentWritable: boolean
 ): ResolvedItem
     local valueAccessor = item.Value
+    local writeValue = valueAccessor.Write
     local trySetRootValue = rootItem.TrySetValue
     local trySetValue: TrySetValue<any>? = nil
+    local writable = parentWritable and writeValue ~= nil
 
-    if parentWritable and trySetRootValue then
+    if writable and writeValue and trySetRootValue then
         trySetValue = function(value: any): (boolean, string?)
-            local nextRootValue = valueAccessor.Write(
+            local nextRootValue = writeValue(
                 rootItem.Value,
                 value
             )
@@ -221,7 +223,7 @@ local function ResolveIntrinsicItem(
         ResolvedValue = valueAccessor.Read(rootValue),
         ValueAccessor = valueAccessor,
         TrySetValue = trySetValue,
-        Writable = parentWritable
+        Writable = writable
     }
 end
 

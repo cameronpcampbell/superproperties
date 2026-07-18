@@ -239,6 +239,45 @@ local function CreateCFrameItems(
     }
 end
 
+local function CreateFacesItems(
+    readFaces: Reader<Faces>
+): Types.IntrinsicItems
+    local function createFaceItem(
+        key: string,
+        readFace: (faces: Faces) -> boolean
+    ): Types.IntrinsicItem
+        return {
+            Key = key,
+            Value = {
+                Read = function(rootValue: any): boolean
+                    return readFace(readFaces(rootValue))
+                end
+            }
+        }
+    end
+
+    return {
+        createFaceItem("Back", function(faces: Faces): boolean
+            return faces.Back
+        end),
+        createFaceItem("Bottom", function(faces: Faces): boolean
+            return faces.Bottom
+        end),
+        createFaceItem("Front", function(faces: Faces): boolean
+            return faces.Front
+        end),
+        createFaceItem("Left", function(faces: Faces): boolean
+            return faces.Left
+        end),
+        createFaceItem("Right", function(faces: Faces): boolean
+            return faces.Right
+        end),
+        createFaceItem("Top", function(faces: Faces): boolean
+            return faces.Top
+        end)
+    }
+end
+
 local function CreateFontItems(
     readFont: Reader<Font>,
     writeFont: Writer<Font>
@@ -292,6 +331,7 @@ local IntrinsicSubItems: { [string]: Types.IntrinsicItems } = {
     Vector3 = CreateVector3Items(ReadRoot, WriteRoot),
     Vector2 = CreateVector2Items(ReadRoot, WriteRoot),
     UDim2 = CreateUDim2Items(ReadRoot, WriteRoot),
+    Faces = CreateFacesItems(ReadRoot),
     Font = CreateFontItems(ReadRoot, WriteRoot)
 }
 
