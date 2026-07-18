@@ -3,7 +3,6 @@
 local Utils = script.Parent.Parent
 
 local ColorSpace = require(Utils.colorSpace)
-local IsDark = ColorSpace.Utils.IsDark
 
 local Types = require(script.Parent.types)
 
@@ -73,16 +72,15 @@ local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
     local bgHighlightColors = GenLerpedPalette(bgColors, .5)
 
     local baseBgContrastColor, lightnessDirection
-    if IsDark(bgBaseColor) then
+    if ColorSpace.Srgb.From(bgBaseColor):IsDark() then
         baseBgContrastColor, lightnessDirection = BASE_LIGHT_TEXT_COLOR, -1
+
     else
         baseBgContrastColor, lightnessDirection = BASE_DARK_TEXT_COLOR, 1
     end
 
     local baseFgColor = ApplyChroma(bgBaseColor, baseBgContrastColor, 1)
     local fgColors = GenPalette(baseFgColor, 3, .32 * lightnessDirection, .017)
-
-    print(ColorSpace.Stringify.Hex(bgColors[5]), ColorSpace.Stringify.Hex(bgHighlightColors[5]))
 
     return {
         BgPrimary = bgColors[1],

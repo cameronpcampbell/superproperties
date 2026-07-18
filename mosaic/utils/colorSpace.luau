@@ -26,6 +26,8 @@ local function linearToSrgb(channel: number): number
 	end
 end
 
+local DARK_LIGHTNESS_THRESHOLD = 0.5
+
 -- Srgb
 
 local Srgb = {
@@ -389,6 +391,75 @@ function Oklch.ToColor3(self: OklchClass): Color3
 	return self:ToSrgb():ToColor3()
 end
 
+-- Stringification
+
+function Srgb.ToHexString(self: SrgbClass): string
+	return string.format(
+		"#%02X%02X%02X",
+		math.round(self.red * 255),
+		math.round(self.green * 255),
+		math.round(self.blue * 255)
+	)
+end
+
+function LinearRgb.ToHexString(self: LinearRgbClass): string
+	return self:ToSrgb():ToHexString()
+end
+
+function Xyz.ToHexString(self: XyzClass): string
+	return self:ToSrgb():ToHexString()
+end
+
+function Oklab.ToHexString(self: OklabClass): string
+	return self:ToSrgb():ToHexString()
+end
+
+function Oklch.ToHexString(self: OklchClass): string
+	return self:ToSrgb():ToHexString()
+end
+
+-- Appearance
+
+function Oklab.IsDark(self: OklabClass): boolean
+	return self.lightness <= DARK_LIGHTNESS_THRESHOLD
+end
+
+function Oklab.IsLight(self: OklabClass): boolean
+	return not self:IsDark()
+end
+
+function Srgb.IsDark(self: SrgbClass): boolean
+	return self:ToOklab():IsDark()
+end
+
+function Srgb.IsLight(self: SrgbClass): boolean
+	return not self:IsDark()
+end
+
+function LinearRgb.IsDark(self: LinearRgbClass): boolean
+	return self:ToOklab():IsDark()
+end
+
+function LinearRgb.IsLight(self: LinearRgbClass): boolean
+	return not self:IsDark()
+end
+
+function Xyz.IsDark(self: XyzClass): boolean
+	return self:ToOklab():IsDark()
+end
+
+function Xyz.IsLight(self: XyzClass): boolean
+	return not self:IsDark()
+end
+
+function Oklch.IsDark(self: OklchClass): boolean
+	return self:ToOklab():IsDark()
+end
+
+function Oklch.IsLight(self: OklchClass): boolean
+	return not self:IsDark()
+end
+
 export type AnyColor =
     SrgbClass | LinearRgbClass | XyzClass | OklabClass | OklchClass | Color3
 export type AnyColorConstructor =
@@ -450,22 +521,4 @@ return {
 	Xyz = Xyz,
 	Oklab = Oklab,
 	Oklch = Oklch,
-
-	Stringify = {
-		Hex = function(color: AnyColor): string
-			local srgb = Srgb.From(color)
-			return string.format(
-				"#%02X%02X%02X",
-				math.round(srgb.red * 255),
-				math.round(srgb.green * 255),
-				math.round(srgb.blue * 255)
-			)
-		end,
-	},
-
-	Utils = {
-	    IsDark = function(color: AnyColor): boolean
-			return Oklab.From(color).lightness <= 0.5
-		end
-	}
 }
