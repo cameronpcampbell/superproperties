@@ -17,6 +17,7 @@ return {
     Vector2 = Vector2,
     Vector3 = Vector,
     vector = Vector,
+    CFrame = require(script.cframe),
     UDim = require(script.udim),
     UDim2 = require(script.udim2),
     Instance = require(script.instance),
