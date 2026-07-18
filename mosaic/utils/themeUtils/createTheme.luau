@@ -69,7 +69,7 @@ const CORNER_RADIUS_LG = 9
 local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
     local bgBaseColor = config.BgBaseColor
 
-    local bgColors = GenPalette(bgBaseColor, 5, .225, .017)
+    local bgColors = GenPalette(bgBaseColor, 6, .225, .017)
     local bgHighlightColors = GenLerpedPalette(bgColors, .5)
 
     local baseBgContrastColor, lightnessDirection
@@ -93,6 +93,7 @@ local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
         BgSecondaryHighlight = bgHighlightColors[2],
         BgTertiaryHighlight = bgHighlightColors[3],
         BgQuaternaryHighlight = bgHighlightColors[4],
+        BgQuinaryHighlight = bgHighlightColors[5],
 
         FgPrimary = fgColors[1],
         FgSecondary = fgColors[2],
