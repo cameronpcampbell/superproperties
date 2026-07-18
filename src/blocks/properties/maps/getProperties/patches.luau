@@ -37,6 +37,14 @@ local function CreateDeprecationPatch(replacement: string): PropertyPatch
     }
 end
 
+local function CreateHiddenPatch(): PropertyPatch
+    return {
+        Display = {
+            DeprecationMessage = "Hidden from the properties explorer."
+        }
+    }
+end
+
 local TextColorPatch = CreateDeprecationPatch("TextColor3")
 
 local Patches: Patches = {
@@ -54,32 +62,16 @@ local Patches: Patches = {
     },
     Data = {
         Instance = {
-            RobloxLocked = {
-                Display = {
-                    DeprecationMessage = "Hidden from the properties explorer."
-                }
-            }
+            RobloxLocked = CreateHiddenPatch()
         },
         Script = {
-            Source = {
-                Display = {
-                    DeprecationMessage = "Hidden from the properties explorer."
-                }
-            }
+            Source = CreateHiddenPatch()
         },
         LocalScript = {
-            Source = {
-                Display = {
-                    DeprecationMessage = "Hidden from the properties explorer."
-                }
-            }
+            Source = CreateHiddenPatch()
         },
         ModuleScript = {
-            Source = {
-                Display = {
-                    DeprecationMessage = "Hidden from the properties explorer."
-                }
-            }
+            Source = CreateHiddenPatch()
         },
         GuiObject = {
             BackgroundColor = CreateDeprecationPatch("BackgroundColor3"),
@@ -100,7 +92,10 @@ local Patches: Patches = {
     },
     Transform = {
         BasePart = {
-            ExtentsSize = CreateDeprecationPatch("Size")
+            ExtentsSize = CreateDeprecationPatch("Size"),
+            Orientation = CreateHiddenPatch(),
+            ExtentsCFrame = CreateHiddenPatch(),
+            Position = CreateHiddenPatch()
         },
         PVInstance = {
             Origin = {

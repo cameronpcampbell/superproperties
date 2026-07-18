@@ -1,12 +1,13 @@
 --!strict
 
 local CreateTextVariant = require(script.Parent.utils.createTextVariant)
+local NormalizeNumber = require(script.Parent.utils.normalizeNumber)
 local ParseVector = require(script.parser)
 
 type VectorValue = Vector3 | vector
 
 local function FormatComponent(value: number): string
-    return tostring(math.round(value * 100) / 100)
+    return tostring(NormalizeNumber(value))
 end
 
 local function FormatValue(value: VectorValue): string
