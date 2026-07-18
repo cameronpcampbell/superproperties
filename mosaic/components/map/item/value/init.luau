@@ -252,11 +252,6 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
                 FillDirection = Enum.FillDirection.Horizontal,
                 VerticalAlignment = Enum.VerticalAlignment.Center,
                 SortOrder = Enum.SortOrder.LayoutOrder
-            },
-
-            New(scope, "UIPadding") {
-                PaddingLeft = UDim.new(0, 6),
-                PaddingRight = UDim.new(0, 6)
             }
         }
     }, interactionProps))

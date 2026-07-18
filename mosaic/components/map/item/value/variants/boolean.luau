@@ -7,11 +7,15 @@ local New, Children, Value, Peek, OnEvent =
     Fusion.New, Fusion.Children, Fusion.Value, Fusion.peek, Fusion.OnEvent
 
 local Types = require(script.Parent.types)
+local CreateSidePadding = require(script.Parent.utils.createSidePadding)
 
 local Components = script.Parent.Parent.Parent.Parent.Parent
 local Checkbox = require(Components.checkbox)
 
-return function(scope: Fusion.Scope, props: Types.ValueVariantProps<boolean>)
+return function(
+    scope: Fusion.Scope,
+    props: Types.ValueVariantProps<boolean>
+): Fusion.Child
     local trySetValue = props.TrySetValue
     local checkedState = Value(scope, props.Value)
     local disabled = not props.Writable or trySetValue == nil
@@ -39,7 +43,7 @@ return function(scope: Fusion.Scope, props: Types.ValueVariantProps<boolean>)
 
         Name = "BooleanValue",
 
-        [Children] = {
+        [Children] = ({
             New(scope, "TextButton") {
                 Size = UDim2.fromScale(1, 1),
                 BackgroundTransparency = 1,
@@ -54,16 +58,28 @@ return function(scope: Fusion.Scope, props: Types.ValueVariantProps<boolean>)
                 Name = "HitArea"
             },
 
-            Checkbox(scope, {
-                Checked = checkedState,
-                Disabled = disabled,
-                OnChanged = trySetChecked,
-                Position = UDim2.fromScale(0, 0.5),
-                AnchorPoint = Vector2.new(0, 0.5),
-                ZIndex = 2
-            }),
+            New(scope, "Frame") {
+                Size = UDim2.fromScale(1, 1),
+                BackgroundTransparency = 1,
+                ZIndex = 2,
+
+                Name = "CheckboxContainer",
+
+                [Children] = ({
+                    Checkbox(scope, {
+                        Checked = checkedState,
+                        Disabled = disabled,
+                        OnChanged = trySetChecked,
+                        Position = UDim2.fromScale(0, 0.5),
+                        AnchorPoint = Vector2.new(0, 0.5),
+                        ZIndex = 2
+                    }),
+
+                    CreateSidePadding(scope)
+                } :: { Fusion.Child })
+            },
 
             New(scope, "UIFlexItem") {}
-        }
+        } :: { Fusion.Child })
     }
 end

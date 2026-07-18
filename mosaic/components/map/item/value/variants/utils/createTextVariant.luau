@@ -12,6 +12,7 @@ local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
 
 local Types = require(script.Parent.Parent.types)
+local CreateSidePadding = require(script.Parent.createSidePadding)
 
 local Components = script.Parent.Parent.Parent.Parent.Parent.Parent
 local Text = require(Components.text)
@@ -26,7 +27,10 @@ type TextVariantConfig<T> = {
 local function CreateTextVariant<T>(
     config: TextVariantConfig<T>
 ): Types.ValueVariantFn<T>
-    return function(scope: Fusion.Scope, props: Types.ValueVariantProps<T>)
+    return function(
+        scope: Fusion.Scope,
+        props: Types.ValueVariantProps<T>
+    ): Fusion.Child
         local value = props.Value
         local trySetValue = props.TrySetValue
         local displayedValue = config.Format(value)
@@ -35,11 +39,15 @@ local function CreateTextVariant<T>(
             if formatFocused ~= nil then formatFocused(value) else displayedValue
 
         if not props.Writable or trySetValue == nil then
-            return Text(scope, {
-                Text = displayedValue,
-                Variant = if props.Writable then "Primary" else "Secondary",
-                Size = UDim2.fromScale(1, 0),
-            })
+            return {
+                Text(scope, {
+                    Text = displayedValue,
+                    Variant = if props.Writable then "Primary" else "Secondary",
+                    Size = UDim2.fromScale(1, 0),
+                }),
+
+                CreateSidePadding(scope)
+            } :: { Fusion.Child }
         end
 
         local textState = Value<<string>>(scope, displayedValue)
@@ -117,7 +125,10 @@ local function CreateTextVariant<T>(
             }
         } :: TextBox
 
-        return textBox
+        return {
+            textBox,
+            CreateSidePadding(scope)
+        } :: { Fusion.Child }
     end
 end
 

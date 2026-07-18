@@ -20,6 +20,7 @@ local HighlightSupercorner = require(Components.highlightSupercorner)
 local Text = require(Components.text)
 
 local Types = require(script.Parent.types)
+local CreateSidePadding = require(script.Parent.utils.createSidePadding)
 local CreateTextVariant = require(script.Parent.utils.createTextVariant)
 local ParseColor = require(script.parser)
 
@@ -61,23 +62,31 @@ local function Color(scope: Fusion.Scope, color: Color3 | BrickColor)
     })
 end
 
-return function(scope: Fusion.Scope, props: Types.ValueVariantProps<Color3 | BrickColor>)
+return function(
+    scope: Fusion.Scope,
+    props: Types.ValueVariantProps<Color3 | BrickColor>
+): Fusion.Child
     local value = props.Value
-    local valueText: Fusion.Child
 
     if
         typeof(value) == "Color3" and
         props.Writable and
         props.TrySetValue ~= nil
     then
-        valueText = ColorTextVariant(scope, {
-            Value = value,
-            Writable = props.Writable,
-            TrySetValue = props.TrySetValue :: any,
-            OnFocusChanged = props.OnFocusChanged
-        })
-    else
-        valueText = Text(scope, {
+        return {
+            ColorTextVariant(scope, {
+                Value = value,
+                Writable = props.Writable,
+                TrySetValue = props.TrySetValue :: any,
+                OnFocusChanged = props.OnFocusChanged
+            }),
+
+            Color(scope, value)
+        } :: { Fusion.Child }
+    end
+
+    return {
+        Text(scope, {
             Text =
                 if typeof(value) == "Color3" then FormatColor(value) else value.Name,
             Variant = if props.Writable then "Primary" else "Secondary",
@@ -86,11 +95,9 @@ return function(scope: Fusion.Scope, props: Types.ValueVariantProps<Color3 | Bri
             [Children] = New(scope, "UIFlexItem") {
                 FlexMode = Enum.UIFlexMode.Shrink
             }
-        })
-    end
-
-    return {
-        valueText,
+        }),
         Color(scope, value),
-    }
+
+        CreateSidePadding(scope)
+    } :: { Fusion.Child }
 end

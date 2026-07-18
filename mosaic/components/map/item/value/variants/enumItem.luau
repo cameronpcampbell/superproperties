@@ -13,6 +13,7 @@ local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
 
 local Types = require(script.Parent.types)
+local CreateSidePadding = require(script.Parent.utils.createSidePadding)
 
 local Components = script.Parent.Parent.Parent.Parent.Parent
 local SelectMenu = require(Components.selectMenu)
@@ -31,16 +32,23 @@ local function IsPointInside(guiObject: GuiObject, point: Vector3): boolean
         and point.Y <= bottomRight.Y
 end
 
-return function(scope: Fusion.Scope, props: Types.ValueVariantProps<EnumItem>)
+return function(
+    scope: Fusion.Scope,
+    props: Types.ValueVariantProps<EnumItem>
+): Fusion.Child
     local value = props.Value
     local trySetValue = props.TrySetValue
 
     if not props.Writable or trySetValue == nil then
-        return Text(scope, {
-            Text = value.Name,
-            Variant = if props.Writable then "Primary" else "Secondary",
-            Size = UDim2.fromScale(1, 0),
-        })
+        return {
+            Text(scope, {
+                Text = value.Name,
+                Variant = if props.Writable then "Primary" else "Secondary",
+                Size = UDim2.fromScale(1, 0),
+            }),
+
+            CreateSidePadding(scope)
+        } :: { Fusion.Child }
     end
 
     local enumItems = value.EnumType:GetEnumItems()
@@ -165,7 +173,18 @@ return function(scope: Fusion.Scope, props: Types.ValueVariantProps<EnumItem>)
         Name = "EnumItemValue",
 
         [Children] = {
-            textBox,
+            New(scope, "Frame") {
+                Size = UDim2.fromScale(1, 1),
+                BackgroundTransparency = 1,
+
+                Name = "EnumItemInputContainer",
+
+                [Children] = ({
+                    textBox,
+                    CreateSidePadding(scope)
+                } :: { Fusion.Child })
+            },
+
             selectMenu,
 
             New(scope, "UIFlexItem") {}

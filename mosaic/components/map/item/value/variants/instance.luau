@@ -13,8 +13,12 @@ local Text = require(Components.text)
 local Icon = require(Components.icon)
 
 local Types = require(script.Parent.types)
+local CreateSidePadding = require(script.Parent.utils.createSidePadding)
 
-return function(scope: Fusion.Scope, props: Types.ValueVariantProps<Instance>)
+return function(
+    scope: Fusion.Scope,
+    props: Types.ValueVariantProps<Instance>
+): Fusion.Child
     local value = props.Value
 
     local classIcon = StudioService:GetClassIcon(value.ClassName)
@@ -37,5 +41,7 @@ return function(scope: Fusion.Scope, props: Types.ValueVariantProps<Instance>)
             ImageRectOffset = classIcon.ImageRectOffset,
             ImageRectSize = classIcon.ImageRectSize
         }),
-    }
+
+        CreateSidePadding(scope)
+    } :: { Fusion.Child }
 end
