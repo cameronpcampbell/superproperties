@@ -16,6 +16,8 @@ local Assets = require(script.Parent.Parent.Parent.Parent.Parent.assets)
 local Category = require(script.Parent.Parent.category)
 type CategoryState = Category.State
 
+local CommitAttribute = require(script.Parent.commitAttribute)
+
 type AttributesMapProps = {
     OmitRbxAttributes: boolean
 }
@@ -73,19 +75,37 @@ return function(
         attributeItemIndices[item.Key] = itemIdx
     end
 
-    local function refreshAttribute(attributeName: string)
+    local refreshAttribute: (attributeName: string) -> (boolean, any?)
+
+    local function makeAttributeWritable(item: Item, attributeName: string)
+        item.Writable = true
+        item.TrySetValue = function(value: any): (boolean, string?, any?)
+            if item.Value == value then return true, nil, item.Value end
+
+            local success, err = CommitAttribute(
+                instance,
+                attributeName,
+                value
+            )
+
+            local _, savedValue = refreshAttribute(attributeName)
+            return success, err, if success then savedValue else nil
+        end
+    end
+
+    refreshAttribute = function(attributeName: string): (boolean, any?)
         if ShouldOmitAttribute(
             attributeName,
             props.OmitRbxAttributes
         ) then
-            return
+            return false, nil
         end
 
         local itemIdx = attributeItemIndices[attributeName]
         local value = instance:GetAttribute(attributeName)
 
         if value == nil then
-            if not itemIdx then return end
+            if not itemIdx then return false, nil end
 
             table.remove(attributeItems, itemIdx)
             attributeItemIndices[attributeName] = nil
@@ -96,18 +116,25 @@ return function(
             end
         elseif itemIdx then
             local item = attributeItems[itemIdx]
-            if item.Value == value then return end
+            if item.Value == value then return false, value end
 
             item.Value = value
         else
-            table.insert(attributeItems, {
+            local item = {
                 Key = attributeName,
                 Value = value
-            })
+            }
+            makeAttributeWritable(item, attributeName)
+            table.insert(attributeItems, item)
             attributeItemIndices[attributeName] = #attributeItems
         end
 
         attributeItemsState:set(attributeItems)
+        return true, value
+    end
+
+    for _, item in attributeItems do
+        makeAttributeWritable(item, item.Key)
     end
 
     table.insert(
