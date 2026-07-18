@@ -11,8 +11,8 @@ local New, Children, Value, Peek, OnEvent, Tween =
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CombineProps, ChildrenTransform =
-    FusionUtils.Component, FusionUtils.CombineProps, FusionUtils.ChildrenTransform
+local Component, ChildrenTransform =
+    FusionUtils.Component, FusionUtils.ChildrenTransform
 local ComputeTransforms = FusionUtils.ComputeTransforms
 local ComputeUDim2, ComputeUDim = ComputeTransforms.UDim2, ComputeTransforms.UDim
 
@@ -24,7 +24,7 @@ local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
 local Components = script.Parent
-local HighlightGradient = require(Components.highlightGradient)
+local HighlightSupercorner = require(Components.highlightSupercorner)
 local Text = require(Components.text)
 
 type ButtonProps = {
@@ -75,7 +75,7 @@ return Component<<ButtonProps>>(function(scope, props)
     local cornerRadius = theme:GetCornerRadius(scope, "Md")
     local height = theme:GetHeight(scope, "Lg")
 
-    return HighlightGradient(scope, CombineProps({
+    return HighlightSupercorner(scope, {
         Button = true,
         GradientTransparency = 0.78,
         BackgroundColor3 = Tween<<Color3>>(
@@ -92,7 +92,7 @@ return Component<<ButtonProps>>(function(scope, props)
         [OnEvent "MouseEnter"] = function() isHoverState:set(true) end,
         [OnEvent "MouseLeave"] = function() isHoverState:set(false) end,
 
-        [OnEvent "MouseButton1Down"] = function() print(":)"); isFocusState:set(true) end,
+        [OnEvent "MouseButton1Down"] = function() isFocusState:set(true) end,
         [OnEvent "MouseButton1Up"] = function() isFocusState:set(false) end,
 
         RootChildren = New(scope, "UIFlexItem") {},
@@ -109,5 +109,5 @@ return Component<<ButtonProps>>(function(scope, props)
         },
 
         Name = "Button"
-    }, props))
+    }, props)
 end)

@@ -12,8 +12,8 @@ local New, Children, Value, Peek, Computed, OnEvent, Tween =
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CombineProps, CoerceToValue =
-    FusionUtils.Component, FusionUtils.CombineProps, FusionUtils.CoerceToValue
+local Component, CoerceToValue =
+    FusionUtils.Component, FusionUtils.CoerceToValue
 local ComputeTransforms = FusionUtils.ComputeTransforms
 local ComputeUDim2FromOffset = ComputeTransforms.UDim2FromOffset
 
@@ -25,7 +25,7 @@ local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
 local Components = script.Parent
-local HighlightGradient = require(Components.highlightGradient)
+local HighlightSupercorner = require(Components.highlightSupercorner)
 
 local Assets = require(script.Parent.Parent.assets)
 
@@ -87,7 +87,7 @@ return Component<<CheckboxProps>>(function(scope, props)
         return not use<<boolean>>(disabled)
     end)
 
-    return HighlightGradient(scope, CombineProps({
+    return HighlightSupercorner(scope, {
         Button = true,
         Enabled = gradientEnabled,
         GradientTransparency = 0.78,
@@ -165,5 +165,5 @@ return Component<<CheckboxProps>>(function(scope, props)
         },
 
         Name = "Button"
-    }, props))
+    }, props)
 end)

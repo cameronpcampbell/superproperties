@@ -4,8 +4,9 @@
 local Packages = script.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
-local New, Children, Out =
-    Fusion.New, Fusion.Children, Fusion.Out
+local New, Children, Out, Computed =
+    Fusion.New, Fusion.Children, Fusion.Out,
+    Fusion.Computed
 
 local Utils = script.Parent.Parent.utils
 
@@ -28,22 +29,32 @@ export type ScrollableProps = {
     OutAbsolutePosition: Fusion.Value<Vector2>?,
     OutAbsoluteSize: Fusion.Value<Vector2>?,
     CanvasSize: Fusion.UsedAs<UDim2>?,
-    AutomaticCanvasSize: Fusion.UsedAs<Enum.AutomaticSize>?
+    AutomaticCanvasSize: Fusion.UsedAs<Enum.AutomaticSize>?,
+    Padding: Fusion.UsedAs<UDim>?,
+    RootChildren: Fusion.Child?,
 }
 
 return Component<<ScrollableProps>>(function(scope, props)
     local props, variant = TableExtract(props, "Variant", "Tertiary")
     local props, children = TableExtract(props, Children)
+    local props, rootChildren = TableExtract(props, "RootChildren")
     local props, outAbsolutePosition = TableExtract(props, "OutAbsolutePosition")
     local props, outAbsoluteSize = TableExtract(props, "OutAbsoluteSize")
     local props, outCanvasPosition = TableExtract(props, "OutCanvasPosition")
     local props, canvasSize = TableExtract(props, "CanvasSize", UDim2.fromScale(0, 0))
     local props, automaticCanvasSize =
         TableExtract(props, "AutomaticCanvasSize", Enum.AutomaticSize.Y)
+    local props, padding = TableExtract(props, "Padding", UDim.new(0, 4))å
 
     local theme = GetThemeForScope(scope)
     local scrollBarColor = theme:GetBgHighlight(scope, GetNextVariant(scope, variant))
     local scrollBarUnderlayColor = theme:GetBgHighlight(scope, variant)
+
+    local copmputePadding = Computed(scope, function(use, scope)
+        local usedPadding = use<<UDim>>(padding)
+
+        return UDim.new(usedPadding.Scale, 4 + usedPadding.Offset)
+    end)
 
     return New(scope, "Frame") (CombineProps({
         Size = UDim2.fromScale(1, 1),
@@ -52,6 +63,8 @@ return Component<<ScrollableProps>>(function(scope, props)
         Name = "Scrollable",
 
         [Children] = {
+            rootChildren,
+
             New(scope, "ScrollingFrame") {
                 Size = UDim2.fromScale(1, 1),
                 CanvasSize = canvasSize,
@@ -73,7 +86,7 @@ return Component<<ScrollableProps>>(function(scope, props)
                     children,
 
                     New (scope, "UIPadding") {
-                        PaddingRight = UDim.new(0, 8),
+                        PaddingRight = copmputePadding,
                     },
                 }
             },

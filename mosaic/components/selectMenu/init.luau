@@ -5,16 +5,17 @@ local Packages = script.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local New, Children, Value, Peek =
-    Fusion.New, Fusion.Children, Fusion.Value, Fusion.peek
+local New, Children, Value, Peek, Computed =
+    Fusion.New, Fusion.Children, Fusion.Value,
+    Fusion.peek, Fusion.Computed
 
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CombineProps =
-    FusionUtils.Component, FusionUtils.CombineProps
+local Component, CombineProps, CoerceToValue =
+    FusionUtils.Component, FusionUtils.CombineProps, FusionUtils.CoerceToValue
 local ComputeTransforms = FusionUtils.ComputeTransforms
-local ComputeUDim2, ComputeUDim = ComputeTransforms.UDim2, ComputeTransforms.UDim
+local ComputeUDim2 = ComputeTransforms.UDim2
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope, GetNextVariant, CalcColorModifier =
@@ -31,16 +32,26 @@ local SelectMenuItem = require(script.item)
 
 type SelectMenuProps = {
 	Variant: ThemeUtils.BgVariantSubLayer?,
-	Width: UDim?
+	Width: Fusion.UsedAs<UDim>?,
+	MaxHeight: Fusion.UsedAs<number>?,
+	Items: Fusion.UsedAs<{ string }>,
+	SelectedIdx: Fusion.UsedAs<number?>?,
+	DefaultIdx: Fusion.UsedAs<number>?
 }
 
 return Component<<SelectMenuProps>>(function(scope, props)
     local props, variant = TableExtract(props, "Variant", "Tertiary")
     local props, width = TableExtract(props, "Width", UDim.new(1, 0))
+    local props, maxHeight = TableExtract(props, "MaxHeight", math.huge)
+    local props, items = TableExtract(props, "Items")
+    local props, selectedIdx = TableExtract(props, "SelectedIdx")
+    local props, defaultIdx = TableExtract(props, "DefaultIdx")
 
     local isHoverState, isFocusState = Value(scope, false), Value(scope, false)
     local themeColorModifier =
         CalcColorModifier(scope, isHoverState, isFocusState, "Stroke")
+
+    local selectedIdxValue = CoerceToValue<<number?>>(scope, selectedIdx)
 
     local theme = GetThemeForScope(scope)
     local bgColor = theme:GetBg(scope, variant)
@@ -52,7 +63,8 @@ return Component<<SelectMenuProps>>(function(scope, props)
         BackgroundColor3 = bgColor,
         StrokeColor = strokeColor,
         StrokeThickness = 1,
-        Size = ComputeUDim2(scope, width, ComputeUDim(scope, 0, 250)),
+        Size = ComputeUDim2(scope, width, UDim.new(0, 0)),
+        AutomaticSize = Enum.AutomaticSize.Y,
         CornerRadius = Peek<<number>>(cornerRadius),
         CornerSmoothing = 1,
 
@@ -60,14 +72,34 @@ return Component<<SelectMenuProps>>(function(scope, props)
 
         RootChildren = {
             New(scope, "UIFlexItem") {},
+
+            New(scope, "UISizeConstraint") {
+                MaxSize = Computed(scope, function(use: Fusion.Use, scope)
+                    return Vector2.new(math.huge, use<<number>>(maxHeight))
+                end)
+            },
         },
 
         [Children] = {
             Scrollable(scope, {
                 Variant = GetNextVariant(scope, variant),
+                Padding = UDim.new(0, 3),
 
                 [Children] = {
+                    Fusion.ForPairs(scope, items, function(use, scope, key, value)
+                        return key, SelectMenuItem(scope, {
+                            Text = value,
+                            SelectedIdxValue = selectedIdxValue,
+                            DefaultIdx = defaultIdx,
+                            Idx = key
+                        })
+                    end),
 
+                    New(scope, "UIListLayout") {
+                        Padding = UDim.new(0, 1),
+                        FillDirection = Enum.FillDirection.Vertical,
+                        SortOrder = Enum.SortOrder.LayoutOrder
+                    },
                 }
             }),
 
@@ -76,7 +108,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
                 PaddingRight = UDim.new(0, 4),
                 PaddingTop = UDim.new(0, 4),
                 PaddingBottom = UDim.new(0, 4),
-            }
+            },
         }
     }, props))
 end)

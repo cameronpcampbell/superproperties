@@ -27,6 +27,7 @@ local THEME_TOKEN_KEYS: { [number]: keyof<Types.ThemeSource> } = {
     "BgSecondaryHighlight",
     "BgTertiaryHighlight",
     "BgQuaternaryHighlight",
+    "BgQuinaryHighlight",
 
     "FgPrimary",
     "FgSecondary",

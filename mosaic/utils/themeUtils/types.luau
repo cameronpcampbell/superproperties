@@ -85,6 +85,7 @@ export type ThemeSource = {
     BgSecondaryHighlight: Color3,
     BgTertiaryHighlight: Color3,
     BgQuaternaryHighlight: Color3,
+    BgQuinaryHighlight: Color3,
 
     FgPrimary: Color3,
     FgSecondary: Color3,

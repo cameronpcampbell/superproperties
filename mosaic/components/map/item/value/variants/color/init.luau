@@ -16,7 +16,7 @@ local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
 
 local Components = script.Parent.Parent.Parent.Parent.Parent
-local HighlightGradient = require(Components.highlightGradient)
+local HighlightSupercorner = require(Components.highlightSupercorner)
 local Text = require(Components.text)
 
 local Types = require(script.Parent.types)
@@ -48,7 +48,7 @@ local function Color(scope: Fusion.Scope, color: Color3 | BrickColor)
     local height = theme:GetHeight(scope, "Sm")
     local cornerRadius = theme:GetCornerRadius(scope, "Sm")
 
-    return HighlightGradient(scope, {
+    return HighlightSupercorner(scope, {
         GradientTransparency = 0.78,
         BackgroundColor3 = color :: Color3,
         StrokeThickness = 1,

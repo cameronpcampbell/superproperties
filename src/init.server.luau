@@ -80,7 +80,20 @@ local Widget = Scope:Widget {
                 }),]]
 
                 Scope:SelectMenu {
-
+                    Items = {
+                        "Hello",
+                        "World",
+                        "Foo",
+                        "Bar",
+                        "Baz",
+                        "Lol",
+                        "Hi",
+                        "Bye",
+                        "Apple",
+                        "Pear",
+                        "Kiwi"
+                    },
+                    MaxHeight = 150
                 },
 
                 Scope:New "UIPadding" {
