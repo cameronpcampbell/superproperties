@@ -3,9 +3,9 @@
 local Packages =
     script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.packages
 local Fusion = require(Packages.fusion)
-local New, Children, Value, Peek, Out, OnEvent =
+local New, Children, Value, Peek, Out, OnEvent, Computed =
     Fusion.New, Fusion.Children, Fusion.Value, Fusion.peek,
-    Fusion.Out, Fusion.OnEvent
+    Fusion.Out, Fusion.OnEvent, Fusion.Computed
 
 local Utils = script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.utils
 local ThemeUtils = require(Utils.themeUtils)
@@ -43,6 +43,14 @@ local function CreateTextVariant<T>(
         end
 
         local textState = Value<<string>>(scope, displayedValue)
+        local isFocusState = Value(scope, false)
+        local textTruncate = Computed(scope, function(use)
+            return
+                if use<<boolean>>(isFocusState) then
+                    Enum.TextTruncate.None
+                else
+                    Enum.TextTruncate.AtEnd
+        end)
         local theme = GetThemeForScope(scope)
         local textColor = theme:GetFg(scope, "Primary")
         local font = theme:GetFont(scope, "Main", Enum.FontWeight.Regular)
@@ -58,11 +66,12 @@ local function CreateTextVariant<T>(
             TextSize = fontSize,
             ClearTextOnFocus = false,
             TextXAlignment = Enum.TextXAlignment.Left,
-            TextTruncate = Enum.TextTruncate.AtEnd,
+            TextTruncate = textTruncate,
 
             Name = config.InputName,
 
             [OnEvent "Focused"] = function()
+                isFocusState:set(true)
                 textState:set(focusedValue)
                 textBox.CursorPosition = #focusedValue + 1
                 textBox.SelectionStart = 1
@@ -71,6 +80,7 @@ local function CreateTextVariant<T>(
             end,
 
             [OnEvent "FocusLost"] = function()
+                isFocusState:set(false)
                 if props.OnFocusChanged then props.OnFocusChanged(false) end
 
                 local nextText = Peek<<string>>(textState)

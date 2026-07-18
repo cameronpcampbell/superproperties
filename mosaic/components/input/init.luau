@@ -33,6 +33,7 @@ type InputProps = {
 	Variant: ThemeUtils.BgVariantLayer?,
 	Text: Fusion.UsedAs<string?>?,
 	PlaceholderText: Fusion.UsedAs<string>?,
+	TextTruncate: Fusion.UsedAs<Enum.TextTruncate>?,
 	Width: UDim?,
 	LeftChildren: Fusion.Child?,
 	RightChildren: Fusion.Child?,
@@ -42,6 +43,8 @@ return Component<<InputProps>>(function(scope, props)
     local props, variant = TableExtract(props, "Variant", "Tertiary")
     local props, text = TableExtract(props, "Text", "")
     local props, placeholderText = TableExtract(props, "PlaceholderText", "Type here...")
+    local props, textTruncate =
+        TableExtract(props, "TextTruncate", Enum.TextTruncate.AtEnd)
     local props, width = TableExtract(props, "Width", UDim.new(1, 0))
     local props, leftChildren = TableExtract(props, "LeftChildren")
     local props, rightChildren = TableExtract(props, "RightChildren")
@@ -53,6 +56,13 @@ return Component<<InputProps>>(function(scope, props)
     local computeVisualText = Computed(scope, function(use, scope)
         local usedText = use<<string?>>(text)
         return if usedText == nil then "" else usedText
+    end)
+    local computeTextTruncate = Computed(scope, function(use)
+        return
+            if use<<boolean>>(isFocusState) then
+                Enum.TextTruncate.None
+            else
+                use<<Enum.TextTruncate>>(textTruncate)
     end)
 
     local textValue = if IsValue(text) then
@@ -130,7 +140,7 @@ return Component<<InputProps>>(function(scope, props)
                 FontFace = font,
                 ClearTextOnFocus = false,
                 TextXAlignment = Enum.TextXAlignment.Left,
-                TextTruncate = Enum.TextTruncate.AtEnd,
+                TextTruncate = computeTextTruncate,
 
                 [OnEvent "Focused"] = function() isFocusState:set(true) end,
                 [OnEvent "FocusLost"] = function() isFocusState:set(false) end,
