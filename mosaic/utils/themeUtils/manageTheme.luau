@@ -36,6 +36,10 @@ local THEME_TOKEN_KEYS: { [number]: keyof<Types.ThemeSource> } = {
     "AccentSecondary",
     "AccentDestructive",
 
+    "AccentFgPrimary",
+    "AccentFgSecondary",
+    "AccentFgTertiary",
+
     "HeightSm",
     "HeightMd",
     "HeightLg",
@@ -69,6 +73,7 @@ local function CreateThemeState(
         GetBgHighlight = ThemeHelpers.GetBgHighlight,
         GetFg = ThemeHelpers.GetFg,
         GetAccent = ThemeHelpers.GetAccent,
+        GetAccentFg = ThemeHelpers.GetAccentFg,
         GetHeight = ThemeHelpers.GetHeight,
         GetCornerRadius = ThemeHelpers.GetCornerRadius,
         GetFont = ThemeHelpers.GetFont,

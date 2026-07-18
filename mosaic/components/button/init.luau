@@ -38,19 +38,25 @@ local function TransformChild(scope: Fusion.Scope, child: unknown): Fusion.Child
     if childTypeof ~= "string" then
         return if childTypeof == "Instance" then child :: Fusion.Child else nil
 
-    elseif string.match(child :: string, "^rbxassetid://%d+$") then
-        local theme = GetThemeForScope(scope)
+    end
+
+    local theme = GetThemeForScope(scope)
+    local accentFgColor = theme:GetAccentFg(scope, "Primary")
+
+    if string.match(child :: string, "^rbxassetid://%d+$") then
 
         return New (scope, "ImageLabel") {
             Size = UDim2.fromOffset(9, 9),
             BackgroundTransparency = 1,
-            ImageColor3 = theme:GetFg(scope, "Primary"),
+            ImageColor3 = accentFgColor,
             Image = child
         }
 
     else
         return Text (scope, {
             Text = child :: string,
+            TextColor3 = accentFgColor,
+            UseAccentFg = true
         })
 
     end

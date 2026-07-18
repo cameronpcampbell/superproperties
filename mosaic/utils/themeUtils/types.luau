@@ -93,6 +93,10 @@ export type ThemeSource = {
     AccentSecondary: Color3,
     AccentDestructive: Color3,
 
+    AccentFgPrimary: Color3,
+    AccentFgSecondary: Color3,
+    AccentFgTertiary: Color3,
+
     HeightSm: number,
     HeightMd: number,
     HeightLg: number,
@@ -133,6 +137,10 @@ export type Theme = {
     AccentPrimary: Fusion.UsedAs<Color3>,
     AccentSecondary: Fusion.UsedAs<Color3>,
     AccentDestructive: Fusion.UsedAs<Color3>,
+
+    AccentFgPrimary: Fusion.UsedAs<Color3>,
+    AccentFgSecondary: Fusion.UsedAs<Color3>,
+    AccentFgTertiary: Fusion.UsedAs<Color3>,
 
     HeightSm: Fusion.UsedAs<number>,
     HeightMd: Fusion.UsedAs<number>,
@@ -181,6 +189,12 @@ export type Theme = {
         scope: Fusion.Scope,
         variant: Fusion.UsedAs<AccentVariant>,
         modifier: Fusion.UsedAs<ThemeColorModifier?>
+    ) -> Fusion.UsedAs<Color3>,
+
+    GetAccentFg: (
+        theme: Theme,
+        scope: Fusion.Scope,
+        variant: Fusion.UsedAs<FgVariant>
     ) -> Fusion.UsedAs<Color3>,
 
     GetHeight: (

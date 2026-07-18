@@ -78,7 +78,8 @@ return Component<<CheckboxProps>>(function(scope, props)
 
     local theme = GetThemeForScope(scope)
     local accentColor = theme:GetAccent(scope, "Primary", themeColorModifier)
-    local fgColor = theme:GetFg(scope, "Primary", themeColorModifier)
+    local accentFgColor = theme:GetAccentFg(scope, "Primary")
+    local strokeColor = theme:GetFg(scope, "Primary")
     local height = theme:GetHeight(scope, "Sm")
     local cornerRadius = theme:GetCornerRadius(scope, "Sm")
 
@@ -141,7 +142,7 @@ return Component<<CheckboxProps>>(function(scope, props)
                 StrokeThickness = 1,
                 BackgroundTransparency = 1,
                 StrokeColor = Tween<<Color3>>(
-                    scope, fgColor,
+                    scope, strokeColor,
                     TweenInfo.new(
                         .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
                     )
@@ -156,7 +157,7 @@ return Component<<CheckboxProps>>(function(scope, props)
         [Children] = {
             New(scope, "ImageLabel") {
                 Image = Assets.CheckboxTrue,
-                ImageColor3 = fgColor,
+                ImageColor3 = accentFgColor,
                 Size = UDim2.fromScale(1, 1),
                 BackgroundTransparency = 1,
                 ImageTransparency = checkedTransparency

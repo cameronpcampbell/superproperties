@@ -1,5 +1,7 @@
 --!strict
 
+local Contrast = require(script.contrast)
+
 const COLOR_SPACE_KIND_PREFIX = "ColorSpace:"
 const COLOR_SPACE_KIND_PREFIX_LEN = #COLOR_SPACE_KIND_PREFIX
 
@@ -464,6 +466,7 @@ export type AnyColor =
     SrgbClass | LinearRgbClass | XyzClass | OklabClass | OklchClass | Color3
 export type AnyColorConstructor =
     typeof(Srgb) | typeof(LinearRgb) | typeof(Xyz) | typeof(Oklab) | typeof(Oklch) | "Color3"
+export type ContrastResult = Contrast.Result
 
 local function from(color: AnyColor, targetSpace: AnyColorConstructor)
 	local colorName: string =
@@ -515,10 +518,66 @@ function Oklch.From(color: AnyColor): OklchClass
 	return from(color, Oklch) :: OklchClass
 end
 
+local function relativeLuminance(color: AnyColor): number
+	local linearColor = LinearRgb.From(color)
+
+	return Contrast.RelativeLuminance(
+		linearColor.red,
+		linearColor.green,
+		linearColor.blue
+	)
+end
+
+local function checkContrast(
+	first: AnyColor,
+	second: AnyColor
+): Contrast.Result
+	return Contrast.Check(
+		relativeLuminance(first),
+		relativeLuminance(second)
+	)
+end
+
+function Srgb.CheckContrast(
+	self: SrgbClass,
+	other: AnyColor
+): Contrast.Result
+	return checkContrast(self, other)
+end
+
+function LinearRgb.CheckContrast(
+	self: LinearRgbClass,
+	other: AnyColor
+): Contrast.Result
+	return checkContrast(self, other)
+end
+
+function Xyz.CheckContrast(
+	self: XyzClass,
+	other: AnyColor
+): Contrast.Result
+	return checkContrast(self, other)
+end
+
+function Oklab.CheckContrast(
+	self: OklabClass,
+	other: AnyColor
+): Contrast.Result
+	return checkContrast(self, other)
+end
+
+function Oklch.CheckContrast(
+	self: OklchClass,
+	other: AnyColor
+): Contrast.Result
+	return checkContrast(self, other)
+end
+
 return {
 	Srgb = Srgb,
 	LinearRgb = LinearRgb,
 	Xyz = Xyz,
 	Oklab = Oklab,
 	Oklch = Oklch,
+	Contrast = Contrast,
 }

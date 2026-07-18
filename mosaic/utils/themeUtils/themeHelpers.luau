@@ -128,6 +128,22 @@ local function GetAccent(
     )
 end
 
+local function GetAccentFg(
+    theme: Types.Theme,
+    scope: Fusion.Scope,
+    variant: Fusion.UsedAs<Types.FgVariant>
+): Fusion.UsedAs<Color3>
+    local computeName = Computed(scope, function(use, scope)
+        local usedVariant = use<<Types.FgVariant>>(variant)
+
+        return `AccentFg{usedVariant}`
+    end)
+
+    return ComputeWithDefault(
+        theme, scope, computeName, theme.AccentFgPrimary
+    )
+end
+
 local function GetHeight(
     theme: Types.Theme,
     scope: Fusion.Scope,
@@ -208,7 +224,7 @@ local function HighlightGradient(
     transparency: Fusion.UsedAs<number>
 )
     local bgColor = theme:GetBg(scope, "Primary")
-    local fgColor = theme:GetFg(scope, "Primary")
+    local fgColor = theme:GetAccentFg(scope, "Primary")
 
     return New(scope, "UIGradient") {
         Color = Computed(scope, function(use, scope)
@@ -247,6 +263,7 @@ return {
     GetBgHighlight = GetBgHighlight,
     GetFg = GetFg,
     GetAccent = GetAccent,
+    GetAccentFg = GetAccentFg,
     GetHeight = GetHeight,
     GetCornerRadius = GetCornerRadius,
     GetFont = GetFont,
