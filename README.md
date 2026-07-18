@@ -16,6 +16,7 @@ A custom properties explorer for roblox.
 - [ ] Implement `Instance` property values.
 - [ ] Implement `PhysicalProperties` property values.
 - [ ] Implement multi-instance select.
+- [ ] Implement the ability to write attributes & tags.
 
 ### Bonus Features
 - [ ] Tabs to filter between the selected instances.
