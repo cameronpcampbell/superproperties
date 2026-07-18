@@ -58,6 +58,7 @@ export type MapLayout = {
     RootItems: Fusion.UsedAs<{ ItemLayout }>,
     RootRows: Fusion.UsedAs<RootRowDescriptors>,
     FocusedRootRange: Fusion.UsedAs<Vector2>,
+    LastRowFocused: Fusion.UsedAs<boolean>,
     AnimatedExpandedHeight: Fusion.UsedAs<number>,
     Metadata: Fusion.UsedAs<RowMetadata>,
     CornerRowCount: Fusion.UsedAs<number>,
@@ -543,6 +544,22 @@ local function CreateMapLayout(
         true
     )
 
+    local lastRowFocused = Computed(
+        mapLayoutScope,
+        function(use: Fusion.Use): boolean
+            local usedMetadata = use<<RowMetadata>>(metadata)
+            local lastRowIdx = usedMetadata.RowCount
+
+            for itemLayout, rowIdx in usedMetadata.RowIndices do
+                if rowIdx == lastRowIdx then
+                    return use<<boolean>>(itemLayout.ValueFocusState)
+                end
+            end
+
+            return false
+        end
+    )
+
     local rowCount = Computed(mapLayoutScope, function(use: Fusion.Use): number
         return use<<RowMetadata>>(targetMetadata).RowCount
     end)
@@ -557,6 +574,7 @@ local function CreateMapLayout(
         RootItems = rootItems,
         RootRows = rootRows,
         FocusedRootRange = focusedRootRange,
+        LastRowFocused = lastRowFocused,
         AnimatedExpandedHeight = animatedExpandedHeight,
         Metadata = metadata,
         CornerRowCount = cornerRowCount,

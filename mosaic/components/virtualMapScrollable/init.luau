@@ -44,6 +44,7 @@ type VirtualMapScrollableProps = {
 
 local DefaultPadding = 4
 local DefaultOverdraw = 50
+local BottomPadding = 2
 
 local function GetLayoutOrder(mapProps: MapProps): number
     -- Component props also carry Roblox instance properties, but MapProps only
@@ -104,6 +105,8 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
         -- mounted Map scopes. An off-screen map can therefore keep animating
         -- its height and continue positioning every map below it.
         local previousBottom: Fusion.UsedAs<number>? = nil
+        local lastRowFocused: Fusion.UsedAs<boolean>? = nil
+        local lastMapCollapsed: Fusion.UsedAs<boolean>? = nil
 
         for idx, mapProps in usedMapsProps do
             local items = mapProps.Items
@@ -276,18 +279,39 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
             end)
 
             previousBottom = mapBottom
+            lastRowFocused = layout.LastRowFocused
+            lastMapCollapsed = collapsedState
         end
 
         local finalBottom = previousBottom
+        local finalLastRowFocused = lastRowFocused
+        local finalMapCollapsed = lastMapCollapsed
 
-        if finalBottom then
+        if finalBottom and finalLastRowFocused and finalMapCollapsed then
             -- The last animated bottom drives the canvas even if that map is
             -- unmounted, so the scrollbar and collapse tween remain smooth.
+            local finalRowFocused = Computed(
+                scope,
+                function(use: Fusion.Use): boolean
+                    return
+                        not use<<boolean>>(finalMapCollapsed)
+                        and use<<boolean>>(finalLastRowFocused)
+                end
+            )
+
             local function publishCanvasHeight()
-                canvasHeightState:set(Peek<<number>>(finalBottom))
+                local bottomPadding =
+                    if Peek<<boolean>>(finalRowFocused)
+                    then BottomPadding
+                    else 0
+
+                canvasHeightState:set(
+                    Peek<<number>>(finalBottom) + bottomPadding
+                )
             end
 
             Observer(scope, finalBottom):onChange(publishCanvasHeight)
+            Observer(scope, finalRowFocused):onChange(publishCanvasHeight)
             publishCanvasHeight()
         else
             canvasHeightState:set(0)
