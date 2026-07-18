@@ -150,10 +150,13 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
             CullWhenHidden = true,
             TransitionTweenInfo = FocusRingTweenInfo,
             BaseSize = UDim2.new(1, 2, 1, 2),
-            TopLeftRadius = Peek<<number>>(topLeftRadius),
-            TopRightRadius = Peek<<number>>(topRightRadius),
-            BottomLeftRadius = Peek<<number>>(bottomLeftRadius),
-            BottomRightRadius = Peek<<number>>(bottomRightRadius)
+            TopLeftRadius = topLeftRadius,
+            TopRightRadius = topRightRadius,
+            BottomLeftRadius = bottomLeftRadius,
+            BottomRightRadius = bottomRightRadius,
+            MaxCornerRadius =
+                if props.Redrawable then innerCornerRadius else nil,
+            Redrawable = props.Redrawable
         })
 
         local pendingFocusState = false
