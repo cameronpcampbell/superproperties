@@ -70,17 +70,21 @@ local _, _, BASE_BG_TINT_HUE =
 
 local function GenFgPalette(surfaceColor: Color3): { Color3 }
     local surface = ColorSpace.Srgb.From(surfaceColor)
+
     local lightContrast = surface:CheckContrast(
         ColorSpace.Srgb.From(BASE_LIGHT_TEXT_COLOR)
     )
+
     local darkContrast = surface:CheckContrast(
         ColorSpace.Srgb.From(BASE_DARK_TEXT_COLOR)
     )
 
     local useLightCandidate = lightContrast.ratio >= darkContrast.ratio
+
     local baseFgColor =
         if useLightCandidate then BASE_LIGHT_TEXT_COLOR
         else BASE_DARK_TEXT_COLOR
+
     local lightnessDirection = if useLightCandidate then -1 else 1
 
     return GenPalette(
@@ -97,6 +101,7 @@ const CORNER_RADIUS_LG = 9
 
 local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
     local bgBaseColor = config.BgBaseColor
+    local accentPrimary = config.AccentPrimary
     local isDarkTheme = ColorSpace.Srgb.From(bgBaseColor):IsDark()
 
     local bgLightnessDirection = if isDarkTheme then 1 else -1
@@ -111,7 +116,7 @@ local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
     local bgHighlightColors = GenLerpedPalette(bgColors, .5)
 
     local fgColors = GenFgPalette(bgBaseColor)
-    local accentFgColors = GenFgPalette(config.AccentPrimary)
+    local accentFgColors = GenFgPalette(accentPrimary)
 
     return {
         BgPrimary = bgColors[1],
@@ -130,7 +135,7 @@ local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
         FgSecondary = fgColors[2],
         FgTertiary = fgColors[3],
 
-        AccentPrimary = config.AccentPrimary,
+        AccentPrimary = accentPrimary,
         AccentSecondary = config.AccentSecondary,
         AccentDestructive = config.AccentDestructive,
 
