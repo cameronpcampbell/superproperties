@@ -24,6 +24,12 @@ type AttributesMapProps = {
 
 local RbxAttributePrefix = "RBX_"
 
+local function GetAttributeName(item: Item): string
+    local attributeName = item.Key
+    assert(attributeName ~= nil, "Attribute map items must have keys.")
+    return attributeName
+end
+
 local function ShouldOmitAttribute(
     attributeName: string,
     omitRbxAttributes: boolean
@@ -72,7 +78,7 @@ return function(
     local attributeItemsState = Value(scope, attributeItems)
 
     for itemIdx, item in attributeItems do
-        attributeItemIndices[item.Key] = itemIdx
+        attributeItemIndices[GetAttributeName(item)] = itemIdx
     end
 
     local refreshAttribute: (attributeName: string) -> (boolean, any?)
@@ -111,8 +117,8 @@ return function(
             attributeItemIndices[attributeName] = nil
 
             for shiftedIdx = itemIdx, #attributeItems do
-                attributeItemIndices[attributeItems[shiftedIdx].Key] =
-                    shiftedIdx
+                local shiftedItem = attributeItems[shiftedIdx]
+                attributeItemIndices[GetAttributeName(shiftedItem)] = shiftedIdx
             end
         elseif itemIdx then
             local item = attributeItems[itemIdx]
@@ -134,7 +140,7 @@ return function(
     end
 
     for _, item in attributeItems do
-        makeAttributeWritable(item, item.Key)
+        makeAttributeWritable(item, GetAttributeName(item))
     end
 
     table.insert(

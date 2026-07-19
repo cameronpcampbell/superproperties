@@ -34,8 +34,7 @@ type MapItemProps = Typeforge.Flatten<{
     Layout: Types.ItemLayout,
     LayoutOrder: number,
     RowCount: Fusion.UsedAs<number>,
-    RowMetadata: Fusion.UsedAs<Types.RowMetadata>,
-    HideValue: boolean?
+    RowMetadata: Fusion.UsedAs<Types.RowMetadata>
 }>
 
 local function CreateMapItem(
@@ -45,10 +44,12 @@ local function CreateMapItem(
 ): Instance
     local layout = props.Layout
     local item = layout.Item
+    local key = item.Key
+    local hasKey = key ~= nil
     local children = layout.Children
     local hasSubItems = #children > 0
     local redrawable = layout.CanBecomeMapBottom
-    local hasInteractiveValue = layout.Writable and not props.HideValue
+    local hasInteractiveValue = layout.Writable
 
     local isHoverState: Fusion.Value<boolean>? = nil
     local isFocusState: Fusion.Value<boolean>? = nil
@@ -110,8 +111,7 @@ local function CreateMapItem(
                     Layout = childLayout,
                     LayoutOrder = childIdx,
                     RowCount = props.RowCount,
-                    RowMetadata = props.RowMetadata,
-                    HideValue = props.HideValue
+                    RowMetadata = props.RowMetadata
                 }, if childIdx == #children then nestedBottomRowZIndex else nil)
             end
 
@@ -170,9 +170,11 @@ local function CreateMapItem(
     local theme = GetThemeForScope(scope)
     local rowHeight = ComputeAdd(scope, theme:GetHeight(scope, "Lg"), - 2)
 
-    local itemContentChildren = {
-        MapItemKey(scope, {
-            Key = item.Key,
+    local itemContentChildren = {} :: { Fusion.Child }
+
+    if key ~= nil then
+        table.insert(itemContentChildren, MapItemKey(scope, {
+            Key = key,
             Writable = layout.Writable,
             Variant = props.Variant,
             RowCount = props.RowCount,
@@ -181,24 +183,24 @@ local function CreateMapItem(
             Nestedness = layout.Depth,
             CollapsedState = layout.CollapsedState,
             Redrawable = redrawable
-        })
-    } :: { Fusion.Child }
-
-    if not props.HideValue then
-        table.insert(itemContentChildren, MapItemValue(scope, {
-            Value = layout.ResolvedValue,
-            Writable = layout.Writable,
-            TrySetValue = layout.TrySetValue,
-            Variant = props.Variant,
-            RowCount = props.RowCount,
-            RowIdx = rowIdx,
-            Redrawable = redrawable,
-            HoverState = isHoverState,
-            FocusState = isFocusState,
-            FocusElevationState = isFocusElevationState,
-            FocusRingAlphaState = focusRingAlphaState
         }))
     end
+
+    table.insert(itemContentChildren, MapItemValue(scope, {
+        Value = layout.ResolvedValue,
+        Writable = layout.Writable,
+        TrySetValue = layout.TrySetValue,
+        Variant = props.Variant,
+        RowCount = props.RowCount,
+        RowIdx = rowIdx,
+        Side = if hasKey then "Right" else "Both",
+        CollapsedState = if hasKey then nil else layout.CollapsedState,
+        Redrawable = redrawable,
+        HoverState = isHoverState,
+        FocusState = isFocusState,
+        FocusElevationState = isFocusElevationState,
+        FocusRingAlphaState = focusRingAlphaState
+    }))
 
     table.insert(itemContentChildren, New(scope, "UIListLayout") {
         Padding = UDim.new(0, 1),
@@ -281,7 +283,9 @@ local function CreateMapItem(
         LayoutOrder = props.LayoutOrder,
         ZIndex = containerZIndex,
 
-        Name = `MapItem [{item.Key}]`,
+        Name =
+            if key ~= nil then `MapItem [{key}]`
+            else "MapItem [Value Only]",
 
         [Children] = rootChildren
     }

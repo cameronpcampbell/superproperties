@@ -45,7 +45,9 @@ end
 
 local MaterialItems = GetMaterials()
 table.sort(MaterialItems, function(leftItem: Item, rightItem: Item): boolean
-    return leftItem.Key < rightItem.Key
+    local leftKey, rightKey = leftItem.Key, rightItem.Key
+    assert(leftKey ~= nil and rightKey ~= nil)
+    return leftKey < rightKey
 end)
 
 return function(

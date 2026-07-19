@@ -45,7 +45,6 @@ export type MapProps = {
     Header: string?,
     HeaderChildren: { Fusion.Child }?,
     Items: Fusion.UsedAs<Items>?,
-    HideValues: boolean?,
     EmptyText: string?,
     Collapsed: Fusion.UsedAs<boolean>?,
     VirtualListData: VirtualListData?,
@@ -59,7 +58,6 @@ return Component<<MapProps>>(function(scope, props)
     local props: MapProps, headerChildren = (TableExtract :: any)(props, "HeaderChildren")
     local props: MapProps, items = (TableExtract :: any)(props, "Items")
     local props: MapProps, emptyText = (TableExtract :: any)(props, "EmptyText")
-    local props: MapProps, hideValues = (TableExtract :: any)(props, "HideValues", false)
     local props: MapProps, collapsed = (TableExtract :: any)(props, "Collapsed", false)
     local props: MapProps, virtualListData = (TableExtract :: any)(props, "VirtualListData")
 
@@ -114,7 +112,6 @@ return Component<<MapProps>>(function(scope, props)
         Variant = variant,
         Header = header,
         HeaderChildren = headerChildren,
-        HideValues = hideValues,
         EmptyText = emptyText,
         Layout = layout,
         CollapsedState = collapsedState,

@@ -24,7 +24,7 @@ local function GetTagItems(instance: Instance): { Item }
 
     for idx, tag in tags do
         tagItems[idx] = {
-            Key = tag
+            Value = tag
         }
     end
 
@@ -38,13 +38,13 @@ local function ApplyTagChange(
 )
     if not removed then
         table.insert(tagItems, {
-            Key = tag
+            Value = tag
         })
         return
     end
 
     for idx, tagItem in tagItems do
-        if tagItem.Key ~= tag then continue end
+        if tagItem.Value ~= tag then continue end
 
         table.remove(tagItems, idx)
         return
@@ -81,7 +81,6 @@ return function(
             })
         },
         Items = tagItemsState,
-        HideValues = true,
         EmptyText = "No Tags have been added yet."
     })
 end

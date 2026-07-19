@@ -7,7 +7,7 @@ local IntrinsicSubItems =
 local GetFlattenedDefinitionsList =
     IntrinsicSubItems.GetFlattenedDefinitionsList
 
-type Item = { Key: string, Value: any }
+type Item = { Key: string?, Value: any }
 type ItemFilter = (query: string?) -> { Item }
 
 local function CreateFilter(items: { Item }): ItemFilter
@@ -64,7 +64,7 @@ local function Record(filter: ItemFilter, query: string?)
 
     for _, item in result do
         HashNumber(item.Value :: number)
-        HashString(item.Key)
+        HashString(item.Key or tostring(item.Value))
     end
 end
 
@@ -118,6 +118,18 @@ assert(artResults[1].Key == "Articulation", "expected prefix match first")
 assert(artResults[2].Key == "Part", "expected contiguous substring second")
 assert(#CreateFilter({ { Key = "Parent", Value = 1 } })("art") == 0)
 assert(#CreateFilter({ { Key = "Transparency", Value = 1 } })("trnsp") == 1)
+
+local keylessItems = {
+    { Value = "AlphaTag" },
+    { Value = "BetaTag" }
+}
+local keylessFilter = CreateFilter(keylessItems)
+local alphaTagResults = keylessFilter("alpha")
+assert(#alphaTagResults == 1 and alphaTagResults[1] == keylessItems[1])
+keylessItems[1].Value = "GammaTag"
+assert(#keylessFilter("alpha") == 0)
+local gammaTagResults = keylessFilter("gamma")
+assert(#gammaTagResults == 1 and gammaTagResults[1] == keylessItems[1])
 
 local intrinsicItems = {
     { Key = "LayoutBounds", Value = UDim2.new(0, 0, 0, 0) },

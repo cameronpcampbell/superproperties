@@ -15,7 +15,7 @@ export type BaseMapProps = {
 export type TrySetValue<T> = (value: T) -> (boolean, string?, T?)
 
 export type Item = {
-	Key: string,
+	Key: string?,
 	Value: any,
 	Writable: boolean?,
 	TrySetValue: TrySetValue<any>?,

@@ -27,9 +27,9 @@ type Candidate = {
 
 type PreparedItem = {
     Item: Item,
-    Key: string,
+    SearchText: string,
     Candidate: Candidate,
-    LowerKey: string,
+    LowerSearchText: string,
     Idx: number
 }
 
@@ -139,27 +139,31 @@ local function GetCandidate(key: string): Candidate
     return preparedCandidate
 end
 
+local function GetItemSearchText(item: Item): string
+    return if item.Key ~= nil then item.Key else tostring(item.Value)
+end
+
 local function PrepareItem(item: Item, itemIdx: number): PreparedItem
-    local key = item.Key
-    local candidate = GetCandidate(key)
+    local searchText = GetItemSearchText(item)
+    local candidate = GetCandidate(searchText)
 
     return {
         Item = item,
-        Key = key,
+        SearchText = searchText,
         Candidate = candidate,
-        LowerKey = candidate.LowerKey,
+        LowerSearchText = candidate.LowerKey,
         Idx = itemIdx
     }
 end
 
 local function RefreshPreparedItem(preparedItem: PreparedItem)
-    local key = preparedItem.Item.Key
-    if preparedItem.Key == key then return end
+    local searchText = GetItemSearchText(preparedItem.Item)
+    if preparedItem.SearchText == searchText then return end
 
-    local candidate = GetCandidate(key)
-    preparedItem.Key = key
+    local candidate = GetCandidate(searchText)
+    preparedItem.SearchText = searchText
     preparedItem.Candidate = candidate
-    preparedItem.LowerKey = candidate.LowerKey
+    preparedItem.LowerSearchText = candidate.LowerKey
 end
 
 local function PrepareQuery(query: string?): PreparedQuery
@@ -339,12 +343,16 @@ local function CompareScoredItems(
     local leftPreparedItem = leftScoredItem.PreparedItem
     local rightPreparedItem = rightScoredItem.PreparedItem
 
-    if leftPreparedItem.LowerKey ~= rightPreparedItem.LowerKey then
-        return leftPreparedItem.LowerKey < rightPreparedItem.LowerKey
+    if
+        leftPreparedItem.LowerSearchText ~= rightPreparedItem.LowerSearchText
+    then
+        return
+            leftPreparedItem.LowerSearchText <
+            rightPreparedItem.LowerSearchText
     end
 
-    if leftPreparedItem.Key ~= rightPreparedItem.Key then
-        return leftPreparedItem.Key < rightPreparedItem.Key
+    if leftPreparedItem.SearchText ~= rightPreparedItem.SearchText then
+        return leftPreparedItem.SearchText < rightPreparedItem.SearchText
     end
 
     return leftPreparedItem.Idx < rightPreparedItem.Idx

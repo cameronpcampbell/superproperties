@@ -26,10 +26,13 @@ type CategoryProps = {
     Items: Fusion.UsedAs<{ Item }>,
     Presorted: boolean?,
     StableKeys: boolean?,
-    HideValues: boolean?,
     EmptyText: string?,
     HeaderChildren: { Fusion.Child }?
 }
+
+local function GetItemLabel(item: Item): string
+    return if item.Key ~= nil then item.Key else tostring(item.Value)
+end
 
 local function SortItems(
     scope: Fusion.Scope,
@@ -39,7 +42,7 @@ local function SortItems(
         local sortedItems = table.clone(use<<{ Item }>>(items))
 
         table.sort(sortedItems, function(leftItem: Item, rightItem: Item)
-            return leftItem.Key < rightItem.Key
+            return GetItemLabel(leftItem) < GetItemLabel(rightItem)
         end)
 
         return sortedItems
@@ -101,7 +104,6 @@ return function(
             CategoryOrder[name] or
             DefaultCategoryLayoutOrder,
         Collapsed = GetCollapsedState(collapsedStateScope, name),
-        HideValues = props.HideValues,
         EmptyText = props.EmptyText,
     }
     local categoryState = Value<<MapProps?>>(scope, nil)

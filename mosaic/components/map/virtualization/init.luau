@@ -83,7 +83,6 @@ export type VirtualRowsConfig = {
     Variant: ThemeUtils.BgVariantLayer,
     Header: string?,
     HeaderChildren: { Fusion.Child }?,
-    HideValues: boolean,
     EmptyText: string?,
     Layout: MapLayout,
     CollapsedState: Fusion.Value<boolean>,
@@ -761,8 +760,7 @@ local function CreateRow(
         Layout = descriptor :: ItemLayout,
         LayoutOrder = rootIdx,
         RowCount = config.Layout.CornerRowCount,
-        RowMetadata = config.Layout.Metadata,
-        HideValue = config.HideValues
+        RowMetadata = config.Layout.Metadata
     })
 end
 
