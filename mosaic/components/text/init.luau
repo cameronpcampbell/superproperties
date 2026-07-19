@@ -19,7 +19,7 @@ local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
 type TextProps = {
-    Text: string,
+    Text: Fusion.UsedAs<string>,
     Variant: ThemeUtils.FgVariant?,
     UseAccentFg: boolean?,
 	Font: ThemeUtils.FontVariant?,
@@ -44,7 +44,7 @@ return Component<<TextProps>>(function(scope, props)
     local font = theme:GetFont(scope, fontVariant, fontWeight, fontStyle)
     local fontSize = theme:GetFontSize(scope, fontVariant, fontSize)
 
-    return New (scope, "TextLabel") (CombineProps({
+    return New(scope, "TextLabel") (CombineProps({
         Text = text,
         TextColor3 = textColor,
         FontFace = font,

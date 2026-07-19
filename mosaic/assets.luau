@@ -6,6 +6,8 @@ return {
 
     Dot = "rbxassetid://116942102031970",
 
+    ChevronsThin = "rbxassetid://130041465576995",
+
     -- Sharper replacements for ScrollingFrame's scrollbar assets.
     ScrollTop = "rbxassetid://85963746374921",
     ScrollMiddle = "rbxassetid://86569477929768",

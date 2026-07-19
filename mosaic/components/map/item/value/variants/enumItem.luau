@@ -8,10 +8,6 @@ local New, Children, Computed, Observer, OnEvent, Peek, Tween, Value =
     Fusion.New, Fusion.Children, Fusion.Computed, Fusion.Observer,
     Fusion.OnEvent, Fusion.peek, Fusion.Tween, Fusion.Value
 
-local Utils = script.Parent.Parent.Parent.Parent.Parent.Parent.utils
-local ThemeUtils = require(Utils.themeUtils)
-local GetThemeForScope = ThemeUtils.GetThemeForScope
-
 local Types = require(script.Parent.types)
 local CreateSidePadding = require(script.Parent.utils.createSidePadding)
 local FocusTransitionTweenInfo =
@@ -23,6 +19,11 @@ local Text = require(Components.text)
 
 local MenuGap = 4
 local MenuMaxHeight = 150
+local PointerCursor = "rbxasset://SystemCursors/PointingHand"
+
+local PluginInstance = script:FindFirstAncestorOfClass("Plugin") :: Plugin?
+assert(PluginInstance, "EnumItem must be created from inside a Plugin")
+local PluginMouse = PluginInstance:GetMouse()
 
 local function IsPointInside(guiObject: GuiObject, point: Vector3): boolean
     local topLeft = guiObject.AbsolutePosition
@@ -98,7 +99,32 @@ return function(
     end)
 
     local textBox: TextBox
+    local hitArea: TextButton
     local selectMenu: GuiObject
+    local previousMouseIcon: string? = nil
+    local isHovering = false
+
+    local function showPointer()
+        if not isHovering then
+            isHovering = true
+            previousMouseIcon = PluginMouse.Icon
+        end
+
+        PluginMouse.Icon = PointerCursor
+    end
+
+    local function restorePointer()
+        if not isHovering then return end
+        isHovering = false
+
+        if PluginMouse.Icon == PointerCursor then
+            PluginMouse.Icon = previousMouseIcon or ""
+        end
+
+        previousMouseIcon = nil
+    end
+
+    table.insert(scope, restorePointer)
 
     local function setFocused(isFocused: boolean)
         if Peek<<boolean>>(inputFocusState) == isFocused then return end
@@ -141,11 +167,6 @@ return function(
         closeMenu()
     end)
 
-    local theme = GetThemeForScope(scope)
-    local textColor = theme:GetFg(scope, "Primary")
-    local font = theme:GetFont(scope, "Main", Enum.FontWeight.Regular)
-    local fontSize = theme:GetFontSize(scope, "Main", "Body")
-
     selectMenu = SelectMenu(scope, {
         Items = itemNames,
         SelectedIdx = selectedIdxState,
@@ -154,23 +175,32 @@ return function(
         Transparency = menuTransparency,
         Interactable = inputFocusState,
         Visible = shouldShowMenu,
-        ZIndex = 2
+        ZIndex = 4
     }) :: GuiObject
 
-    textBox = New(scope, "TextBox") {
+    local displayedValue = Text(scope, {
         Size = UDim2.fromScale(1, 1),
-        BackgroundTransparency = 1,
+        AutomaticSize = Enum.AutomaticSize.None,
         Text = displayedValueState,
-        TextColor3 = textColor,
-        FontFace = font,
-        TextSize = fontSize,
-        TextEditable = false,
-        ClearTextOnFocus = false,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        TextTruncate = Enum.TextTruncate.AtEnd,
         ZIndex = 1,
 
-        Name = "EnumItemInput",
+        Name = "EnumItemText"
+    }, {
+        [Children] = CreateSidePadding(scope)
+    })
+
+    textBox = New(scope, "TextBox") {
+        Size = UDim2.fromOffset(0, 0),
+        Position = UDim2.fromOffset(-1, -1),
+        BackgroundTransparency = 1,
+        Text = "",
+        TextTransparency = 1,
+        TextEditable = false,
+        ClearTextOnFocus = false,
+        Selectable = false,
+        ZIndex = 2,
+
+        Name = "EnumItemFocusTarget",
 
         [OnEvent "Focused"] = function()
             setFocused(true)
@@ -180,17 +210,19 @@ return function(
             _enterPressed: boolean,
             inputThatCausedFocusLoss: InputObject?
         )
-            if inputThatCausedFocusLoss ~= nil
-                and IsPointInside(
-                    selectMenu,
-                    inputThatCausedFocusLoss.Position
-                )
+            if inputThatCausedFocusLoss ~= nil and (
+                IsPointInside(selectMenu, inputThatCausedFocusLoss.Position)
+                or IsPointInside(hitArea, inputThatCausedFocusLoss.Position)
+            )
             then
-                -- Clicking a menu option releases TextBox focus before the
-                -- option's click event fires. Keep the menu mounted and
-                -- restore focus if the interaction does not select an item.
+                -- Clicking the hit area or a menu option releases TextBox
+                -- focus before the click event fires. Keep the menu mounted
+                -- and restore focus if the interaction does not select an
+                -- item.
                 task.defer(function()
-                    if Peek<<boolean>>(inputFocusState) then
+                    if Peek<<boolean>>(inputFocusState)
+                        and not textBox:IsFocused()
+                    then
                         textBox:CaptureFocus()
                     end
                 end)
@@ -201,28 +233,45 @@ return function(
         end
     } :: TextBox
 
+    hitArea = New(scope, "TextButton") {
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        Text = "",
+        AutoButtonColor = false,
+        Selectable = false,
+        ZIndex = 3,
+
+        Name = "EnumItemHitArea",
+
+        [OnEvent "MouseEnter"] = showPointer,
+        [OnEvent "MouseMoved"] = showPointer,
+        [OnEvent "MouseLeave"] = restorePointer,
+
+        [OnEvent "Activated"] = function()
+            if not textBox:IsFocused() then textBox:CaptureFocus() end
+
+            task.defer(function()
+                if isHovering then showPointer() end
+            end)
+        end
+    } :: TextButton
+
     return New(scope, "Frame") {
         Size = UDim2.fromScale(1, 1),
         BackgroundTransparency = 1,
 
         Name = "EnumItemValue",
 
-        [Children] = {
-            New(scope, "Frame") {
-                Size = UDim2.fromScale(1, 1),
-                BackgroundTransparency = 1,
+        [Children] = ({
+            displayedValue,
 
-                Name = "EnumItemInputContainer",
+            textBox,
 
-                [Children] = ({
-                    textBox,
-                    CreateSidePadding(scope)
-                } :: { Fusion.Child })
-            },
+            hitArea,
 
             selectMenu,
 
             New(scope, "UIFlexItem") {}
-        }
+        } :: { Fusion.Child })
     }
 end
