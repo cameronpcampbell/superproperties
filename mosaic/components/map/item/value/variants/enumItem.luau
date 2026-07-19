@@ -50,7 +50,7 @@ return function(
             }),
 
             CreateSidePadding(scope)
-        } :: { Fusion.Child }
+        } :: Fusion.Child
     end
 
     local enumItems = value.EnumType:GetEnumItems()

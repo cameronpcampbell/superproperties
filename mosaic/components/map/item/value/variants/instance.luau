@@ -43,5 +43,5 @@ return function(
         }),
 
         CreateSidePadding(scope)
-    } :: { Fusion.Child }
+    } :: Fusion.Child
 end

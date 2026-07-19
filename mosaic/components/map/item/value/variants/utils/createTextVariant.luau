@@ -47,7 +47,7 @@ local function CreateTextVariant<T>(
                 }),
 
                 CreateSidePadding(scope)
-            } :: { Fusion.Child }
+            } :: Fusion.Child
         end
 
         local textState = Value<<string>>(scope, displayedValue)
@@ -126,9 +126,9 @@ local function CreateTextVariant<T>(
         } :: TextBox
 
         return {
-            textBox,
+            textBox :: Instance,
             CreateSidePadding(scope)
-        } :: { Fusion.Child }
+        } :: Fusion.Child
     end
 end
 

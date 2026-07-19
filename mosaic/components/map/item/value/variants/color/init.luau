@@ -82,7 +82,7 @@ return function(
             }),
 
             Color(scope, value)
-        } :: { Fusion.Child }
+        } :: Fusion.Child
     end
 
     return {
@@ -99,5 +99,5 @@ return function(
         Color(scope, value),
 
         CreateSidePadding(scope)
-    } :: { Fusion.Child }
+    } :: Fusion.Child
 end
