@@ -175,8 +175,9 @@ return function(
     selectMenu = SelectMenu(scope, {
         Items = itemNames,
         SelectedIdx = selectedIdxState,
+        Width = UDim.new(1, 2),
         MaxHeight = MenuMaxHeight,
-        Position = UDim2.new(0, 0, 1, MenuGap),
+        Position = UDim2.new(0, -1, 1, MenuGap),
         Transparency = menuTransparency,
         Interactable = inputFocusState,
         Visible = shouldShowMenu,
