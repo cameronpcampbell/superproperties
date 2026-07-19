@@ -16,30 +16,44 @@ local Assets = require(script.Parent.Parent.Parent.Parent.Parent.assets)
 local Category = require(script.Parent.Parent.category)
 type CategoryState = Category.State
 
+local CommitTag = require(script.Parent.commitTag)
 local TagChanged = require(script.tagChanged)
+
+local function CreateTagItem(instance: Instance, tag: string): Item
+    local item: Item = {
+        Value = tag,
+        Writable = true
+    }
+
+    item.TrySetValue = function(newTag: string): (boolean, string?, any?)
+        if newTag == tag then return true, nil, tag end
+
+        local success, err = CommitTag(instance, tag, newTag)
+        return success, err, if success then newTag else nil
+    end
+
+    return item
+end
 
 local function GetTagItems(instance: Instance): { Item }
     local tags = instance:GetTags()
     local tagItems = table.create(#tags) :: { Item }
 
     for idx, tag in tags do
-        tagItems[idx] = {
-            Value = tag
-        }
+        tagItems[idx] = CreateTagItem(instance, tag)
     end
 
     return tagItems
 end
 
 local function ApplyTagChange(
+    instance: Instance,
     tagItems: { Item },
     tag: string,
     removed: boolean
 )
     if not removed then
-        table.insert(tagItems, {
-            Value = tag
-        })
+        table.insert(tagItems, CreateTagItem(instance, tag))
         return
     end
 
@@ -66,7 +80,7 @@ return function(
             tag: string,
             removed: boolean
         )
-            ApplyTagChange(tagItems, tag, removed)
+            ApplyTagChange(instance, tagItems, tag, removed)
 
             -- Fusion treats mutable tables as dissimilar by design.
             tagItemsState:set(tagItems)
