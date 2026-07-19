@@ -12,8 +12,9 @@ local New, Children, Value, Peek, Computed =
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CombineProps, CoerceToValue =
-    FusionUtils.Component, FusionUtils.CombineProps, FusionUtils.CoerceToValue
+local Component, CombineProps, CoerceToValue, ComposeTransparency =
+    FusionUtils.Component, FusionUtils.CombineProps,
+    FusionUtils.CoerceToValue, FusionUtils.ComposeTransparency
 local ComputeTransforms = FusionUtils.ComputeTransforms
 local ComputeUDim2 = ComputeTransforms.UDim2
 
@@ -36,7 +37,9 @@ type SelectMenuProps = {
 	MaxHeight: Fusion.UsedAs<number>?,
 	Items: Fusion.UsedAs<{ string }>,
 	SelectedIdx: Fusion.UsedAs<number?>?,
-	DefaultIdx: Fusion.UsedAs<number>?
+	DefaultIdx: Fusion.UsedAs<number>?,
+	Transparency: Fusion.UsedAs<number>?,
+	Interactable: Fusion.UsedAs<boolean>?
 }
 
 return Component<<SelectMenuProps>>(function(scope, props)
@@ -46,6 +49,12 @@ return Component<<SelectMenuProps>>(function(scope, props)
     local props, items = TableExtract(props, "Items")
     local props, selectedIdx = TableExtract(props, "SelectedIdx")
     local props, defaultIdx = TableExtract(props, "DefaultIdx")
+    local props, transparency = TableExtract(props, "Transparency", 0)
+    local props, interactable = TableExtract(props, "Interactable", true)
+    local props, backgroundTransparency =
+        TableExtract(props, "BackgroundTransparency", 0)
+    local props, strokeTransparency =
+        TableExtract(props, "StrokeTransparency", 0)
 
     local isHoverState, isFocusState = Value(scope, false), Value(scope, false)
     local themeColorModifier =
@@ -58,10 +67,22 @@ return Component<<SelectMenuProps>>(function(scope, props)
     local strokeColor =
         theme:GetBg(scope, GetNextVariant(scope, variant), themeColorModifier)
     local cornerRadius = theme:GetCornerRadius(scope, "Md")
+    local composedBackgroundTransparency = ComposeTransparency(
+        scope,
+        backgroundTransparency,
+        transparency
+    )
+    local composedStrokeTransparency = ComposeTransparency(
+        scope,
+        strokeTransparency,
+        transparency
+    )
 
     return Supercorner.new(scope :: any, CombineProps({
         BackgroundColor3 = bgColor,
+        BackgroundTransparency = composedBackgroundTransparency,
         StrokeColor = strokeColor,
+        StrokeTransparency = composedStrokeTransparency,
         StrokeThickness = 1,
         Size = ComputeUDim2(scope, width, UDim.new(0, 0)),
         AutomaticSize = Enum.AutomaticSize.Y,
@@ -86,6 +107,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
                 Size = UDim2.new(1, 0, 0, 0),
                 AutomaticSize = Enum.AutomaticSize.Y,
                 Padding = UDim.new(0, 3),
+                Transparency = transparency,
 
                 RootChildren = New(scope, "UISizeConstraint") {
                     MaxSize = Computed(scope, function(use: Fusion.Use)
@@ -102,7 +124,9 @@ return Component<<SelectMenuProps>>(function(scope, props)
                             Text = value,
                             SelectedIdxValue = selectedIdxValue,
                             DefaultIdx = defaultIdx,
-                            Idx = key
+                            Idx = key,
+                            Transparency = transparency,
+                            Interactable = interactable
                         })
                     end),
 

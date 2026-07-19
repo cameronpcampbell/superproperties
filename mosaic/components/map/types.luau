@@ -45,6 +45,7 @@ export type ItemLayout = {
     TrySetValue: TrySetValue<any>?,
     Writable: boolean,
     ValueFocusState: Fusion.Value<boolean>,
+    ValueFocusElevationState: Fusion.Value<boolean>,
     Depth: number,
     CanBecomeMapBottom: boolean,
     CollapsedState: Fusion.Value<boolean>?,

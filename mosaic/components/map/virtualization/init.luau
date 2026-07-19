@@ -373,6 +373,7 @@ local function CreateItemLayout(
         return rowHeight + use<<number>>(animatedChildrenHeight)
     end)
     local valueFocusState = Value<<boolean>>(scope, false)
+    local valueFocusElevationState = Value<<boolean>>(scope, false)
 
     return {
         Item = item,
@@ -380,6 +381,7 @@ local function CreateItemLayout(
         TrySetValue = resolvedItem.TrySetValue,
         Writable = resolvedItem.Writable,
         ValueFocusState = valueFocusState,
+        ValueFocusElevationState = valueFocusElevationState,
         Depth = depth,
         CanBecomeMapBottom = canBecomeMapBottom,
         CollapsedState = collapsedState,
@@ -398,6 +400,7 @@ local function UseItemTreeFocus(
     layout: ItemLayout
 ): boolean
     if use<<boolean>>(layout.ValueFocusState) then return true end
+    if use<<boolean>>(layout.ValueFocusElevationState) then return true end
 
     for _, child in layout.Children do
         if UseItemTreeFocus(use, child) then return true end

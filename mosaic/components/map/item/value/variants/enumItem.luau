@@ -4,9 +4,9 @@
 local Packages =
     script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.packages
 local Fusion = require(Packages.fusion)
-local New, Children, Observer, OnEvent, Peek, Value =
-    Fusion.New, Fusion.Children, Fusion.Observer,
-    Fusion.OnEvent, Fusion.peek, Fusion.Value
+local New, Children, Computed, Observer, OnEvent, Peek, Tween, Value =
+    Fusion.New, Fusion.Children, Fusion.Computed, Fusion.Observer,
+    Fusion.OnEvent, Fusion.peek, Fusion.Tween, Fusion.Value
 
 local Utils = script.Parent.Parent.Parent.Parent.Parent.Parent.utils
 local ThemeUtils = require(Utils.themeUtils)
@@ -14,6 +14,8 @@ local GetThemeForScope = ThemeUtils.GetThemeForScope
 
 local Types = require(script.Parent.types)
 local CreateSidePadding = require(script.Parent.utils.createSidePadding)
+local FocusTransitionTweenInfo =
+    require(script.Parent.Parent.focusTransitionTweenInfo)
 
 local Components = script.Parent.Parent.Parent.Parent.Parent
 local SelectMenu = require(Components.selectMenu)
@@ -60,15 +62,48 @@ return function(
     local currentIdx = table.find(enumItems, value)
     local selectedIdxState = Value<<number?>>(scope, currentIdx)
     local displayedValueState = Value(scope, value.Name)
-    local isFocusState = Value(scope, false)
+    local inputFocusState = Value(scope, false)
+    local visualFocusState = props.FocusState or inputFocusState
+    local selectedIdxStateAlive = true
+
+    table.insert(scope, function()
+        selectedIdxStateAlive = false
+    end)
+
+    local function deferSelectedIdxCorrection(
+        observedIdx: number?,
+        correctedIdx: number?
+    )
+        if observedIdx == correctedIdx then return end
+
+        task.defer(function()
+            if not selectedIdxStateAlive then return end
+            if Peek<<number?>>(selectedIdxState) ~= observedIdx then return end
+
+            selectedIdxState:set(correctedIdx)
+        end)
+    end
+
+    local menuTransparency = Tween<<number>>(
+        scope,
+        Computed(scope, function(use): number
+            return if use<<boolean>>(visualFocusState) then 0 else 1
+        end),
+        FocusTransitionTweenInfo
+    )
+    local shouldShowMenu = Computed(scope, function(use): boolean
+        return
+            use<<boolean>>(visualFocusState) or
+            use<<number>>(menuTransparency) < .999
+    end)
 
     local textBox: TextBox
     local selectMenu: GuiObject
 
     local function setFocused(isFocused: boolean)
-        if Peek<<boolean>>(isFocusState) == isFocused then return end
+        if Peek<<boolean>>(inputFocusState) == isFocused then return end
 
-        isFocusState:set(isFocused)
+        inputFocusState:set(isFocused)
         if props.OnFocusChanged then props.OnFocusChanged(isFocused) end
     end
 
@@ -83,14 +118,14 @@ return function(
 
         local nextValue = if nextIdx == nil then nil else enumItems[nextIdx]
         if nextValue == nil then
-            selectedIdxState:set(currentIdx)
+            deferSelectedIdxCorrection(nextIdx, currentIdx)
             closeMenu()
             return
         end
 
         local success, err, savedValue = trySetValue(nextValue)
         if not success then
-            selectedIdxState:set(currentIdx)
+            deferSelectedIdxCorrection(nextIdx, currentIdx)
             closeMenu()
             warn(`SuperProperties: {err or "Could not set value."}`)
             return
@@ -101,9 +136,7 @@ return function(
         currentIdx = table.find(enumItems, valueToDisplay)
         displayedValueState:set(valueToDisplay.Name)
 
-        if Peek<<number?>>(selectedIdxState) ~= currentIdx then
-            selectedIdxState:set(currentIdx)
-        end
+        deferSelectedIdxCorrection(nextIdx, currentIdx)
 
         closeMenu()
     end)
@@ -118,7 +151,9 @@ return function(
         SelectedIdx = selectedIdxState,
         MaxHeight = MenuMaxHeight,
         Position = UDim2.new(0, 0, 1, MenuGap),
-        Visible = isFocusState,
+        Transparency = menuTransparency,
+        Interactable = inputFocusState,
+        Visible = shouldShowMenu,
         ZIndex = 2
     }) :: GuiObject
 
@@ -155,7 +190,7 @@ return function(
                 -- option's click event fires. Keep the menu mounted and
                 -- restore focus if the interaction does not select an item.
                 task.defer(function()
-                    if Peek<<boolean>>(isFocusState) then
+                    if Peek<<boolean>>(inputFocusState) then
                         textBox:CaptureFocus()
                     end
                 end)

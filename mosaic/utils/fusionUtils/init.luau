@@ -6,6 +6,7 @@ return {
     ChildrenTransform = require(script.childrenTransform),
     CombineProps = require(script.combineProps),
     Component = require(script.component),
+    ComposeTransparency = require(script.composeTransparency),
     ComputeMath = require(script.computeMath),
     ComputeTransforms = require(script.computeTransforms),
     CoerceToValue = require(script.coerceToValue),

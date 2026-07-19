@@ -11,8 +11,9 @@ local New, Children, Out, Computed =
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CombineProps =
-    FusionUtils.Component, FusionUtils.CombineProps
+local Component, CombineProps, ComposeTransparency =
+    FusionUtils.Component, FusionUtils.CombineProps,
+    FusionUtils.ComposeTransparency
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope, GetNextVariant =
@@ -32,6 +33,7 @@ export type ScrollableProps = {
     AutomaticSize: Fusion.UsedAs<Enum.AutomaticSize>?,
     AutomaticCanvasSize: Fusion.UsedAs<Enum.AutomaticSize>?,
     Padding: Fusion.UsedAs<UDim>?,
+    Transparency: Fusion.UsedAs<number>?,
     RootChildren: Fusion.Child?,
 }
 
@@ -48,10 +50,12 @@ return Component<<ScrollableProps>>(function(scope, props)
     local props, automaticCanvasSize =
         TableExtract(props, "AutomaticCanvasSize", Enum.AutomaticSize.Y)
     local props, padding = TableExtract(props, "Padding", UDim.new(0, 4))
+    local props, transparency = TableExtract(props, "Transparency", 0)
 
     local theme = GetThemeForScope(scope)
     local scrollBarColor = theme:GetBgHighlight(scope, GetNextVariant(scope, variant))
     local scrollBarUnderlayColor = theme:GetBgHighlight(scope, variant)
+    local composedTransparency = ComposeTransparency(scope, 0, transparency)
 
     local copmputePadding = Computed(scope, function(use, scope)
         local usedPadding = use<<UDim>>(padding)
@@ -78,6 +82,7 @@ return Component<<ScrollableProps>>(function(scope, props)
                 BackgroundTransparency = 1,
                 BorderSizePixel = 0,
                 ScrollBarImageColor3 = scrollBarColor,
+                ScrollBarImageTransparency = composedTransparency,
                 TopImage = Assets.ScrollTop,
                 MidImage = Assets.ScrollMiddle,
                 BottomImage = Assets.ScrollBottom,
@@ -100,6 +105,7 @@ return Component<<ScrollableProps>>(function(scope, props)
                 Size = UDim2.new(0, 4, 1, 0),
                 Position = UDim2.new(1, -4, 0, 0),
                 BackgroundColor3 = scrollBarUnderlayColor,
+                BackgroundTransparency = composedTransparency,
 
                 [Children] = New(scope, "UICorner") {
                     CornerRadius = UDim.new(1, 0)

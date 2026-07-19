@@ -10,8 +10,9 @@ local New, Children, Computed, Value, Peek, OnEvent, Tween =
 local Utils = script.Parent.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local ComputeTransforms, ComputeMath =
-    FusionUtils.ComputeTransforms, FusionUtils.ComputeMath
+local ComputeTransforms, ComputeMath, ComposeTransparency =
+    FusionUtils.ComputeTransforms, FusionUtils.ComputeMath,
+    FusionUtils.ComposeTransparency
 local ComputeUDim2, ComputeUDim = ComputeTransforms.UDim2, ComputeTransforms.UDim
 local ComputeAdd = ComputeMath.Add
 
@@ -26,7 +27,9 @@ local Text = require(Components.text)
 type SelectMenuItemProps = {
     Text: string,
     SelectedIdxValue: Fusion.Value<number?>,
-    Idx: number
+    Idx: number,
+    Transparency: Fusion.UsedAs<number>,
+    Interactable: Fusion.UsedAs<boolean>
 }
 
 local function SelectMenuItem(
@@ -79,27 +82,48 @@ local function SelectMenuItem(
     local accentColor = theme:GetAccent(scope, "Primary", accentColorModifier)
     local cornerRadius = ComputeAdd(scope, theme:GetCornerRadius(scope, "Md"), -2)
     local height = ComputeAdd(scope, theme:GetHeight(scope, "Lg"), -4)
+    local transitionTweenInfo = TweenInfo.new(
+        .25,
+        Enum.EasingStyle.Exponential,
+        Enum.EasingDirection.InOut
+    )
+    local animatedGradientTransparency = Tween<<number>>(
+        scope,
+        computeGradientTransparency,
+        transitionTweenInfo
+    )
+    local animatedBackgroundTransparency = Tween<<number>>(
+        scope,
+        computeBgTransparency,
+        transitionTweenInfo
+    )
+    local composedGradientTransparency = ComposeTransparency(
+        scope,
+        animatedGradientTransparency,
+        props.Transparency
+    )
+    local composedBackgroundTransparency = ComposeTransparency(
+        scope,
+        animatedBackgroundTransparency,
+        props.Transparency
+    )
+    local composedOpaqueTransparency = ComposeTransparency(
+        scope,
+        0,
+        props.Transparency
+    )
 
     return HighlightSupercorner(scope, {
         Button = true,
-        GradientTransparency = Tween<<number>>(
-            scope, computeGradientTransparency,
-            TweenInfo.new(
-                .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
-            )
-        ),
+        Interactable = props.Interactable,
+        GradientTransparency = composedGradientTransparency,
         BackgroundColor3 = Tween<<Color3>>(
-            scope, accentColor,
-            TweenInfo.new(
-                .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
-            )
+            scope,
+            accentColor,
+            transitionTweenInfo
         ),
-        BackgroundTransparency = Tween<<number>>(
-            scope, computeBgTransparency,
-            TweenInfo.new(
-                .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
-            )
-        ),
+        BackgroundTransparency = composedBackgroundTransparency,
+        StrokeTransparency = composedOpaqueTransparency,
         StrokeThickness = 1,
         Size = ComputeUDim2(scope, UDim.new(1, 0), ComputeUDim(scope, 0, height)),
         CornerRadius = Peek<<number>>(cornerRadius),
@@ -121,7 +145,8 @@ local function SelectMenuItem(
 
         [Children] = {
             Text(scope, {
-                Text = props.Text
+                Text = props.Text,
+                TextTransparency = composedOpaqueTransparency
             }),
 
             New(scope, "UIListLayout") {

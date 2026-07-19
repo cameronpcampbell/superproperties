@@ -59,7 +59,7 @@ local function CreateMapItem(
     if hasInteractiveValue then
         isHoverState = Value(scope, false)
         isFocusState = layout.ValueFocusState
-        isFocusElevationState = Value(scope, false)
+        isFocusElevationState = layout.ValueFocusElevationState
         focusRingAlphaState = Value(scope, 0)
 
         rowZIndex = Computed(scope, function(use: Fusion.Use): number

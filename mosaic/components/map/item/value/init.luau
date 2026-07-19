@@ -33,6 +33,7 @@ local CalculateRowCornerRadii =
 
 local ValueVariants = require(script.variants)
 local DefaultValueVariant = ValueVariants.Default
+local FocusTransitionTweenInfo = require(script.focusTransitionTweenInfo)
 
 type MapItemValueProps = Typeforge.Flatten<
     Types.BaseMapProps & {
@@ -47,11 +48,6 @@ type MapItemValueProps = Typeforge.Flatten<
     }
 >
 
-local FocusRingTweenInfo = TweenInfo.new(
-    .23,
-    Enum.EasingStyle.Quint,
-    Enum.EasingDirection.InOut
-)
 local FocusElevationReleasePadding = 1 / 30
 
 local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
@@ -148,7 +144,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
             IsFocus = isFocusState,
             AlphaOut = focusRingAlphaState,
             CullWhenHidden = true,
-            TransitionTweenInfo = FocusRingTweenInfo,
+            TransitionTweenInfo = FocusTransitionTweenInfo,
             BaseSize = UDim2.new(1, 2, 1, 2),
             TopLeftRadius = topLeftRadius,
             TopRightRadius = topRightRadius,
@@ -200,7 +196,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
                 end
 
                 task.delay(
-                    FocusRingTweenInfo.Time + FocusElevationReleasePadding,
+                    FocusTransitionTweenInfo.Time + FocusElevationReleasePadding,
                     function()
                         if not focusStateAlive then return end
                         if updateRevision ~= focusRevision then return end
@@ -244,7 +240,8 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
                 Value = value,
                 Writable = props.Writable,
                 TrySetValue = props.TrySetValue,
-                OnFocusChanged = onFocusChanged
+                OnFocusChanged = onFocusChanged,
+                FocusState = props.FocusState
             }),
 
             New(scope, "UIListLayout") {
