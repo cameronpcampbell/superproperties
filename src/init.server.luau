@@ -16,22 +16,13 @@ local Properties = require(Blocks.properties)
 
 local Scope = Fusion.scoped(Fusion, Mosaic)
 
+local Debug = script.debug.Value:gsub("\n", "") == "true"
+
 local function SyncTheme()
     Mosaic.SetTheme(Scope, Mosaic.DefaultThemeConfig())
 end
 
 SyncTheme()
-
-local Debug = script.debug.Value:gsub("\n", "") == "true"
-
---[[local theme = Scope:DefaultThemeConfig()
-for key, value in (theme :: { [string]: any }) do
-    if typeof(value) ~= "Color3" then continue end
-
-    (theme :: any)[key] = require(Packages.mosaic.utils.colorSpace).Stringify.Hex(value)
-end
-print(theme)]]
-
 settings().Studio.ThemeChanged:Connect(SyncTheme)
 
 local function GetSelectedInstanceValue(
@@ -39,10 +30,22 @@ local function GetSelectedInstanceValue(
 ): Fusion.Value<Instance?>
     local selectedInstanceValue =
         Value<<Instance?>>(scope, SelectionService:Get()[1])
+    local selectionUpdatePending = false
 
-    SelectionService.SelectionChanged:Connect(function()
-        selectedInstanceValue:set(SelectionService:Get()[1])
-    end)
+    local function QueueSelectionUpdate()
+        if selectionUpdatePending then return end
+        selectionUpdatePending = true
+
+        task.defer(function()
+            selectionUpdatePending = false
+            selectedInstanceValue:set(SelectionService:Get()[1])
+        end)
+    end
+
+    table.insert(
+        scope,
+        SelectionService.SelectionChanged:Connect(QueueSelectionUpdate)
+    )
 
     return selectedInstanceValue
 end
