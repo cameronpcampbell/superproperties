@@ -803,14 +803,22 @@ local function CreateRenderedRows(
         local nextMountedRows = {} :: { [number]: MountedRow }
         local nextRenderedRows = {} :: RenderedRows
 
-        for rootIdx, descriptor in descriptors do
-            local mountedRow = mountedRows[rootIdx]
-
-            if mountedRow and mountedRow.Descriptor == descriptor then
+        for rootIdx, mountedRow in mountedRows do
+            local descriptor = descriptors[rootIdx]
+            if descriptor and mountedRow.Descriptor == descriptor then
                 nextMountedRows[rootIdx] = mountedRow
                 nextRenderedRows[rootIdx] = mountedRow.Instance
                 continue
             end
+
+            -- Supplied row children can be shared by successive item layouts.
+            -- Clean up replaced rows before mounting their replacements so an
+            -- old [Children] cleanup cannot unparent them from the new row.
+            Fusion.doCleanup(mountedRow.Scope)
+        end
+
+        for rootIdx, descriptor in descriptors do
+            if nextMountedRows[rootIdx] then continue end
 
             local rowScope = Fusion.innerScope(scope)
             local rowInstance = CreateRow(
@@ -830,13 +838,6 @@ local function CreateRenderedRows(
         end
 
         renderedRows:set(nextRenderedRows)
-
-        for rootIdx, mountedRow in mountedRows do
-            if nextMountedRows[rootIdx] ~= mountedRow then
-                Fusion.doCleanup(mountedRow.Scope)
-            end
-        end
-
         mountedRows = nextMountedRows
     end
 

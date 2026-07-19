@@ -4,6 +4,7 @@
 local Packages =
     script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.packages
 local Fusion = require(Packages.fusion)
+local New, Children = Fusion.New, Fusion.Children
 
 local Types = require(script.Parent.types)
 local CreateSidePadding = require(script.Parent.utils.createSidePadding)
@@ -22,6 +23,10 @@ return function(
             Text = tostring(value),
             Variant = if props.Writable then "Primary" else "Secondary",
             Size = UDim2.fromScale(1, 0),
+
+            [Children] = New(scope, "UIFlexItem") {
+                FlexMode = Enum.UIFlexMode.Shrink
+            }
         }),
 
         CreateSidePadding(scope)

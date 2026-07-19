@@ -3,7 +3,7 @@
 local Packages = script.Parent.Parent.Parent.Parent.Parent.packages
 
 local Fusion = require(Packages.fusion)
-local Value = Fusion.Value
+local Value, OnEvent = Fusion.Value, Fusion.OnEvent
 
 local Mosaic = require(Packages.mosaic)
 local IconButton = Mosaic.IconButton
@@ -16,13 +16,30 @@ local Assets = require(script.Parent.Parent.Parent.Parent.Parent.assets)
 local Category = require(script.Parent.Parent.category)
 type CategoryState = Category.State
 
+local CommitRemoveTag = require(script.Parent.commitRemoveTag)
 local CommitTag = require(script.Parent.commitTag)
 local TagChanged = require(script.tagChanged)
 
-local function CreateTagItem(instance: Instance, tag: string): Item
+local function CreateTagItem(
+    scope: Fusion.Scope,
+    instance: Instance,
+    tag: string
+): Item
     local item: Item = {
         Value = tag,
-        Writable = true
+        Writable = true,
+        ValueChildren = {
+            IconButton(scope, {
+                Image = Assets.Cross,
+
+                [OnEvent "MouseButton1Click"] = function()
+                    local success, err = CommitRemoveTag(instance, tag)
+                    if not success then
+                        warn(`Could not remove tag {tag}: {err}`)
+                    end
+                end
+            })
+        }
     }
 
     item.TrySetValue = function(newTag: string): (boolean, string?, any?)
@@ -35,25 +52,29 @@ local function CreateTagItem(instance: Instance, tag: string): Item
     return item
 end
 
-local function GetTagItems(instance: Instance): { Item }
+local function GetTagItems(
+    scope: Fusion.Scope,
+    instance: Instance
+): { Item }
     local tags = instance:GetTags()
     local tagItems = table.create(#tags) :: { Item }
 
     for idx, tag in tags do
-        tagItems[idx] = CreateTagItem(instance, tag)
+        tagItems[idx] = CreateTagItem(scope, instance, tag)
     end
 
     return tagItems
 end
 
 local function ApplyTagChange(
+    scope: Fusion.Scope,
     instance: Instance,
     tagItems: { Item },
     tag: string,
     removed: boolean
 )
     if not removed then
-        table.insert(tagItems, CreateTagItem(instance, tag))
+        table.insert(tagItems, CreateTagItem(scope, instance, tag))
         return
     end
 
@@ -71,7 +92,7 @@ return function(
     collapsedStateScope: Fusion.Scope,
     instance: Instance
 ): CategoryState
-    local tagItems = GetTagItems(instance)
+    local tagItems = GetTagItems(scope, instance)
     local tagItemsState = Value(scope, tagItems)
 
     table.insert(
@@ -80,7 +101,7 @@ return function(
             tag: string,
             removed: boolean
         )
-            ApplyTagChange(instance, tagItems, tag, removed)
+            ApplyTagChange(scope, instance, tagItems, tag, removed)
 
             -- Fusion treats mutable tables as dissimilar by design.
             tagItemsState:set(tagItems)

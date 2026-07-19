@@ -37,6 +37,34 @@ type MapItemProps = Typeforge.Flatten<{
     RowMetadata: Fusion.UsedAs<Types.RowMetadata>
 }>
 
+local function CreateRightChildren(
+    scope: Fusion.Scope,
+    name: string,
+    children: { Fusion.Child }?
+): Instance?
+    if not children or next(children) == nil then return nil end
+
+    return New(scope, "Frame") {
+        Size = UDim2.fromScale(0, 1),
+        AutomaticSize = Enum.AutomaticSize.X,
+        BackgroundTransparency = 1,
+        LayoutOrder = 2,
+
+        Name = name,
+
+        [Children] = {
+            children,
+
+            New(scope, "UIListLayout") {
+                Padding = UDim.new(0, 6),
+                FillDirection = Enum.FillDirection.Horizontal,
+                VerticalAlignment = Enum.VerticalAlignment.Center,
+                SortOrder = Enum.SortOrder.LayoutOrder
+            }
+        }
+    }
+end
+
 local function CreateMapItem(
     scope: Fusion.Scope,
     props: MapItemProps,
@@ -182,7 +210,12 @@ local function CreateMapItem(
             HasSubItems = hasSubItems,
             Nestedness = layout.Depth,
             CollapsedState = layout.CollapsedState,
-            Redrawable = redrawable
+            Redrawable = redrawable,
+            RightChildren = CreateRightChildren(
+                scope,
+                "KeyChildren",
+                item.KeyChildren
+            )
         }))
     end
 
@@ -199,7 +232,12 @@ local function CreateMapItem(
         HoverState = isHoverState,
         FocusState = isFocusState,
         FocusElevationState = isFocusElevationState,
-        FocusRingAlphaState = focusRingAlphaState
+        FocusRingAlphaState = focusRingAlphaState,
+        RightChildren = CreateRightChildren(
+            scope,
+            "ValueChildren",
+            item.ValueChildren
+        )
     }))
 
     table.insert(itemContentChildren, New(scope, "UIListLayout") {

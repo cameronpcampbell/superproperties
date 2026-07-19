@@ -53,6 +53,10 @@ return function(
                 Text = value.Name,
                 Variant = if props.Writable then "Primary" else "Secondary",
                 Size = UDim2.fromScale(1, 0),
+
+                [Children] = New(scope, "UIFlexItem") {
+                    FlexMode = Enum.UIFlexMode.Shrink
+                }
             }),
 
             CreateSidePadding(scope)
@@ -295,7 +299,9 @@ return function(
 
             selectMenu,
 
-            New(scope, "UIFlexItem") {}
+            New(scope, "UIFlexItem") {
+                FlexMode = Enum.UIFlexMode.Shrink
+            }
         } :: { Fusion.Child })
     }
 end

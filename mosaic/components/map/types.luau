@@ -16,7 +16,9 @@ export type TrySetValue<T> = (value: T) -> (boolean, string?, T?)
 
 export type Item = {
 	Key: string?,
+	KeyChildren: { Fusion.Child }?,
 	Value: any,
+	ValueChildren: { Fusion.Child }?,
 	Writable: boolean?,
 	TrySetValue: TrySetValue<any>?,
 	SubItems: { Item }?,
@@ -32,7 +34,9 @@ export type IntrinsicAccessor = {
 
 export type IntrinsicItem = {
 	Key: string,
+	KeyChildren: { Fusion.Child }?,
 	Value: IntrinsicAccessor,
+	ValueChildren: { Fusion.Child }?,
 	SubItems: { IntrinsicItem }?,
 	Collapsed: Fusion.Value<boolean>?,
 }

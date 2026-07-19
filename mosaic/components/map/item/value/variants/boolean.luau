@@ -79,7 +79,9 @@ return function(
                 } :: { Fusion.Child })
             },
 
-            New(scope, "UIFlexItem") {}
+            New(scope, "UIFlexItem") {
+                FlexMode = Enum.UIFlexMode.Shrink
+            }
         } :: { Fusion.Child })
     }
 end

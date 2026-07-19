@@ -38,7 +38,8 @@ type MapItemKeyProps = Typeforge.Flatten<
         HasSubItems: boolean,
         Nestedness: number,
         CollapsedState: Fusion.Value<boolean>?,
-        Redrawable: boolean
+        Redrawable: boolean,
+        RightChildren: Fusion.Child?
     }
 >
 
@@ -62,7 +63,8 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
         indicator = Arrow(scope, {
             CollapsedState = props.CollapsedState :: Fusion.Value<boolean>,
             Variant = if props.Writable then "Primary" else "Secondary",
-            Thin = true
+            Thin = true,
+            LayoutOrder = 0
         })
 
     else
@@ -71,7 +73,8 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
             Size = UDim2.fromOffset(IndicatorSize, IndicatorSize),
             BackgroundTransparency = 1,
             ImageColor3 = dotColor,
-            ImageTransparency = .5
+            ImageTransparency = .5,
+            LayoutOrder = 0
         }
     end
 
@@ -107,16 +110,20 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
                     if props.Writable then "Primary"
                     else "Secondary",
                 Size = UDim2.fromScale(1, 0),
+                LayoutOrder = 1,
 
                 [Children] = New(scope, "UIFlexItem") {
                     FlexMode = Enum.UIFlexMode.Shrink
                 }
             }),
 
+            props.RightChildren,
+
             New(scope, "UIListLayout") {
                 Padding = UDim.new(0, IndicatorGap),
                 FillDirection = Enum.FillDirection.Horizontal,
-                VerticalAlignment = Enum.VerticalAlignment.Center
+                VerticalAlignment = Enum.VerticalAlignment.Center,
+                SortOrder = Enum.SortOrder.LayoutOrder
             },
 
             New(scope, "UIPadding") {

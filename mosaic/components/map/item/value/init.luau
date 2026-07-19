@@ -47,7 +47,8 @@ type MapItemValueProps = Typeforge.Flatten<
         HoverState: Fusion.Value<boolean>?,
         FocusState: Fusion.Value<boolean>?,
         FocusElevationState: Fusion.Value<boolean>?,
-        FocusRingAlphaState: Fusion.Value<number>?
+        FocusRingAlphaState: Fusion.Value<number>?,
+        RightChildren: Fusion.Child?
     }
 >
 
@@ -253,6 +254,8 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
                 OnFocusChanged = onFocusChanged,
                 FocusState = props.FocusState
             }),
+
+            props.RightChildren,
 
             New(scope, "UIListLayout") {
                 Padding = UDim.new(0, 6),
