@@ -370,6 +370,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
         OutAbsolutePosition = viewportAbsolutePositionState,
         OutAbsoluteSize = viewportAbsoluteSizeState,
         OutCanvasPosition = viewportCanvasPositionState,
+        PaddingLeft = UDim.new(0, 4),
 
         [Children] = computeMapInstances
     }, (props :: any))

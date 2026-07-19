@@ -75,7 +75,21 @@ local Widget = Scope:Widget {
             Name = "Content",
 
             [Children] = {
-                Properties.Input(Scope),
+                Scope:New "Frame" {
+                    Size = UDim2.fromScale(1, 0),
+                    AutomaticSize = Enum.AutomaticSize.Y,
+                    BackgroundTransparency = 1,
+
+                    [Children] = {
+                        Properties.Input(Scope),
+
+                        Scope:New "UIPadding" {
+                            PaddingLeft = UDim.new(0, 4),
+                        },
+
+                        Scope:New "UIFlexItem" {}
+                    }
+                },
 
                 Properties.Maps(Scope, {
                     SelectedInstanceValue = SelectedInstanceValue,
@@ -83,7 +97,6 @@ local Widget = Scope:Widget {
                 }),
 
                 Scope:New "UIPadding" {
-                    PaddingLeft = UDim.new(0, 4),
                     PaddingRight = UDim.new(0, 4),
                     PaddingTop = UDim.new(0, 4),
                     -- For some reason plugin gui's are

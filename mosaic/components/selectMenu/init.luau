@@ -106,7 +106,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
                 Variant = GetNextVariant(scope, variant),
                 Size = UDim2.new(1, 0, 0, 0),
                 AutomaticSize = Enum.AutomaticSize.Y,
-                Padding = UDim.new(0, 3),
+                PaddingRight = UDim.new(0, 3),
                 Transparency = transparency,
 
                 RootChildren = New(scope, "UISizeConstraint") {
