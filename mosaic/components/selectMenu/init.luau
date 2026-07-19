@@ -5,9 +5,9 @@ local Packages = script.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local New, Children, Value, Peek, Computed =
+local New, Children, Value, Peek, Computed, Tween =
     Fusion.New, Fusion.Children, Fusion.Value,
-    Fusion.peek, Fusion.Computed
+    Fusion.peek, Fusion.Computed, Fusion.Tween
 
 local Utils = script.Parent.Parent.utils
 
@@ -38,9 +38,15 @@ type SelectMenuProps = {
 	Items: Fusion.UsedAs<{ string }>,
 	SelectedIdx: Fusion.UsedAs<number?>?,
 	DefaultIdx: Fusion.UsedAs<number>?,
-	Transparency: Fusion.UsedAs<number>?,
+	Visible: Fusion.UsedAs<boolean>?,
 	Interactable: Fusion.UsedAs<boolean>?
 }
+
+local VisibilityTweenInfo = TweenInfo.new(
+    .23,
+    Enum.EasingStyle.Quint,
+    Enum.EasingDirection.InOut
+)
 
 return Component<<SelectMenuProps>>(function(scope, props)
     local props, variant = TableExtract(props, "Variant", "Tertiary")
@@ -49,7 +55,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
     local props, items = TableExtract(props, "Items")
     local props, selectedIdx = TableExtract(props, "SelectedIdx")
     local props, defaultIdx = TableExtract(props, "DefaultIdx")
-    local props, transparency = TableExtract(props, "Transparency", 0)
+    local props, visible = TableExtract(props, "Visible", true)
     local props, interactable = TableExtract(props, "Interactable", true)
     local props, backgroundTransparency =
         TableExtract(props, "BackgroundTransparency", 0)
@@ -61,6 +67,23 @@ return Component<<SelectMenuProps>>(function(scope, props)
         CalcColorModifier(scope, isHoverState, isFocusState, "Stroke")
 
     local selectedIdxValue = CoerceToValue<<number?>>(scope, selectedIdx)
+    local visibilityTransparency = Tween<<number>>(
+        scope,
+        Computed(scope, function(use): number
+            return if use<<boolean>>(visible) then 0 else 1
+        end),
+        VisibilityTweenInfo
+    )
+    local shouldRender = Computed(scope, function(use): boolean
+        return
+            use<<boolean>>(visible)
+            or use<<number>>(visibilityTransparency) < .999
+    end)
+    local effectiveInteractable = Computed(scope, function(use): boolean
+        return
+            use<<boolean>>(visible)
+            and use<<boolean>>(interactable)
+    end)
 
     local theme = GetThemeForScope(scope)
     local bgColor = theme:GetBg(scope, variant)
@@ -70,12 +93,12 @@ return Component<<SelectMenuProps>>(function(scope, props)
     local composedBackgroundTransparency = ComposeTransparency(
         scope,
         backgroundTransparency,
-        transparency
+        visibilityTransparency
     )
     local composedStrokeTransparency = ComposeTransparency(
         scope,
         strokeTransparency,
-        transparency
+        visibilityTransparency
     )
 
     return Supercorner.new(scope :: any, CombineProps({
@@ -88,6 +111,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
         AutomaticSize = Enum.AutomaticSize.Y,
         CornerRadius = Peek<<number>>(cornerRadius),
         CornerSmoothing = 1,
+        Visible = shouldRender,
 
         Name = "SelectMenu",
 
@@ -107,7 +131,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
                 Size = UDim2.new(1, 0, 0, 0),
                 AutomaticSize = Enum.AutomaticSize.Y,
                 PaddingRight = UDim.new(0, 3),
-                Transparency = transparency,
+                Transparency = visibilityTransparency,
 
                 RootChildren = New(scope, "UISizeConstraint") {
                     MaxSize = Computed(scope, function(use: Fusion.Use)
@@ -125,8 +149,8 @@ return Component<<SelectMenuProps>>(function(scope, props)
                             SelectedIdxValue = selectedIdxValue,
                             DefaultIdx = defaultIdx,
                             Idx = key,
-                            Transparency = transparency,
-                            Interactable = interactable
+                            Transparency = visibilityTransparency,
+                            Interactable = effectiveInteractable
                         })
                     end),
 

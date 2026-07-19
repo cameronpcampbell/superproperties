@@ -4,14 +4,12 @@
 local Packages =
     script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.packages
 local Fusion = require(Packages.fusion)
-local New, Children, Computed, Observer, OnEvent, Peek, Tween, Value =
-    Fusion.New, Fusion.Children, Fusion.Computed, Fusion.Observer,
-    Fusion.OnEvent, Fusion.peek, Fusion.Tween, Fusion.Value
+local New, Children, Observer, OnEvent, Peek, Value =
+    Fusion.New, Fusion.Children, Fusion.Observer,
+    Fusion.OnEvent, Fusion.peek, Fusion.Value
 
 local Types = require(script.Parent.types)
 local CreateSidePadding = require(script.Parent.utils.createSidePadding)
-local FocusTransitionTweenInfo =
-    require(script.Parent.Parent.focusTransitionTweenInfo)
 
 local Components = script.Parent.Parent.Parent.Parent.Parent
 local Icon = require(Components.icon)
@@ -94,19 +92,6 @@ return function(
         end)
     end
 
-    local menuTransparency = Tween<<number>>(
-        scope,
-        Computed(scope, function(use): number
-            return if use<<boolean>>(visualFocusState) then 0 else 1
-        end),
-        FocusTransitionTweenInfo
-    )
-    local shouldShowMenu = Computed(scope, function(use): boolean
-        return
-            use<<boolean>>(visualFocusState) or
-            use<<number>>(menuTransparency) < .999
-    end)
-
     local textBox: TextBox
     local hitArea: TextButton
     local selectMenu: GuiObject
@@ -182,9 +167,8 @@ return function(
         Width = UDim.new(1, 2),
         MaxHeight = MenuMaxHeight,
         Position = UDim2.new(0, -1, 1, MenuGap),
-        Transparency = menuTransparency,
+        Visible = visualFocusState,
         Interactable = inputFocusState,
-        Visible = shouldShowMenu,
         ZIndex = 4
     }) :: GuiObject
 
