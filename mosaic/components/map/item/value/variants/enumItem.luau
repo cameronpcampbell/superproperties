@@ -14,12 +14,17 @@ local FocusTransitionTweenInfo =
     require(script.Parent.Parent.focusTransitionTweenInfo)
 
 local Components = script.Parent.Parent.Parent.Parent.Parent
+local Icon = require(Components.icon)
 local SelectMenu = require(Components.selectMenu)
 local Text = require(Components.text)
+local Assets = require(Components.Parent.assets)
 
+local ChevronGap = 6
+local ChevronSize = 9
 local MenuGap = 4
 local MenuMaxHeight = 150
 local PointerCursor = "rbxasset://SystemCursors/PointingHand"
+local SidePadding = 6
 
 local PluginInstance = script:FindFirstAncestorOfClass("Plugin") :: Plugin?
 assert(PluginInstance, "EnumItem must be created from inside a Plugin")
@@ -186,7 +191,23 @@ return function(
 
         Name = "EnumItemText"
     }, {
-        [Children] = CreateSidePadding(scope)
+        [Children] = New(scope, "UIPadding") {
+            PaddingLeft = UDim.new(0, SidePadding),
+            PaddingRight = UDim.new(
+                0,
+                SidePadding + ChevronSize + ChevronGap
+            )
+        }
+    })
+
+    local chevrons = Icon(scope, {
+        Image = Assets.ChevronsThin,
+        Size = UDim2.fromOffset(ChevronSize, ChevronSize),
+        Position = UDim2.new(1, -SidePadding, .5, 0),
+        AnchorPoint = Vector2.new(1, .5),
+        ZIndex = 1,
+
+        Name = "EnumItemChevrons"
     })
 
     textBox = New(scope, "TextBox") {
@@ -264,6 +285,8 @@ return function(
 
         [Children] = ({
             displayedValue,
+
+            chevrons,
 
             textBox,
 
