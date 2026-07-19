@@ -12,7 +12,6 @@ A custom properties explorer for roblox.
 ### Core
 - [ ] Implement `ColorSequence` and `NumberSequence` property values.
 - [ ] Implement `BrickColor` property values.
-- [ ] Implement `EnumItem` property values.
 - [ ] Implement `Instance` property values.
 - [ ] Implement `PhysicalProperties` property values.
 - [ ] Implement multi-instance select.
