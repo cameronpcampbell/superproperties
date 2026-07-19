@@ -42,19 +42,19 @@ type function OmitExceptIndexer(input: type, toOmit: type)
     return omittedInput
 end
 
+type Falsey = nil | never | unknown
+
 -- We need to make the return type optional only when a default value is not provided.
 type function ExtractReturnType(propValue: type, default: type)
-    -- Typeforge's Pick and Omit types don't support singleton's as an input.
+    -- Issue with Pick with non-string singletons in typeforge.
     if not safe_is(default, "union") then
         return
             if is_falsey(default) then propValue
             else Omit(propValue, types.singleton(nil))
     end
 
-    local falsies = types.unionof(types.singleton(nil), types.never, types.unknown)
-
     return
-        if Pick(default, falsies) ~= types.unknown then propValue
+        if Pick(default, Falsey) ~= types.unknown then propValue
         else Omit(propValue, types.singleton(nil))
 end
 
