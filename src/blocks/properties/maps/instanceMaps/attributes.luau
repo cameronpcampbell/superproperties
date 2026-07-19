@@ -126,7 +126,7 @@ return function(
 
             item.Value = value
         else
-            local item = {
+            local item: Item = {
                 Key = attributeName,
                 Value = value
             }

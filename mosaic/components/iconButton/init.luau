@@ -26,6 +26,7 @@ type IconButtonProps = {
     Variant: ThemeUtils.FgVariant?,
     Rotation: Fusion.UsedAs<number>?,
     Image: Fusion.UsedAs<string>?,
+    LayoutOrder: number?,
     [Fusion.SpecialKey]: any
 }
 

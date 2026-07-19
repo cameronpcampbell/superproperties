@@ -32,7 +32,8 @@ export type ScrollableProps = {
     CanvasSize: Fusion.UsedAs<UDim2>?,
     AutomaticSize: Fusion.UsedAs<Enum.AutomaticSize>?,
     AutomaticCanvasSize: Fusion.UsedAs<Enum.AutomaticSize>?,
-    Padding: Fusion.UsedAs<UDim>?,
+    PaddingLeft: Fusion.UsedAs<UDim>?,
+    PaddingRight: Fusion.UsedAs<UDim>?,
     Transparency: Fusion.UsedAs<number>?,
     RootChildren: Fusion.Child?,
 }
@@ -49,7 +50,8 @@ return Component<<ScrollableProps>>(function(scope, props)
         TableExtract(props, "AutomaticSize", Enum.AutomaticSize.None)
     local props, automaticCanvasSize =
         TableExtract(props, "AutomaticCanvasSize", Enum.AutomaticSize.Y)
-    local props, padding = TableExtract(props, "Padding", UDim.new(0, 4))
+    local props, paddingLeft = TableExtract(props, "PaddingLeft", UDim.new(0, 0))
+    local props, paddingRight = TableExtract(props, "PaddingRight", UDim.new(0, 4))
     local props, transparency = TableExtract(props, "Transparency", 0)
 
     local theme = GetThemeForScope(scope)
@@ -57,10 +59,10 @@ return Component<<ScrollableProps>>(function(scope, props)
     local scrollBarUnderlayColor = theme:GetBgHighlight(scope, variant)
     local composedTransparency = ComposeTransparency(scope, 0, transparency)
 
-    local copmputePadding = Computed(scope, function(use, scope)
-        local usedPadding = use<<UDim>>(padding)
+    local copmputePaddingRight = Computed(scope, function(use, scope)
+        local usedPaddingRight = use<<UDim>>(paddingRight)
 
-        return UDim.new(usedPadding.Scale, 4 + usedPadding.Offset)
+        return UDim.new(usedPaddingRight.Scale, 4 + usedPaddingRight.Offset)
     end)
 
     return New(scope, "Frame") (CombineProps({
@@ -96,7 +98,8 @@ return Component<<ScrollableProps>>(function(scope, props)
                     children,
 
                     New (scope, "UIPadding") {
-                        PaddingRight = copmputePadding,
+                        PaddingLeft = paddingLeft,
+                        PaddingRight = copmputePaddingRight,
                     },
                 }
             },
