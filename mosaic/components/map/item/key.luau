@@ -6,11 +6,13 @@ local Supercorner = require(Packages.supercorner)
 local Typeforge = require(Packages.typeforge)
 
 local Fusion = require(Packages.fusion)
-local New, Children = Fusion.New, Fusion.Children
+local New, Children, OnEvent =
+    Fusion.New, Fusion.Children, Fusion.OnEvent
 
 local Utils = script.Parent.Parent.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
+local CombineProps = FusionUtils.CombineProps
 local ComputeTransforms = FusionUtils.ComputeTransforms
 local ComputeUDim2, ComputeUDim =
     ComputeTransforms.UDim2, ComputeTransforms.UDim
@@ -39,6 +41,7 @@ type MapItemKeyProps = Typeforge.Flatten<
         Nestedness: number,
         CollapsedState: Fusion.Value<boolean>?,
         Redrawable: boolean,
+        HoverState: Fusion.Value<boolean>?,
         RightChildren: Fusion.Child?
     }
 >
@@ -57,6 +60,15 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
     local dotColor = theme:GetFg(scope, "Tertiary")
     local rowHeight = ComputeAdd(scope, theme:GetHeight(scope, "Lg"), - 2)
     local innerCornerRadius = ComputeAdd(scope, theme:GetCornerRadius(scope, "Md"), - 1)
+    local interactionProps: { [any]: any } = {}
+
+    if props.HoverState then
+        local hoverState = props.HoverState
+        interactionProps = {
+            [OnEvent "MouseEnter"] = function() hoverState:set(true) end,
+            [OnEvent "MouseLeave"] = function() hoverState:set(false) end
+        }
+    end
 
     local indicator: Fusion.Child
     if hasSubItems then
@@ -88,7 +100,7 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
             innerCornerRadius
         )
 
-    return Supercorner.new(scope, {
+    return Supercorner.new(scope, CombineProps({
         BackgroundColor3 = bgColor,
         Size = ComputeUDim2(scope, UDim.new(1, 0), ComputeUDim(scope, 0, rowHeight)),
         TopLeftRadius = topLeftRadius,
@@ -131,7 +143,7 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
                 PaddingRight = UDim.new(0, IndicatorGap)
             },
         } :: { Fusion.Child })
-    })
+    }, interactionProps))
 end
 
 return MapItemKey

@@ -35,6 +35,7 @@ local Arrow = require(script.Parent.Parent.arrow)
 local ValueVariants = require(script.variants)
 local DefaultValueVariant = ValueVariants.Default
 local FocusTransitionTweenInfo = require(script.focusTransitionTweenInfo)
+local HoverTweenInfo = require(script.Parent.hoverTweenInfo)
 
 type MapItemValueProps = Typeforge.Flatten<
     Types.BaseMapProps & {
@@ -85,6 +86,14 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
     local onFocusChanged: ((isFocused: boolean) -> ())? = nil
     local interactionProps: { [any]: any } = {}
 
+    if props.HoverState then
+        local hoverState = props.HoverState
+        interactionProps = {
+            [OnEvent "MouseEnter"] = function() hoverState:set(true) end,
+            [OnEvent "MouseLeave"] = function() hoverState:set(false) end
+        }
+    end
+
     if props.Writable then
         local isHoverState = props.HoverState :: Fusion.Value<boolean>
         local isFocusState = props.FocusState :: Fusion.Value<boolean>
@@ -108,9 +117,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
                     else
                         use<<Color3>>(strokeColor)
             end),
-            TweenInfo.new(
-                .18, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
-            )
+            HoverTweenInfo
         )
 
         local tweenStrokeTransparency = Tween<<number>>(
@@ -122,9 +129,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
 
                 return if shouldShow then 0 else 1
             end),
-            TweenInfo.new(
-                .18, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
-            )
+            HoverTweenInfo
         )
 
         border = Supercorner.new(scope, {
@@ -214,11 +219,6 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
                 )
             end)
         end
-
-        interactionProps = {
-            [OnEvent "MouseEnter"] = function() isHoverState:set(true) end,
-            [OnEvent "MouseLeave"] = function() isHoverState:set(false) end
-        }
     end
 
     return Supercorner.new(scope, CombineProps({

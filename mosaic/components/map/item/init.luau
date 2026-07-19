@@ -5,9 +5,9 @@ local Packages = script.Parent.Parent.Parent.Parent
 local Typeforge = require(Packages.typeforge)
 
 local Fusion = require(Packages.fusion)
-local Computed, New, Children, Observer, Peek, Value =
+local Computed, New, Children, Observer, Peek, Tween, Value =
     Fusion.Computed, Fusion.New, Fusion.Children, Fusion.Observer,
-    Fusion.peek, Fusion.Value
+    Fusion.peek, Fusion.Tween, Fusion.Value
 
 local Utils = script.Parent.Parent.Parent.utils
 
@@ -25,6 +25,7 @@ local GetThemeForScope = ThemeUtils.GetThemeForScope
 local Types = require(script.Parent.types)
 local MapItemKey = require(script.key)
 local MapItemValue = require(script.value)
+local HoverTweenInfo = require(script.hoverTweenInfo)
 local ZIndices = require(script.Parent.zIndices)
 
 local FocusRingActiveAlphaThreshold = .15
@@ -40,14 +41,25 @@ type MapItemProps = Typeforge.Flatten<{
 local function CreateRightChildren(
     scope: Fusion.Scope,
     name: string,
-    children: { Fusion.Child }?
+    children: { Fusion.Child }?,
+    hoverState: Fusion.Value<boolean>
 ): Instance?
     if not children or next(children) == nil then return nil end
 
-    return New(scope, "Frame") {
+    local transparency = Tween<<number>>(
+        scope,
+        Computed(scope, function(use: Fusion.Use): number
+            return if use<<boolean>>(hoverState) then 0 else 1
+        end),
+        HoverTweenInfo
+    )
+
+    return New(scope, "CanvasGroup") {
         Size = UDim2.fromScale(0, 1),
         AutomaticSize = Enum.AutomaticSize.X,
         BackgroundTransparency = 1,
+        GroupTransparency = transparency,
+        Interactable = hoverState,
         LayoutOrder = 2,
 
         Name = name,
@@ -78,15 +90,23 @@ local function CreateMapItem(
     local hasSubItems = #children > 0
     local redrawable = layout.CanBecomeMapBottom
     local hasInteractiveValue = layout.Writable
+    local hasKeyChildren =
+        hasKey and item.KeyChildren ~= nil and next(item.KeyChildren) ~= nil
+    local hasValueChildren =
+        item.ValueChildren ~= nil and next(item.ValueChildren) ~= nil
 
-    local isHoverState: Fusion.Value<boolean>? = nil
+    local keyHoverState: Fusion.Value<boolean>? =
+        if hasKeyChildren then Value(scope, false) else nil
+    local isHoverState: Fusion.Value<boolean>? =
+        if hasInteractiveValue or hasValueChildren
+        then Value(scope, false)
+        else nil
     local isFocusState: Fusion.Value<boolean>? = nil
     local isFocusElevationState: Fusion.Value<boolean>? = nil
     local focusRingAlphaState: Fusion.Value<number>? = nil
     local rowZIndex: Fusion.UsedAs<number> = ZIndices.Default
 
     if hasInteractiveValue then
-        isHoverState = Value(scope, false)
         isFocusState = layout.ValueFocusState
         isFocusElevationState = layout.ValueFocusElevationState
         focusRingAlphaState = Value(scope, 0)
@@ -211,11 +231,15 @@ local function CreateMapItem(
             Nestedness = layout.Depth,
             CollapsedState = layout.CollapsedState,
             Redrawable = redrawable,
-            RightChildren = CreateRightChildren(
-                scope,
-                "KeyChildren",
-                item.KeyChildren
-            )
+            HoverState = keyHoverState,
+            RightChildren = if keyHoverState then
+                CreateRightChildren(
+                    scope,
+                    "KeyChildren",
+                    item.KeyChildren,
+                    keyHoverState
+                )
+                else nil
         }))
     end
 
@@ -233,11 +257,14 @@ local function CreateMapItem(
         FocusState = isFocusState,
         FocusElevationState = isFocusElevationState,
         FocusRingAlphaState = focusRingAlphaState,
-        RightChildren = CreateRightChildren(
-            scope,
-            "ValueChildren",
-            item.ValueChildren
-        )
+        RightChildren = if hasValueChildren then
+            CreateRightChildren(
+                scope,
+                "ValueChildren",
+                item.ValueChildren,
+                isHoverState :: Fusion.Value<boolean>
+            )
+            else nil
     }))
 
     table.insert(itemContentChildren, New(scope, "UIListLayout") {
