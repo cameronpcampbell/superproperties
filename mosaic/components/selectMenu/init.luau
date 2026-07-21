@@ -1,12 +1,13 @@
 --!strict
 --!nolint LocalShadow
+local ServerScriptService = game:GetService("ServerScriptService")
 
 local Packages = script.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local New, Children, Value, Peek, Computed, Tween =
-    Fusion.New, Fusion.Children, Fusion.Value,
+local New, Children, Peek, Computed, Tween =
+    Fusion.New, Fusion.Children,
     Fusion.peek, Fusion.Computed, Fusion.Tween
 
 local Utils = script.Parent.Parent.utils
@@ -19,9 +20,8 @@ local ComputeTransforms = FusionUtils.ComputeTransforms
 local ComputeUDim2 = ComputeTransforms.UDim2
 
 local ThemeUtils = require(Utils.themeUtils)
-local GetThemeForScope, GetNextVariant, CalcColorModifier =
-    ThemeUtils.GetThemeForScope, ThemeUtils.GetNextVariant,
-    ThemeUtils.CalcColorModifier
+local GetThemeForScope, GetNextVariant =
+    ThemeUtils.GetThemeForScope, ThemeUtils.GetNextVariant
 
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
@@ -62,10 +62,6 @@ return Component<<SelectMenuProps>>(function(scope, props)
     local props, strokeTransparency =
         TableExtract(props, "StrokeTransparency", 0)
 
-    local isHoverState, isFocusState = Value(scope, false), Value(scope, false)
-    local themeColorModifier =
-        CalcColorModifier(scope, isHoverState, isFocusState, "Stroke")
-
     local selectedIdxValue = CoerceToValue<<number?>>(scope, selectedIdx)
     local visibilityTransparency = Tween<<number>>(
         scope,
@@ -85,10 +81,11 @@ return Component<<SelectMenuProps>>(function(scope, props)
             and use<<boolean>>(interactable)
     end)
 
+    local nextVariant = GetNextVariant(scope, variant)
+
     local theme = GetThemeForScope(scope)
     local bgColor = theme:GetBg(scope, variant)
-    local strokeColor =
-        theme:GetBg(scope, GetNextVariant(scope, variant), themeColorModifier)
+    local strokeColor = theme:GetBg(scope, nextVariant)
     local cornerRadius = theme:GetCornerRadius(scope, "Md")
     local composedBackgroundTransparency = ComposeTransparency(
         scope,
@@ -126,47 +123,80 @@ return Component<<SelectMenuProps>>(function(scope, props)
         },
 
         [Children] = {
-            Scrollable(scope, {
-                Variant = GetNextVariant(scope, variant),
-                Size = UDim2.new(1, 0, 0, 0),
-                AutomaticSize = Enum.AutomaticSize.Y,
-                PaddingRight = UDim.new(0, 3),
-                Transparency = visibilityTransparency,
+            New(scope, "TextBox") {
+                Size = UDim2.new(1,0,0,23),
+                BackgroundTransparency = 1,
+            },
 
-                RootChildren = New(scope, "UISizeConstraint") {
-                    MaxSize = Computed(scope, function(use: Fusion.Use)
-                        return Vector2.new(
-                            math.huge,
-                            math.max(use<<number>>(maxHeight) - 8, 0)
-                        )
-                    end)
-                },
+            New(scope, "Frame") {
+                BackgroundColor3 = strokeColor,
+                BorderSizePixel = 0,
+                Size = UDim2.new(1,0,0,1),
+
+                Name = "Divider"
+            },
+
+            New(scope, "Frame") {
+                Size = UDim2.new(1,0,0,0),
+                BackgroundTransparency = 1,
+                AutomaticSize = Enum.AutomaticSize.Y,
 
                 [Children] = {
-                    Fusion.ForPairs(scope, items, function(use, scope, key, value)
-                        return key, SelectMenuItem(scope, {
-                            Text = value,
-                            SelectedIdxValue = selectedIdxValue,
-                            DefaultIdx = defaultIdx,
-                            Idx = key,
-                            Transparency = visibilityTransparency,
-                            Interactable = effectiveInteractable
-                        })
-                    end),
+                    Scrollable(scope, {
+                        Variant = nextVariant,
+                        Size = UDim2.new(1, 0, 0, 0),
+                        AutomaticSize = Enum.AutomaticSize.Y,
+                        PaddingRight = UDim.new(0, 3),
+                        Transparency = visibilityTransparency,
 
-                    New(scope, "UIListLayout") {
-                        Padding = UDim.new(0, 1),
-                        FillDirection = Enum.FillDirection.Vertical,
-                        SortOrder = Enum.SortOrder.LayoutOrder
+                        RootChildren = New(scope, "UISizeConstraint") {
+                            MaxSize = Computed(scope, function(use: Fusion.Use)
+                                return Vector2.new(
+                                    math.huge,
+                                    math.max(use<<number>>(maxHeight) - 8, 0)
+                                )
+                            end)
+                        },
+
+                        [Children] = {
+                            Fusion.ForPairs(scope, items, function(use, scope, key, value)
+                                return key, SelectMenuItem(scope, {
+                                    Text = value,
+                                    SelectedIdxValue = selectedIdxValue,
+                                    DefaultIdx = defaultIdx,
+                                    Idx = key,
+                                    Transparency = visibilityTransparency,
+                                    Interactable = effectiveInteractable
+                                })
+                            end),
+
+                            New(scope, "UIListLayout") {
+                                Padding = UDim.new(0, 1),
+                                FillDirection = Enum.FillDirection.Vertical,
+                                SortOrder = Enum.SortOrder.LayoutOrder
+                            },
+                        }
+                    }),
+
+                    New(scope, "UIPadding") {
+                        PaddingLeft = UDim.new(0, 3),
+                        PaddingRight = UDim.new(0, 3),
+                        PaddingTop = UDim.new(0, 3),
+                        PaddingBottom = UDim.new(0, 3),
                     },
                 }
-            }),
+            },
+
+            New(scope, "UIListLayout") {
+                FillDirection = Enum.FillDirection.Vertical,
+                SortOrder = Enum.SortOrder.LayoutOrder
+            },
 
             New(scope, "UIPadding") {
-                PaddingLeft = UDim.new(0, 4),
-                PaddingRight = UDim.new(0, 4),
-                PaddingTop = UDim.new(0, 4),
-                PaddingBottom = UDim.new(0, 4),
+                PaddingLeft = UDim.new(0, 1),
+                PaddingRight = UDim.new(0, 1),
+                PaddingTop = UDim.new(0, 1),
+                PaddingBottom = UDim.new(0, 1),
             },
         }
     }, props))
