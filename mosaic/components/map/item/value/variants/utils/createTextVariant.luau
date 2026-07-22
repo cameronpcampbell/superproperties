@@ -3,9 +3,9 @@
 local Packages =
     script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.packages
 local Fusion = require(Packages.fusion)
-local New, Children, Value, Peek, Out, OnEvent, Computed =
+local New, Children, Value, Peek, Out, OnEvent =
     Fusion.New, Fusion.Children, Fusion.Value, Fusion.peek,
-    Fusion.Out, Fusion.OnEvent, Fusion.Computed
+    Fusion.Out, Fusion.OnEvent
 
 local Utils = script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.utils
 local ThemeUtils = require(Utils.themeUtils)
@@ -15,6 +15,7 @@ local Types = require(script.Parent.Parent.types)
 local CreateSidePadding = require(script.Parent.createSidePadding)
 
 local Components = script.Parent.Parent.Parent.Parent.Parent.Parent
+local CoreInput = require(Components.Parent.coreComponents.input)
 local Text = require(Components.text)
 
 type TextVariantConfig<T> = {
@@ -57,21 +58,13 @@ local function CreateTextVariant<T>(
         end
 
         local textState = Value<<string>>(scope, displayedValue)
-        local isFocusState = Value(scope, false)
-        local textTruncate = Computed(scope, function(use)
-            return
-                if use<<boolean>>(isFocusState) then
-                    Enum.TextTruncate.None
-                else
-                    Enum.TextTruncate.AtEnd
-        end)
         local theme = GetThemeForScope(scope)
         local textColor = theme:GetFg(scope, "Primary")
         local font = theme:GetFont(scope, "Main", Enum.FontWeight.Regular)
         local fontSize = theme:GetFontSize(scope, "Main", "Body")
 
         local textBox: TextBox
-        textBox = New(scope, "TextBox") {
+        textBox = CoreInput(scope, {
             Size = UDim2.fromScale(1, 1),
             BackgroundTransparency = 1,
             Text = textState,
@@ -81,12 +74,10 @@ local function CreateTextVariant<T>(
             ClearTextOnFocus = false,
             TextXAlignment = Enum.TextXAlignment.Left,
             ClipsDescendants = true,
-            TextTruncate = textTruncate,
 
             Name = config.InputName,
 
             [OnEvent "Focused"] = function()
-                isFocusState:set(true)
                 textState:set(focusedValue)
                 textBox.CursorPosition = #focusedValue + 1
                 textBox.SelectionStart = 1
@@ -95,7 +86,6 @@ local function CreateTextVariant<T>(
             end,
 
             [OnEvent "FocusLost"] = function()
-                isFocusState:set(false)
                 if props.OnFocusChanged then props.OnFocusChanged(false) end
 
                 local nextText = Peek<<string>>(textState)
@@ -129,7 +119,7 @@ local function CreateTextVariant<T>(
             [Children] = New(scope, "UIFlexItem") {
                 FlexMode = Enum.UIFlexMode.Shrink
             }
-        } :: TextBox
+        }) :: TextBox
 
         return {
             textBox :: Instance,

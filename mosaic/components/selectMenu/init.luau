@@ -28,6 +28,9 @@ local GetThemeForScope, GetNextVariant =
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
+local CoreComponents = script.Parent.Parent.coreComponents
+local CoreInput = require(CoreComponents.input)
+
 local Components = script.Parent.Parent.components
 local Scrollable = require(Components.scrollable)
 local Text = require(Components.text)
@@ -257,7 +260,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
         },
 
         [Children] = {
-            New(scope, "TextBox") {
+            CoreInput(scope, {
                 Size = ComputeUDim2(
                     scope,
                     UDim.new(1, 0),
@@ -275,7 +278,6 @@ return Component<<SelectMenuProps>>(function(scope, props)
                 Interactable = effectiveSearchInteractable,
                 TextEditable = effectiveSearchInteractable,
                 TextXAlignment = Enum.TextXAlignment.Left,
-                TextTruncate = Enum.TextTruncate.None,
                 Visible = isSearchEnabled,
 
                 [Out "Text"] = searchState,
@@ -288,7 +290,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
                 },
 
                 Name = "Search"
-            },
+            }),
 
             New(scope, "Frame") {
                 BackgroundColor3 = strokeColor,

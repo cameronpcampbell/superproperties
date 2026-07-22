@@ -26,6 +26,9 @@ local GetThemeForScope, GetNextVariant, CalcColorModifier =
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
+local CoreComponents = script.Parent.Parent.coreComponents
+local CoreInput = require(CoreComponents.input)
+
 local Components = script.Parent.Parent.components
 local FocusRing = require(Components.focusRing)
 
@@ -57,14 +60,6 @@ return Component<<InputProps>>(function(scope, props)
         local usedText = use<<string?>>(text)
         return if usedText == nil then "" else usedText
     end)
-    local computeTextTruncate = Computed(scope, function(use)
-        return
-            if use<<boolean>>(isFocusState) then
-                Enum.TextTruncate.None
-            else
-                use<<Enum.TextTruncate>>(textTruncate)
-    end)
-
     local textValue = if IsValue(text) then
         (text :: any) :: Fusion.Value<string?, string>
         else nil
@@ -129,7 +124,7 @@ return Component<<InputProps>>(function(scope, props)
         [Children] = {
             leftChildren,
 
-            New(scope, "TextBox") {
+            CoreInput(scope, {
                 Size = UDim2.fromScale(1, 1),
                 BackgroundTransparency = 1,
                 Text = computeVisualText,
@@ -141,7 +136,7 @@ return Component<<InputProps>>(function(scope, props)
                 ClearTextOnFocus = false,
                 ClipsDescendants = true,
                 TextXAlignment = Enum.TextXAlignment.Left,
-                TextTruncate = computeTextTruncate,
+                TextTruncate = textTruncate,
 
                 [OnEvent "Focused"] = function() isFocusState:set(true) end,
                 [OnEvent "FocusLost"] = function() isFocusState:set(false) end,
@@ -151,7 +146,7 @@ return Component<<InputProps>>(function(scope, props)
                 [Children] = New(scope, "UIFlexItem") {
                     FlexMode = Enum.UIFlexMode.Shrink
                 }
-            },
+            }),
 
             rightChildren,
 

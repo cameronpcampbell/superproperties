@@ -314,7 +314,7 @@ return function(
         Items = menuLabels,
         EnableSearch = true,
         SearchState = searchState,
-        SearchPlaceholderText = "Search for or create a tag",
+        SearchPlaceholderText = "Search for or create a tag.",
         SelectedIdx = selectedIdxState,
         Width = UDim.new(.5, 0),
         MaxHeight = MenuMaxHeight,
