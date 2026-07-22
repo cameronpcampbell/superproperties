@@ -1,6 +1,7 @@
 --!strict
 
 local Components = script.components
+local CoreComponents = script.coreComponents
 
 local Utils = script.utils
 local ThemeUtils = require(Utils.themeUtils)
@@ -33,6 +34,9 @@ return {
     SelectMenu = require(Components.selectMenu),
     Icon = require(Components.icon),
     Text = require(Components.text),
+
+    -- Core components.
+    PopoverFocus = require(CoreComponents.popoverFocus),
 
     -- Utils.
     GetTheme = ThemeUtils.GetThemeForScope,

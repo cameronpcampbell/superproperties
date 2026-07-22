@@ -32,6 +32,7 @@ type MapHeaderProps = Typeforge.Flatten<
         Header: string,
         HeaderChildrenFrame: Fusion.Child,
         HeaderOverlayFrame: Fusion.Child,
+        ZIndex: Fusion.UsedAs<number>,
         CollapsedState: Fusion.Value<boolean>,
         TweenComputeMapSize: Fusion.UsedAs<UDim2>
     }
@@ -104,6 +105,7 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
         BackgroundColor3 = theme:GetBgHighlight(scope, variant),
         Size = ComputeUDim2(scope, UDim.new(1, 0), ComputeUDim(scope, 0, rowHeight)),
         LayoutOrder = rowIdx,
+        ZIndex = props.ZIndex,
         TopLeftRadius = topLeftRadius,
         TopRightRadius = topRightRadius,
         BottomLeftRadius = bottomLeftRadius,

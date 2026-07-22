@@ -54,6 +54,7 @@ type SelectMenuProps = {
 	Visible: Fusion.UsedAs<boolean>?,
 	Interactable: Fusion.UsedAs<boolean>?,
     EmptyText: Fusion.UsedAs<string>?,
+    OutRenderVisible: Fusion.Value<boolean>?,
     OnSearchFocused: (() -> ())?,
     OnSearchFocusLost: ((boolean, InputObject?) -> ())?
 }
@@ -82,6 +83,8 @@ return Component<<SelectMenuProps>>(function(scope, props)
     local props, interactable = TableExtract(props, "Interactable", true)
     local props, emptyText =
         TableExtract(props, "EmptyText", "No results found.")
+    local props, outRenderVisible =
+        TableExtract(props, "OutRenderVisible")
     local props, onSearchFocused = TableExtract(props, "OnSearchFocused")
     local props, onSearchFocusLost = TableExtract(props, "OnSearchFocusLost")
     local props, backgroundTransparency =
@@ -159,19 +162,17 @@ return Component<<SelectMenuProps>>(function(scope, props)
         VisibilityTweenInfo
     )
 
-    Observer(scope, visibilityTransparency):onChange(function()
-        if
-            not Peek<<boolean>>(isVisible) and
-            Peek<<number>>(visibilityTransparency) >= .999
-        then
-            searchState:set("")
-        end
-    end)
-
     local shouldRender = Computed(scope, function(use): boolean
         return
             use<<boolean>>(visible)
             or use<<number>>(visibilityTransparency) < .999
+    end)
+
+    Observer(scope, shouldRender):onBind(function()
+        local isRendering = Peek<<boolean>>(shouldRender)
+
+        if outRenderVisible then outRenderVisible:set(isRendering) end
+        if not isRendering then searchState:set("") end
     end)
 
     local effectiveInteractable = Computed(scope, function(use): boolean

@@ -10,7 +10,8 @@ local Computed, Observer, OnEvent, Peek, Value =
     Fusion.OnEvent, Fusion.peek, Fusion.Value
 
 local Mosaic = require(Packages.mosaic)
-local IconButton, SelectMenu = Mosaic.IconButton, Mosaic.SelectMenu
+local IconButton, PopoverFocus, SelectMenu =
+    Mosaic.IconButton, Mosaic.PopoverFocus, Mosaic.SelectMenu
 
 local Map = require(Packages.mosaic.components.map)
 type Item = Map.Item
@@ -33,16 +34,6 @@ type TagOption = {
 local MenuGap = 4
 local MenuMaxHeight = 180
 local MenuRightInset = 6
-
-local function IsPointInside(guiObject: GuiObject, point: Vector3): boolean
-    local topLeft = guiObject.AbsolutePosition
-    local bottomRight = topLeft + guiObject.AbsoluteSize
-
-    return point.X >= topLeft.X
-        and point.X <= bottomRight.X
-        and point.Y >= topLeft.Y
-        and point.Y <= bottomRight.Y
-end
 
 local function Trim(text: string): string
     return text:match("^%s*(.-)%s*$") or ""
@@ -176,6 +167,7 @@ return function(
     local tagItemsState = Value(scope, tagItems)
     local allTagsState = Value(scope, GetAllTags())
     local menuOpenState = Value(scope, false)
+    local menuElevatedState = Value(scope, false)
     local searchState = Value(scope, "")
     local selectedIdxState = Value<<number?>>(scope, nil)
     local menuOptions = Computed(scope, function(use): { TagOption }
@@ -225,7 +217,7 @@ return function(
     local selectMenu: GuiObject
     local addButton: GuiObject
     local scopeAlive = true
-    local isSearchFocused = false
+    local focusSearch: () -> ()
 
     table.insert(scope, function()
         scopeAlive = false
@@ -234,17 +226,6 @@ return function(
     local function getSearchTextBox(): TextBox?
         local search = selectMenu:FindFirstChild("Search")
         return if search and search:IsA("TextBox") then search else nil
-    end
-
-    local function focusSearch()
-        task.defer(function()
-            if not scopeAlive or not Peek<<boolean>>(menuOpenState) then
-                return
-            end
-
-            local search = getSearchTextBox()
-            if search and not search:IsFocused() then search:CaptureFocus() end
-        end)
     end
 
     local function deferSelectedIdxReset(observedIdx: number?)
@@ -258,13 +239,40 @@ return function(
         end)
     end
 
-    local function closeMenu()
+    local function hideMenu()
         deferSelectedIdxReset(Peek<<number?>>(selectedIdxState))
         menuOpenState:set(false)
-        searchState:set("")
+    end
 
-        local search = getSearchTextBox()
-        if search and search:IsFocused() then search:ReleaseFocus(false) end
+    local popoverFocus = PopoverFocus(scope, {
+        GetInteractionRoots = function(): { GuiObject }
+            return { selectMenu, addButton }
+        end,
+        OnFocusChanged = function(isFocused: boolean)
+            if isFocused then
+                -- Elevate the map and its header before rendering the menu.
+                menuElevatedState:set(true)
+                menuOpenState:set(true)
+                focusSearch()
+            else
+                hideMenu()
+            end
+        end,
+        Name = "TagsMenuFocusTarget"
+    })
+
+    focusSearch = function()
+        task.defer(function()
+            if not scopeAlive then return end
+            if not Peek<<boolean>>(popoverFocus.State) then return end
+
+            local search = getSearchTextBox()
+            if search then popoverFocus.CaptureChild(search) end
+        end)
+    end
+
+    local function closeMenu()
+        popoverFocus.Release()
     end
 
     local function addTag(tag: string): boolean
@@ -314,20 +322,18 @@ return function(
         AnchorPoint = Vector2.new(1, 0),
         Visible = menuOpenState,
         Interactable = menuOpenState,
+        OutRenderVisible = menuElevatedState,
         EmptyText = "",
         ZIndex = 4,
 
         OnSearchFocused = function()
-            isSearchFocused = true
-            menuOpenState:set(true)
+            popoverFocus.ChildFocused(getSearchTextBox())
         end,
 
         OnSearchFocusLost = function(
             enterPressed: boolean,
             inputThatCausedFocusLoss: InputObject?
         )
-            isSearchFocused = false
-
             if enterPressed then
                 local candidate = Trim(Peek<<string>>(searchState))
                 if candidate ~= "" then
@@ -338,21 +344,7 @@ return function(
                 return
             end
 
-            if inputThatCausedFocusLoss ~= nil and (
-                IsPointInside(selectMenu, inputThatCausedFocusLoss.Position)
-                or IsPointInside(addButton, inputThatCausedFocusLoss.Position)
-            ) then
-                task.defer(function()
-                    if Peek<<boolean>>(menuOpenState)
-                        and not isSearchFocused
-                    then
-                        focusSearch()
-                    end
-                end)
-                return
-            end
-
-            closeMenu()
+            popoverFocus.ChildFocusLost(inputThatCausedFocusLoss)
         end
     }) :: GuiObject
 
@@ -360,7 +352,7 @@ return function(
         Image = Assets.Add,
 
         [OnEvent "MouseButton1Click"] = function()
-            if Peek<<boolean>>(menuOpenState) then
+            if Peek<<boolean>>(popoverFocus.State) then
                 closeMenu()
                 return
             end
@@ -368,8 +360,7 @@ return function(
             selectedIdxState:set(nil)
             searchState:set("")
             refreshAllTags()
-            menuOpenState:set(true)
-            focusSearch()
+            popoverFocus.Capture()
         end
     }) :: GuiObject
 
@@ -378,8 +369,11 @@ return function(
         HeaderChildren = ({
             addButton
         } :: { Fusion.Child }),
-        HeaderOverlay = selectMenu,
-        ShowOnTop = menuOpenState,
+        HeaderOverlay = ({
+            selectMenu,
+            popoverFocus.Target
+        } :: { Fusion.Child }),
+        ShowOnTop = menuElevatedState,
         Items = tagItemsState,
         EmptyText = "No Tags have been added yet."
     })

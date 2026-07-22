@@ -16,6 +16,7 @@ local Icon = require(Components.icon)
 local SelectMenu = require(Components.selectMenu)
 local Text = require(Components.text)
 local Assets = require(Components.Parent.assets)
+local PopoverFocus = require(Components.Parent.coreComponents.popoverFocus)
 
 local ChevronGap = 6
 local ChevronSize = 9
@@ -27,16 +28,6 @@ local SidePadding = 6
 local PluginInstance = script:FindFirstAncestorOfClass("Plugin") :: Plugin?
 assert(PluginInstance, "EnumItem must be created from inside a Plugin")
 local PluginMouse = PluginInstance:GetMouse()
-
-local function IsPointInside(guiObject: GuiObject, point: Vector3): boolean
-    local topLeft = guiObject.AbsolutePosition
-    local bottomRight = topLeft + guiObject.AbsoluteSize
-
-    return point.X >= topLeft.X
-        and point.X <= bottomRight.X
-        and point.Y >= topLeft.Y
-        and point.Y <= bottomRight.Y
-end
 
 return function(
     scope: Fusion.Scope,
@@ -72,8 +63,6 @@ return function(
     local currentIdx = table.find(enumItems, value)
     local selectedIdxState = Value<<number?>>(scope, currentIdx)
     local displayedValueState = Value(scope, value.Name)
-    local inputFocusState = Value(scope, false)
-    local visualFocusState = props.FocusState or inputFocusState
     local selectedIdxStateAlive = true
 
     table.insert(scope, function()
@@ -94,12 +83,19 @@ return function(
         end)
     end
 
-    local textBox: TextBox
     local hitArea: TextButton
     local selectMenu: GuiObject
+    local popoverFocus = PopoverFocus(scope, {
+        GetInteractionRoots = function(): { GuiObject }
+            return { selectMenu, hitArea }
+        end,
+        OnFocusChanged = props.OnFocusChanged,
+        Name = "EnumItemFocusTarget"
+    })
+    local inputFocusState = popoverFocus.State
+    local visualFocusState = props.FocusState or inputFocusState
     local previousMouseIcon: string? = nil
     local isHovering = false
-    local isSearchFocused = false
 
     local function showPointer()
         if not isHovering then
@@ -123,40 +119,8 @@ return function(
 
     table.insert(scope, restorePointer)
 
-    local function setFocused(isFocused: boolean)
-        if Peek<<boolean>>(inputFocusState) == isFocused then return end
-
-        inputFocusState:set(isFocused)
-        if props.OnFocusChanged then props.OnFocusChanged(isFocused) end
-    end
-
     local function closeMenu()
-        setFocused(false)
-        if textBox:IsFocused() then textBox:ReleaseFocus(false) end
-    end
-
-    local function handleFocusLost(inputThatCausedFocusLoss: InputObject?)
-        if inputThatCausedFocusLoss ~= nil and (
-            IsPointInside(selectMenu, inputThatCausedFocusLoss.Position)
-            or IsPointInside(hitArea, inputThatCausedFocusLoss.Position)
-        )
-        then
-            -- Clicking the hit area or a menu option releases TextBox
-            -- focus before the click event fires. Keep the menu mounted
-            -- and restore focus if the interaction does not select an
-            -- item or move focus into the menu search field.
-            task.defer(function()
-                if Peek<<boolean>>(inputFocusState)
-                    and not textBox:IsFocused()
-                    and not isSearchFocused
-                then
-                    textBox:CaptureFocus()
-                end
-            end)
-            return
-        end
-
-        setFocused(false)
+        popoverFocus.Release()
     end
 
     Observer(scope, selectedIdxState):onChange(function()
@@ -197,15 +161,13 @@ return function(
         Visible = visualFocusState,
         Interactable = inputFocusState,
         OnSearchFocused = function()
-            isSearchFocused = true
-            setFocused(true)
+            popoverFocus.ChildFocused()
         end,
         OnSearchFocusLost = function(
             _enterPressed: boolean,
             inputThatCausedFocusLoss: InputObject?
         )
-            isSearchFocused = false
-            handleFocusLost(inputThatCausedFocusLoss)
+            popoverFocus.ChildFocusLost(inputThatCausedFocusLoss)
         end,
         ZIndex = 4
     }) :: GuiObject
@@ -237,31 +199,6 @@ return function(
         Name = "EnumItemChevrons"
     })
 
-    textBox = New(scope, "TextBox") {
-        Size = UDim2.fromOffset(0, 0),
-        Position = UDim2.fromOffset(-1, -1),
-        BackgroundTransparency = 1,
-        Text = "",
-        TextTransparency = 1,
-        TextEditable = false,
-        ClearTextOnFocus = false,
-        Selectable = false,
-        ZIndex = 2,
-
-        Name = "EnumItemFocusTarget",
-
-        [OnEvent "Focused"] = function()
-            setFocused(true)
-        end,
-
-        [OnEvent "FocusLost"] = function(
-            _enterPressed: boolean,
-            inputThatCausedFocusLoss: InputObject?
-        )
-            handleFocusLost(inputThatCausedFocusLoss)
-        end
-    } :: TextBox
-
     hitArea = New(scope, "TextButton") {
         Size = UDim2.fromScale(1, 1),
         BackgroundTransparency = 1,
@@ -277,7 +214,7 @@ return function(
         [OnEvent "MouseLeave"] = restorePointer,
 
         [OnEvent "Activated"] = function()
-            if not textBox:IsFocused() then textBox:CaptureFocus() end
+            popoverFocus.Capture()
 
             task.defer(function()
                 if isHovering then showPointer() end
@@ -296,7 +233,7 @@ return function(
 
             chevrons,
 
-            textBox,
+            popoverFocus.Target,
 
             hitArea,
 

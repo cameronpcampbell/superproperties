@@ -112,11 +112,18 @@ return Component<<MapProps>>(function(scope, props)
         return reveal > 0 and reveal < 1
     end)
 
+    local headerZIndex = Computed(scope, function(use: Fusion.Use): number
+        return
+            if use<<boolean>>(showOnTop) then ZIndices.Focus
+            else ZIndices.Default
+    end)
+
     local visibleRows = ComputeVirtualizedRows(scope, {
         Variant = variant,
         Header = header,
         HeaderChildren = headerChildren,
         HeaderOverlay = headerOverlay,
+        HeaderZIndex = headerZIndex,
         EmptyText = emptyText,
         Layout = layout,
         CollapsedState = collapsedState,
