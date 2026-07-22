@@ -372,7 +372,7 @@ return function(
         HeaderOverlay = ({
             selectMenu,
             popoverFocus.Target
-        } :: { Fusion.Child }),
+        } :: Fusion.Child),
         ShowOnTop = menuElevatedState,
         Items = tagItemsState,
         EmptyText = "No Tags have been added yet."
