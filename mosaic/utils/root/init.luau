@@ -3,6 +3,9 @@
 local Packages = script.Parent.Parent.Parent
 local Fusion = require(Packages.fusion)
 
+local FusionUtils = require(script.Parent.fusionUtils)
+local ScopedData = FusionUtils.ScopedData
+
 export type EventName = "MouseEnter" | "MouseLeave" | "MouseMove"
 
 
@@ -44,39 +47,11 @@ type RootContext = {
     Destroyed: boolean,
 }
 
-local ROOT_CONTEXT_KEY = {}
-
-local ContextsByScope = setmetatable({}, {
-    __mode = "k",
-}) :: { [Fusion.Scope]: RootContext }
-
 local RootRecordsByFrame = setmetatable({}, {
     __mode = "k",
 }) :: { [Frame]: RootRecord }
 
-local function InstallContext(scope: Fusion.Scope, context: RootContext)
-    local scopeMetatable = getmetatable(scope)
-    assert(
-        typeof(scopeMetatable) == "table",
-        "Root contexts require a Fusion scope with a table metatable"
-    )
-
-    local scopeMethods = (scopeMetatable :: any).__index
-    assert(
-        typeof(scopeMethods) == "table",
-        "Root contexts require a Fusion scope with a table __index"
-    )
-
-    local contextMethods = table.clone(scopeMethods)
-    contextMethods[ROOT_CONTEXT_KEY] = context
-
-    local contextMetatable = table.clone(scopeMetatable :: any)
-    contextMetatable.__index = contextMethods
-
-    setmetatable(scope, contextMetatable)
-end
-
-local function DestroyContext(scope: Fusion.Scope, context: RootContext)
+local function DestroyContext(context: RootContext)
     if context.Destroyed then return end
     context.Destroyed = true
 
@@ -90,35 +65,28 @@ local function DestroyContext(scope: Fusion.Scope, context: RootContext)
     table.clear(context.Children)
     table.clear(context.Roots)
     table.clear(context.Events)
-
-    ContextsByScope[scope] = nil
 end
 
 local function GetOrCreateContext(scope: Fusion.Scope): RootContext
-    local existing = ContextsByScope[scope]
-    if existing and not existing.Destroyed then return existing end
+    return ScopedData(scope, "RootContext", {
+        Mode = "Scoped",
+        Create = function(parent: RootContext?)
+            if parent and parent.Destroyed then parent = nil end
 
-    local inherited = (scope :: any)[ROOT_CONTEXT_KEY] :: RootContext?
-    if inherited and inherited.Destroyed then inherited = nil end
+            local context: RootContext = {
+                Parent = parent,
+                Children = {},
+                Roots = {},
+                Events = {},
+                Destroyed = false,
+            }
 
-    local context: RootContext = {
-        Parent = inherited,
-        Children = {},
-        Roots = {},
-        Events = {},
-        Destroyed = false,
-    }
+            if parent then parent.Children[context] = true end
 
-    if inherited then inherited.Children[context] = true end
-
-    ContextsByScope[scope] = context
-    InstallContext(scope, context)
-
-    table.insert(scope, function()
-        DestroyContext(scope, context)
-    end)
-
-    return context
+            return context
+        end,
+        Destroy = DestroyContext,
+    })
 end
 
 local function Connect(root: RootRecord, event: EventRecord)

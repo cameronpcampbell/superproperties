@@ -7,8 +7,9 @@ local OnEvent = Fusion.OnEvent
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local ConstructorComponent, CombineProps =
-    FusionUtils.ConstructorComponent, FusionUtils.CombineProps
+local ConstructorComponent, CombineProps, ScopedData =
+    FusionUtils.ConstructorComponent, FusionUtils.CombineProps,
+    FusionUtils.ScopedData
 
 local Root = require(Utils.root)
 
@@ -28,50 +29,65 @@ type ButtonProps = {
 return ConstructorComponent<<ButtonProps>>(function(scope, constructor, props)
     local onMouseLeaveEvent =
         (props :: { [any]: any })[MOUSE_LEAVE_EVENT] :: () -> ()
-    local isHovering = false
 
-    local function ShowPointer()
-        local pluginMouse = PluginMouse
-        if not pluginMouse then return end
+    local cursorList =
+        ScopedData(scope, "CursorList") :: { string }
 
-        isHovering = true
-        pluginMouse.Icon = POINTER_CURSOR
+    local cursorImage = POINTER_CURSOR
+
+    local function applyCursor()
+        if not PluginMouse then return end
+
+        local activeCursor = cursorList[#cursorList]
+        PluginMouse.Icon =
+            if activeCursor then activeCursor
+            else DEFAULT_CURSOR
     end
 
-    local function RestorePointer()
-        local pluginMouse = PluginMouse
-        if not pluginMouse or not isHovering then return end
+    local function showPointer()
+        if not PluginMouse then return end
 
-        isHovering = false
-
-        if pluginMouse.Icon == POINTER_CURSOR then
-            pluginMouse.Icon = DEFAULT_CURSOR
+        if not table.find(cursorList, cursorImage) then
+            table.insert(cursorList, cursorImage)
         end
+
+        applyCursor()
+    end
+
+    local function restorePointer()
+        local cursorIdx = table.find(cursorList, cursorImage)
+        if not cursorIdx then return end
+
+        for idx = #cursorList, cursorIdx, -1 do
+            cursorList[idx] = nil
+        end
+
+        applyCursor()
     end
 
     local destroyRootMouseLeave = Root.AddEvent(
         scope,
         "MouseLeave",
         function()
-            RestorePointer()
+            restorePointer()
             onMouseLeaveEvent()
         end
     )
 
     local function CleanupButton()
-        RestorePointer()
+        restorePointer()
         destroyRootMouseLeave()
     end
 
-    table.insert(scope, RestorePointer)
+    table.insert(scope, restorePointer)
 
     local button = constructor(scope, CombineProps(props, {
         [OnEvent "Destroying"] = CleanupButton,
     })) :: GuiButton
 
-    table.insert(scope, button.MouseEnter:Connect(ShowPointer))
-    table.insert(scope, button.MouseMoved:Connect(ShowPointer))
-    table.insert(scope, button.MouseLeave:Connect(RestorePointer))
+    table.insert(scope, button.MouseEnter:Connect(showPointer))
+    table.insert(scope, button.MouseMoved:Connect(showPointer))
+    table.insert(scope, button.MouseLeave:Connect(restorePointer))
 
     return button
 end)

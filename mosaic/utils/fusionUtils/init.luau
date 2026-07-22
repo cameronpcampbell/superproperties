@@ -16,4 +16,5 @@ return {
     ForCount = require(script.forCount),
     IsState = IsState.IsState,
     IsValue = IsState.IsValue,
+    ScopedData = require(script.scopedData),
 }
