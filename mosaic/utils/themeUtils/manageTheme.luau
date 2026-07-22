@@ -10,12 +10,12 @@ local DefaultThemeConfig = require(script.Parent.defaultThemeConfig)
 local ThemeHelpers = require(script.Parent.themeHelpers)
 local CreateTheme = require(script.Parent.createTheme)
 
-local Peek, Tween, Value = Fusion.peek, Fusion.Tween, Fusion.Value
-local ScopedData = FusionUtils.ScopedData
+local Peek, Value = Fusion.peek, Fusion.Value
+local Oktween, ScopedData = FusionUtils.Oktween, FusionUtils.ScopedData
 
 local THEME_COLOR_TWEEN_INFO = TweenInfo.new(
-    2.5,
-    Enum.EasingStyle.Quart,
+    .55,
+    Enum.EasingStyle.Exponential,
     Enum.EasingDirection.InOut
 )
 
@@ -100,7 +100,7 @@ local function CreateManagedTheme(
         targets[key] = target
         theme[key] =
             if typeof(sourceValue) == "Color3" then
-                Tween(scope, target, THEME_COLOR_TWEEN_INFO)
+                Oktween(scope, target, THEME_COLOR_TWEEN_INFO)
             else target
     end
 
@@ -123,7 +123,7 @@ end
 
 local function SetThemeForScope(scope: Fusion.Scope, config: Types.ThemeConfig)
     local created = false
-    local managedTheme: ManagedTheme = ScopedData(scope, "Theme", {
+    local managedTheme = ScopedData<<ManagedTheme>>(scope, "Theme", {
         Mode = "Scoped",
         Create = function(_parent: ManagedTheme?)
             created = true
@@ -135,7 +135,7 @@ local function SetThemeForScope(scope: Fusion.Scope, config: Types.ThemeConfig)
 end
 
 local function GetThemeForScope(scope: Fusion.Scope): Types.Theme
-    local managedTheme: ManagedTheme = ScopedData(scope, "Theme", {
+    local managedTheme = ScopedData<<ManagedTheme>>(scope, "Theme", {
         Create = function(_parent: ManagedTheme?)
             return CreateManagedTheme(scope, DefaultThemeConfig())
         end,

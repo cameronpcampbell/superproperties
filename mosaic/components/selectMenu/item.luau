@@ -10,9 +10,9 @@ local New, Children, Computed, Value, Peek, OnEvent, Tween =
 local Utils = script.Parent.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local ComputeTransforms, ComputeMath, ComposeTransparency =
+local ComputeTransforms, ComputeMath, ComposeTransparency, Oktween =
     FusionUtils.ComputeTransforms, FusionUtils.ComputeMath,
-    FusionUtils.ComposeTransparency
+    FusionUtils.ComposeTransparency, FusionUtils.Oktween
 local ComputeUDim2, ComputeUDim = ComputeTransforms.UDim2, ComputeTransforms.UDim
 local ComputeAdd = ComputeMath.Add
 
@@ -117,7 +117,7 @@ local function SelectMenuItem(
         Button = true,
         Interactable = props.Interactable,
         GradientTransparency = composedGradientTransparency,
-        BackgroundColor3 = Tween<<Color3>>(
+        BackgroundColor3 = Oktween(
             scope,
             accentColor,
             transitionTweenInfo

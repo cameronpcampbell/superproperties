@@ -13,7 +13,7 @@ local New, Children, Computed, OnEvent, Tween, Peek =
 local Utils = script.Parent.Parent.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local CombineProps = FusionUtils.CombineProps
+local CombineProps, Oktween = FusionUtils.CombineProps, FusionUtils.Oktween
 local ComputeTransforms = FusionUtils.ComputeTransforms
 local ComputeUDim2, ComputeUDim = ComputeTransforms.UDim2, ComputeTransforms.UDim
 local ComputeMath = FusionUtils.ComputeMath
@@ -108,7 +108,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
         local accentColor =
             theme:GetAccent(scope, "Primary", strokeColorModifier)
 
-        local tweenStrokeColor = Tween<<Color3>>(
+        local tweenStrokeColor = Oktween(
             scope,
             Computed(scope, function(use, scope): Color3
                 return

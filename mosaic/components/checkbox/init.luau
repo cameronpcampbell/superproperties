@@ -12,8 +12,8 @@ local New, Children, Value, Peek, Computed, OnEvent, Tween =
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CoerceToValue =
-    FusionUtils.Component, FusionUtils.CoerceToValue
+local Component, CoerceToValue, Oktween =
+    FusionUtils.Component, FusionUtils.CoerceToValue, FusionUtils.Oktween
 local ComputeTransforms = FusionUtils.ComputeTransforms
 local ComputeUDim2FromOffset = ComputeTransforms.UDim2FromOffset
 
@@ -94,7 +94,7 @@ return Component<<CheckboxProps>>(function(scope, props)
         Button = true,
         Enabled = gradientEnabled,
         GradientTransparency = 0.78,
-        BackgroundColor3 = Tween<<Color3>>(
+        BackgroundColor3 = Oktween(
             scope, accentColor,
             TweenInfo.new(
                 .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
@@ -144,7 +144,7 @@ return Component<<CheckboxProps>>(function(scope, props)
                 Size = UDim2.fromScale(1, 1),
                 StrokeThickness = 1,
                 BackgroundTransparency = 1,
-                StrokeColor = Tween<<Color3>>(
+                StrokeColor = Oktween(
                     scope, strokeColor,
                     TweenInfo.new(
                         .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut

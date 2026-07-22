@@ -4,15 +4,15 @@
 local Packages = script.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
-local New, Children, Value, Peek, OnEvent, Tween =
+local New, Children, Value, Peek, OnEvent =
     Fusion.New, Fusion.Children, Fusion.Value,
-    Fusion.peek, Fusion.OnEvent, Fusion.Tween
+    Fusion.peek, Fusion.OnEvent
 
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, ChildrenTransform =
-    FusionUtils.Component, FusionUtils.ChildrenTransform
+local Component, ChildrenTransform, Oktween =
+    FusionUtils.Component, FusionUtils.ChildrenTransform, FusionUtils.Oktween
 local ComputeTransforms = FusionUtils.ComputeTransforms
 local ComputeUDim2, ComputeUDim = ComputeTransforms.UDim2, ComputeTransforms.UDim
 
@@ -81,7 +81,7 @@ return Component<<ButtonProps>>(function(scope, props)
     return CoreButton(scope, HighlightSupercorner, {
         Button = true,
         GradientTransparency = 0.78,
-        BackgroundColor3 = Tween<<Color3>>(
+        BackgroundColor3 = Oktween(
             scope, accentColor,
             TweenInfo.new(
                 .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut

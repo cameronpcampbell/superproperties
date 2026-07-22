@@ -5,16 +5,16 @@ local Packages = script.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local New, Children, Value, Peek, Out, OnEvent, Computed, Tween =
+local New, Children, Value, Peek, Out, OnEvent, Computed =
     Fusion.New, Fusion.Children, Fusion.Value, Fusion.peek,
-    Fusion.Out, Fusion.OnEvent, Fusion.Computed, Fusion.Tween
+    Fusion.Out, Fusion.OnEvent, Fusion.Computed
 
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CombineProps, CreateOutProxy, IsValue =
+local Component, CombineProps, CreateOutProxy, IsValue, Oktween =
     FusionUtils.Component, FusionUtils.CombineProps,
-    FusionUtils.CreateOutProxy, FusionUtils.IsValue
+    FusionUtils.CreateOutProxy, FusionUtils.IsValue, FusionUtils.Oktween
 local ComputeTransforms = FusionUtils.ComputeTransforms
 local ComputeUDim2, ComputeUDim = ComputeTransforms.UDim2, ComputeTransforms.UDim
 
@@ -80,7 +80,7 @@ return Component<<InputProps>>(function(scope, props)
     local font = theme:GetFont(scope, "Main", Enum.FontWeight.Medium)
     local fontSize = theme:GetFontSize(scope, "Main", "Title")
 
-    local tweenComputeStrokeColor = Tween<<Color3>>(
+    local tweenComputeStrokeColor = Oktween(
         scope,
         Computed(scope, function(use, scope)
             return

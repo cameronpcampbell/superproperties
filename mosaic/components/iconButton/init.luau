@@ -4,14 +4,15 @@
 local Packages = script.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
-local Value, New, Children, OnEvent, Tween =
+local Value, New, Children, OnEvent =
     Fusion.Value, Fusion.New, Fusion.Children,
-    Fusion.OnEvent, Fusion.Tween
+    Fusion.OnEvent
 
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CombineProps = FusionUtils.Component, FusionUtils.CombineProps
+local Component, CombineProps, Oktween =
+    FusionUtils.Component, FusionUtils.CombineProps, FusionUtils.Oktween
 local ComputeTransforms = FusionUtils.ComputeTransforms
 local ComputeUDim2FromOffset = ComputeTransforms.UDim2FromOffset
 
@@ -62,7 +63,7 @@ return Component<<IconButtonProps>>(function(scope, props)
                 Image = image,
                 Size = UDim2.fromOffset(9, 9),
                 BackgroundTransparency = 1,
-                ImageColor3 = Tween<<Color3>>(
+                ImageColor3 = Oktween(
                     scope, fgColor,
                     TweenInfo.new(
                         .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut

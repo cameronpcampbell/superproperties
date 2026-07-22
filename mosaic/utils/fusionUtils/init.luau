@@ -16,5 +16,6 @@ return {
     ForCount = require(script.forCount),
     IsState = IsState.IsState,
     IsValue = IsState.IsValue,
+    Oktween = require(script.oktween),
     ScopedData = require(script.scopedData),
 }
