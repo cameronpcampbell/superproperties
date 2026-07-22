@@ -27,7 +27,9 @@ type CategoryProps = {
     Presorted: boolean?,
     StableKeys: boolean?,
     EmptyText: string?,
-    HeaderChildren: { Fusion.Child }?
+    HeaderChildren: { Fusion.Child }?,
+    HeaderOverlay: Fusion.Child?,
+    ShowOnTop: Fusion.UsedAs<boolean>?
 }
 
 local function GetItemLabel(item: Item): string
@@ -99,6 +101,8 @@ return function(
     local mapProps = {
         Header = name,
         HeaderChildren = props.HeaderChildren,
+        HeaderOverlay = props.HeaderOverlay,
+        ShowOnTop = props.ShowOnTop,
         Items = filteredItems,
         LayoutOrder =
             CategoryOrder[name] or

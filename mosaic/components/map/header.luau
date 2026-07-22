@@ -31,6 +31,7 @@ type MapHeaderProps = Typeforge.Flatten<
     Types.BaseMapProps & {
         Header: string,
         HeaderChildrenFrame: Fusion.Child,
+        HeaderOverlayFrame: Fusion.Child,
         CollapsedState: Fusion.Value<boolean>,
         TweenComputeMapSize: Fusion.UsedAs<UDim2>
     }
@@ -113,34 +114,45 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
         Name = "MapHeader",
 
         [Children] = {
-            Arrow(scope, {
-                CollapsedState = collapsedState
-            }),
+            New(scope, "Frame") {
+                Size = UDim2.fromScale(1, 1),
+                BackgroundTransparency = 1,
 
-            Text(scope, {
-                Text = props.Header,
-                Size = UDim2.fromScale(1, 0),
-                LayoutOrder = 1,
-                FontWeight = Enum.FontWeight.Medium,
+                Name = "MapHeaderContent",
 
-                [Children] = New(scope, "UIFlexItem") {
-                    FlexMode = Enum.UIFlexMode.Shrink
+                [Children] = {
+                    Arrow(scope, {
+                        CollapsedState = collapsedState
+                    }),
+
+                    Text(scope, {
+                        Text = props.Header,
+                        Size = UDim2.fromScale(1, 0),
+                        LayoutOrder = 1,
+                        FontWeight = Enum.FontWeight.Medium,
+
+                        [Children] = New(scope, "UIFlexItem") {
+                            FlexMode = Enum.UIFlexMode.Shrink
+                        }
+                    }),
+
+                    props.HeaderChildrenFrame,
+
+                    New(scope, "UIListLayout") {
+                        Padding = UDim.new(0, 6),
+                        FillDirection = Enum.FillDirection.Horizontal,
+                        VerticalAlignment = Enum.VerticalAlignment.Center,
+                        SortOrder = Enum.SortOrder.LayoutOrder
+                    },
+
+                    New(scope, "UIPadding") {
+                        PaddingLeft = UDim.new(0, 6),
+                        PaddingRight = UDim.new(0, 6)
+                    }
                 }
-            }),
-
-            props.HeaderChildrenFrame,
-
-            New(scope, "UIListLayout") {
-                Padding = UDim.new(0, 6),
-                FillDirection = Enum.FillDirection.Horizontal,
-                VerticalAlignment = Enum.VerticalAlignment.Center,
-                SortOrder = Enum.SortOrder.LayoutOrder
             },
 
-            New(scope, "UIPadding") {
-                PaddingLeft = UDim.new(0, 6),
-                PaddingRight = UDim.new(0, 6)
-            }
+            props.HeaderOverlayFrame
         }
     })
 end

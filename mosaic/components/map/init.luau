@@ -44,6 +44,8 @@ export type MapProps = {
     Width: UDim?,
     Header: string?,
     HeaderChildren: { Fusion.Child }?,
+    HeaderOverlay: Fusion.Child?,
+    ShowOnTop: Fusion.UsedAs<boolean>?,
     Items: Fusion.UsedAs<Items>?,
     EmptyText: string?,
     Collapsed: Fusion.UsedAs<boolean>?,
@@ -56,6 +58,8 @@ return Component<<MapProps>>(function(scope, props)
     local props: MapProps, width = (TableExtract :: any)(props, "Width", UDim.new(1, 0))
     local props: MapProps, header = (TableExtract :: any)(props, "Header")
     local props: MapProps, headerChildren = (TableExtract :: any)(props, "HeaderChildren")
+    local props: MapProps, headerOverlay = (TableExtract :: any)(props, "HeaderOverlay")
+    local props: MapProps, showOnTop = (TableExtract :: any)(props, "ShowOnTop", false)
     local props: MapProps, items = (TableExtract :: any)(props, "Items")
     local props: MapProps, emptyText = (TableExtract :: any)(props, "EmptyText")
     local props: MapProps, collapsed = (TableExtract :: any)(props, "Collapsed", false)
@@ -112,6 +116,7 @@ return Component<<MapProps>>(function(scope, props)
         Variant = variant,
         Header = header,
         HeaderChildren = headerChildren,
+        HeaderOverlay = headerOverlay,
         EmptyText = emptyText,
         Layout = layout,
         CollapsedState = collapsedState,
@@ -125,7 +130,9 @@ return Component<<MapProps>>(function(scope, props)
             use<<Vector2>>(layout.FocusedRootRange)
         local hasFocusedRow = focusedRootRange.X <= focusedRootRange.Y
 
-        return if hasFocusedRow then ZIndices.Focus else ZIndices.Default
+        return
+            if hasFocusedRow or use<<boolean>>(showOnTop) then ZIndices.Focus
+            else ZIndices.Default
     end)
 
     local mapChildren: { Fusion.Child } = {
