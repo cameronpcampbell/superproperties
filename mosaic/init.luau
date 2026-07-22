@@ -16,6 +16,7 @@ return {
 
     -- Containers.
     Background = require(Components.background),
+    Container = require(Components.container),
 
     -- Inputs.
     Input = require(Components.input),
