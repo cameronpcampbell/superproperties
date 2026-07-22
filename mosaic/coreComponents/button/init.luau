@@ -2,16 +2,17 @@
 
 local Packages = script.Parent.Parent.Parent
 local Fusion = require(Packages.fusion)
-local New, OnEvent = Fusion.New, Fusion.OnEvent
+local OnEvent = Fusion.OnEvent
 
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CombineProps =
-    FusionUtils.Component, FusionUtils.CombineProps
+local ConstructorComponent, CombineProps =
+    FusionUtils.ConstructorComponent, FusionUtils.CombineProps
 
 local Root = require(Utils.root)
 
+local DEFAULT_CURSOR = "rbxasset://SystemCursors/Arrow"
 local POINTER_CURSOR = "rbxasset://SystemCursors/PointingHand"
 
 local MOUSE_LEAVE_EVENT = OnEvent "MouseLeave"
@@ -21,23 +22,19 @@ local PluginMouse =
     if PluginInstance then PluginInstance:GetMouse() else nil
 
 type ButtonProps = {
-
+    [any]: any,
 }
 
-return Component<<ButtonProps>>(function(scope, props)
-    local onMouseLeaveEvent = props[MOUSE_LEAVE_EVENT] :: () -> ()
-    local previousMouseIcon: string? = nil
+return ConstructorComponent<<ButtonProps>>(function(scope, constructor, props)
+    local onMouseLeaveEvent =
+        (props :: { [any]: any })[MOUSE_LEAVE_EVENT] :: () -> ()
     local isHovering = false
 
     local function ShowPointer()
         local pluginMouse = PluginMouse
         if not pluginMouse then return end
 
-        if not isHovering then
-            isHovering = true
-            previousMouseIcon = pluginMouse.Icon
-        end
-
+        isHovering = true
         pluginMouse.Icon = POINTER_CURSOR
     end
 
@@ -48,10 +45,8 @@ return Component<<ButtonProps>>(function(scope, props)
         isHovering = false
 
         if pluginMouse.Icon == POINTER_CURSOR then
-            pluginMouse.Icon = previousMouseIcon or ""
+            pluginMouse.Icon = DEFAULT_CURSOR
         end
-
-        previousMouseIcon = nil
     end
 
     local destroyRootMouseLeave = Root.AddEvent(
@@ -70,9 +65,9 @@ return Component<<ButtonProps>>(function(scope, props)
 
     table.insert(scope, RestorePointer)
 
-    local button = New(scope, "TextButton") (CombineProps(props, {
+    local button = constructor(scope, CombineProps(props, {
         [OnEvent "Destroying"] = CleanupButton,
-    })) :: TextButton
+    })) :: GuiButton
 
     table.insert(scope, button.MouseEnter:Connect(ShowPointer))
     table.insert(scope, button.MouseMoved:Connect(ShowPointer))

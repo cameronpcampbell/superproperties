@@ -22,6 +22,9 @@ local GetThemeForScope, CalcColorModifier =
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
+local CoreComponents = script.Parent.Parent.coreComponents
+local CoreButton = require(CoreComponents.button)
+
 type IconButtonProps = {
     Variant: ThemeUtils.FgVariant?,
     Rotation: Fusion.UsedAs<number>?,
@@ -29,6 +32,13 @@ type IconButtonProps = {
     LayoutOrder: number?,
     [Fusion.SpecialKey]: any
 }
+
+local function NewImageButton(
+    scope: Fusion.Scope,
+    props: { [any]: any }
+): Fusion.Child
+    return New(scope, "ImageButton")(props)
+end
 
 return Component<<IconButtonProps>>(function(scope, props)
     local props, variant = TableExtract(props, "Variant", "Primary")
@@ -61,7 +71,7 @@ return Component<<IconButtonProps>>(function(scope, props)
                 Rotation = rotation
             },
 
-            New(scope, "ImageButton") {
+            CoreButton(scope, NewImageButton, {
                 Size = ComputeUDim2FromOffset(scope, boundsHeight, boundsHeight),
                 BackgroundTransparency = 1,
                 Position = UDim2.fromScale(.5, .5),
@@ -74,7 +84,7 @@ return Component<<IconButtonProps>>(function(scope, props)
                 [OnEvent "MouseButton1Up"] = function() isFocusState:set(false) end,
 
                 [OnEvent "MouseButton1Click"] = onClickEvent
-            }
+            }) :: Instance
         }
     }, props))
 end)

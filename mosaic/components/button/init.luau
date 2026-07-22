@@ -23,6 +23,9 @@ local GetThemeForScope, CalcColorModifier =
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
+local CoreComponents = script.Parent.Parent.coreComponents
+local CoreButton = require(CoreComponents.button)
+
 local Components = script.Parent
 local HighlightSupercorner = require(Components.highlightSupercorner)
 local Text = require(Components.text)
@@ -75,7 +78,7 @@ return Component<<ButtonProps>>(function(scope, props)
     local cornerRadius = theme:GetCornerRadius(scope, "Md")
     local height = theme:GetHeight(scope, "Lg")
 
-    return HighlightSupercorner(scope, {
+    return CoreButton(scope, HighlightSupercorner, {
         Button = true,
         GradientTransparency = 0.78,
         BackgroundColor3 = Tween<<Color3>>(

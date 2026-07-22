@@ -18,7 +18,18 @@ type Callback<P> = (
     props: Props<P>
 ) -> Fusion.Child
 
-return function<P>(callback: Callback<P>)
+type Constructor = (
+    scope: Fusion.Scope,
+    props: { [any]: any }
+) -> Fusion.Child
+
+type ConstructorCallback<P> = (
+    scope: Fusion.Scope,
+    constructor: Constructor,
+    props: Props<P>
+) -> Fusion.Child
+
+local function Component<P>(callback: Callback<P>)
     return function(
         scope: Fusion.Scope,
         props: P,
@@ -30,3 +41,23 @@ return function<P>(callback: Callback<P>)
         )
     end
 end
+
+local function ConstructorComponent<P>(callback: ConstructorCallback<P>)
+    return function(
+        scope: Fusion.Scope,
+        constructor: Constructor,
+        props: P,
+        ...: Props<Typeforge.Partial<P>>
+    ): Fusion.Child
+        return (callback :: any)(
+            scope,
+            constructor,
+            CombineProps(props :: any, ...)
+        )
+    end
+end
+
+return {
+    Component = Component,
+    ConstructorComponent = ConstructorComponent,
+}
