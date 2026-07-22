@@ -1,14 +1,13 @@
 --!strict
 --!nolint LocalShadow
-local ServerScriptService = game:GetService("ServerScriptService")
 
 local Packages = script.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local New, Children, Peek, Computed, Tween =
-    Fusion.New, Fusion.Children,
-    Fusion.peek, Fusion.Computed, Fusion.Tween
+local New, Children, Value, Peek, Out, OnEvent, Computed, Observer, Tween =
+    Fusion.New, Fusion.Children, Fusion.Value, Fusion.peek,
+    Fusion.Out, Fusion.OnEvent, Fusion.Computed, Fusion.Observer, Fusion.Tween
 
 local Utils = script.Parent.Parent.utils
 
@@ -17,7 +16,10 @@ local Component, CombineProps, CoerceToValue, ComposeTransparency =
     FusionUtils.Component, FusionUtils.CombineProps,
     FusionUtils.CoerceToValue, FusionUtils.ComposeTransparency
 local ComputeTransforms = FusionUtils.ComputeTransforms
-local ComputeUDim2 = ComputeTransforms.UDim2
+local ComputeUDim2, ComputeUDim =
+    ComputeTransforms.UDim2, ComputeTransforms.UDim
+
+local CreateItemFilter = require(Utils.filterItems)
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope, GetNextVariant =
@@ -28,8 +30,16 @@ local TableExtract = TableUtils.Extract
 
 local Components = script.Parent.Parent.components
 local Scrollable = require(Components.scrollable)
+local Text = require(Components.text)
 
 local SelectMenuItem = require(script.item)
+
+type IndexedItem = {
+    Idx: number,
+    Text: string
+}
+type IndexedItemFilter =
+    (query: string?, items: { IndexedItem }) -> { IndexedItem }
 
 type SelectMenuProps = {
 	Variant: ThemeUtils.BgVariantSubLayer?,
@@ -39,8 +49,13 @@ type SelectMenuProps = {
 	SelectedIdx: Fusion.UsedAs<number?>?,
 	DefaultIdx: Fusion.UsedAs<number>?,
 	Visible: Fusion.UsedAs<boolean>?,
-	Interactable: Fusion.UsedAs<boolean>?
+	Interactable: Fusion.UsedAs<boolean>?,
+    EmptyText: Fusion.UsedAs<string>?,
+    OnSearchFocused: (() -> ())?,
+    OnSearchFocusLost: ((boolean, InputObject?) -> ())?
 }
+
+local MenuChromeHeight = 9
 
 local VisibilityTweenInfo = TweenInfo.new(
     .23,
@@ -54,22 +69,68 @@ return Component<<SelectMenuProps>>(function(scope, props)
     local props, maxHeight = TableExtract(props, "MaxHeight", math.huge)
     local props, items = TableExtract(props, "Items")
     local props, selectedIdx = TableExtract(props, "SelectedIdx")
-    local props, defaultIdx = TableExtract(props, "DefaultIdx")
+    local props = TableExtract(props, "DefaultIdx")
     local props, visible = TableExtract(props, "Visible", true)
     local props, interactable = TableExtract(props, "Interactable", true)
+    local props, emptyText =
+        TableExtract(props, "EmptyText", "No results found.")
+    local props, onSearchFocused = TableExtract(props, "OnSearchFocused")
+    local props, onSearchFocusLost = TableExtract(props, "OnSearchFocusLost")
     local props, backgroundTransparency =
         TableExtract(props, "BackgroundTransparency", 0)
     local props, strokeTransparency =
         TableExtract(props, "StrokeTransparency", 0)
 
     local selectedIdxValue = CoerceToValue<<number?>>(scope, selectedIdx)
+    local searchQuery = Value(scope, "")
+    local indexedItems = Computed(scope, function(use): { IndexedItem }
+        local usedItems = use<<{ string }>>(items)
+        local result = table.create(#usedItems) :: { IndexedItem }
+
+        for idx, text in usedItems do
+            result[idx] = {
+                Idx = idx,
+                Text = text
+            }
+        end
+
+        return result
+    end)
+    local itemFilter = Computed(scope, function(use): IndexedItemFilter
+        return CreateItemFilter(
+            use<<{ IndexedItem }>>(indexedItems),
+            function(item: IndexedItem): string
+                return item.Text
+            end
+        )
+    end)
+    local filteredItems = Computed(scope, function(use): { IndexedItem }
+        local usedItems = use<<{ IndexedItem }>>(indexedItems)
+        local usedItemFilter = use<<IndexedItemFilter>>(itemFilter)
+
+        return usedItemFilter(use<<string>>(searchQuery), usedItems)
+    end)
+    local hasNoFilteredItems = Computed(scope, function(use): boolean
+        return #use<<{ IndexedItem }>>(filteredItems) == 0
+    end)
+    local isVisible = Computed(scope, function(use): boolean
+        return use<<boolean>>(visible)
+    end)
     local visibilityTransparency = Tween<<number>>(
         scope,
         Computed(scope, function(use): number
-            return if use<<boolean>>(visible) then 0 else 1
+            return if use<<boolean>>(isVisible) then 0 else 1
         end),
         VisibilityTweenInfo
     )
+    Observer(scope, visibilityTransparency):onChange(function()
+        if
+            not Peek<<boolean>>(isVisible) and
+            Peek<<number>>(visibilityTransparency) >= .999
+        then
+            searchQuery:set("")
+        end
+    end)
     local shouldRender = Computed(scope, function(use): boolean
         return
             use<<boolean>>(visible)
@@ -86,7 +147,18 @@ return Component<<SelectMenuProps>>(function(scope, props)
     local theme = GetThemeForScope(scope)
     local bgColor = theme:GetBg(scope, variant)
     local strokeColor = theme:GetBg(scope, nextVariant)
+    local textColor = theme:GetFg(scope, "Primary")
+    local placeholderColor = theme:GetFg(scope, "Secondary")
     local cornerRadius = theme:GetCornerRadius(scope, "Md")
+    local largeHeight = theme:GetHeight(scope, "Lg")
+    local searchHeight = Computed(scope, function(use): number
+        return math.max(use<<number>>(largeHeight) - 2, 0)
+    end)
+    local emptyRowHeight = Computed(scope, function(use): number
+        return use<<number>>(largeHeight) - 4
+    end)
+    local font = theme:GetFont(scope, "Main", Enum.FontWeight.Medium)
+    local fontSize = theme:GetFontSize(scope, "Main", "Title")
     local composedBackgroundTransparency = ComposeTransparency(
         scope,
         backgroundTransparency,
@@ -95,6 +167,11 @@ return Component<<SelectMenuProps>>(function(scope, props)
     local composedStrokeTransparency = ComposeTransparency(
         scope,
         strokeTransparency,
+        visibilityTransparency
+    )
+    local composedOpaqueTransparency = ComposeTransparency(
+        scope,
+        0,
         visibilityTransparency
     )
 
@@ -124,20 +201,48 @@ return Component<<SelectMenuProps>>(function(scope, props)
 
         [Children] = {
             New(scope, "TextBox") {
-                Size = UDim2.new(1,0,0,23),
+                Size = ComputeUDim2(
+                    scope,
+                    UDim.new(1, 0),
+                    ComputeUDim(scope, 0, searchHeight)
+                ),
                 BackgroundTransparency = 1,
+                Text = searchQuery,
+                PlaceholderText = "Search...",
+                TextColor3 = textColor,
+                PlaceholderColor3 = placeholderColor,
+                TextTransparency = composedOpaqueTransparency,
+                TextSize = fontSize,
+                FontFace = font,
+                ClearTextOnFocus = false,
+                Interactable = effectiveInteractable,
+                TextEditable = effectiveInteractable,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextTruncate = Enum.TextTruncate.None,
+
+                [Out "Text"] = searchQuery,
+                [OnEvent "Focused"] = onSearchFocused,
+                [OnEvent "FocusLost"] = onSearchFocusLost,
+
+                [Children] = New(scope, "UIPadding") {
+                    PaddingLeft = UDim.new(0, 6),
+                    PaddingRight = UDim.new(0, 6)
+                },
+
+                Name = "Search"
             },
 
             New(scope, "Frame") {
                 BackgroundColor3 = strokeColor,
+                BackgroundTransparency = composedStrokeTransparency,
                 BorderSizePixel = 0,
-                Size = UDim2.new(1,0,0,1),
+                Size = UDim2.new(1, 0, 0, 1),
 
                 Name = "Divider"
             },
 
             New(scope, "Frame") {
-                Size = UDim2.new(1,0,0,0),
+                Size = UDim2.new(1, 0, 0, 0),
                 BackgroundTransparency = 1,
                 AutomaticSize = Enum.AutomaticSize.Y,
 
@@ -153,18 +258,47 @@ return Component<<SelectMenuProps>>(function(scope, props)
                             MaxSize = Computed(scope, function(use: Fusion.Use)
                                 return Vector2.new(
                                     math.huge,
-                                    math.max(use<<number>>(maxHeight) - 8, 0)
+                                    math.max(
+                                        use<<number>>(maxHeight) -
+                                            use<<number>>(searchHeight) -
+                                            MenuChromeHeight,
+                                        0
+                                    )
                                 )
                             end)
                         },
 
                         [Children] = {
-                            Fusion.ForPairs(scope, items, function(use, scope, key, value)
-                                return key, SelectMenuItem(scope, {
-                                    Text = value,
+                            Text(scope, {
+                                Text = emptyText,
+                                Variant = "Secondary",
+                                Size = ComputeUDim2(
+                                    scope,
+                                    UDim.new(1, 0),
+                                    ComputeUDim(scope, 0, emptyRowHeight)
+                                ),
+                                AutomaticSize = Enum.AutomaticSize.None,
+                                TextTransparency = composedOpaqueTransparency,
+                                TextXAlignment = Enum.TextXAlignment.Center,
+                                TextYAlignment = Enum.TextYAlignment.Center,
+                                Visible = hasNoFilteredItems,
+
+                                Name = "SelectMenuEmptyText"
+                            }),
+
+                            Fusion.ForPairs(scope, filteredItems, function(
+                                use,
+                                scope,
+                                key,
+                                value
+                            )
+                                local usedItem = value
+
+                                return usedItem.Idx, SelectMenuItem(scope, {
+                                    Text = usedItem.Text,
                                     SelectedIdxValue = selectedIdxValue,
-                                    DefaultIdx = defaultIdx,
-                                    Idx = key,
+                                    Idx = usedItem.Idx,
+                                    LayoutOrder = key,
                                     Transparency = visibilityTransparency,
                                     Interactable = effectiveInteractable
                                 })

@@ -28,6 +28,7 @@ type SelectMenuItemProps = {
     Text: string,
     SelectedIdxValue: Fusion.Value<number?>,
     Idx: number,
+    LayoutOrder: number,
     Transparency: Fusion.UsedAs<number>,
     Interactable: Fusion.UsedAs<boolean>
 }
@@ -128,6 +129,7 @@ local function SelectMenuItem(
         Size = ComputeUDim2(scope, UDim.new(1, 0), ComputeUDim(scope, 0, height)),
         CornerRadius = Peek<<number>>(cornerRadius),
         CornerSmoothing = 1,
+        LayoutOrder = props.LayoutOrder,
 
         RootChildren = New(scope, "UIFlexItem") {},
 

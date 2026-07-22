@@ -37,5 +37,6 @@ return {
     -- Utils.
     GetTheme = ThemeUtils.GetThemeForScope,
     SetTheme = ThemeUtils.SetThemeForScope,
-    DefaultThemeConfig = ThemeUtils.DefaultThemeConfig
+    DefaultThemeConfig = ThemeUtils.DefaultThemeConfig,
+    CreateItemFilter = require(Utils.filterItems)
 }

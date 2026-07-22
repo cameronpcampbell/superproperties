@@ -97,6 +97,7 @@ return function(
     local selectMenu: GuiObject
     local previousMouseIcon: string? = nil
     local isHovering = false
+    local isSearchFocused = false
 
     local function showPointer()
         if not isHovering then
@@ -130,6 +131,30 @@ return function(
     local function closeMenu()
         setFocused(false)
         if textBox:IsFocused() then textBox:ReleaseFocus(false) end
+    end
+
+    local function handleFocusLost(inputThatCausedFocusLoss: InputObject?)
+        if inputThatCausedFocusLoss ~= nil and (
+            IsPointInside(selectMenu, inputThatCausedFocusLoss.Position)
+            or IsPointInside(hitArea, inputThatCausedFocusLoss.Position)
+        )
+        then
+            -- Clicking the hit area or a menu option releases TextBox
+            -- focus before the click event fires. Keep the menu mounted
+            -- and restore focus if the interaction does not select an
+            -- item or move focus into the menu search field.
+            task.defer(function()
+                if Peek<<boolean>>(inputFocusState)
+                    and not textBox:IsFocused()
+                    and not isSearchFocused
+                then
+                    textBox:CaptureFocus()
+                end
+            end)
+            return
+        end
+
+        setFocused(false)
     end
 
     Observer(scope, selectedIdxState):onChange(function()
@@ -169,6 +194,17 @@ return function(
         Position = UDim2.new(0, -1, 1, MenuGap),
         Visible = visualFocusState,
         Interactable = inputFocusState,
+        OnSearchFocused = function()
+            isSearchFocused = true
+            setFocused(true)
+        end,
+        OnSearchFocusLost = function(
+            _enterPressed: boolean,
+            inputThatCausedFocusLoss: InputObject?
+        )
+            isSearchFocused = false
+            handleFocusLost(inputThatCausedFocusLoss)
+        end,
         ZIndex = 4
     }) :: GuiObject
 
@@ -220,26 +256,7 @@ return function(
             _enterPressed: boolean,
             inputThatCausedFocusLoss: InputObject?
         )
-            if inputThatCausedFocusLoss ~= nil and (
-                IsPointInside(selectMenu, inputThatCausedFocusLoss.Position)
-                or IsPointInside(hitArea, inputThatCausedFocusLoss.Position)
-            )
-            then
-                -- Clicking the hit area or a menu option releases TextBox
-                -- focus before the click event fires. Keep the menu mounted
-                -- and restore focus if the interaction does not select an
-                -- item.
-                task.defer(function()
-                    if Peek<<boolean>>(inputFocusState)
-                        and not textBox:IsFocused()
-                    then
-                        textBox:CaptureFocus()
-                    end
-                end)
-                return
-            end
-
-            setFocused(false)
+            handleFocusLost(inputThatCausedFocusLoss)
         end
     } :: TextBox
 
