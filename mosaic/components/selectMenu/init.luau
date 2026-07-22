@@ -94,15 +94,18 @@ return Component<<SelectMenuProps>>(function(scope, props)
     local isSearchEnabled = Computed(scope, function(use): boolean
         return use<<boolean>>(enableSearch)
     end)
+
     local effectiveSearchQuery = Computed(scope, function(use): string
         return
             if use<<boolean>>(isSearchEnabled) then
                 use<<string>>(searchState)
             else ""
     end)
+
     Observer(scope, isSearchEnabled):onChange(function()
         if not Peek<<boolean>>(isSearchEnabled) then searchState:set("") end
     end)
+
     local indexedItems = Computed(scope, function(use): { IndexedItem }
         local usedItems = use<<{ string }>>(items)
         local result = table.create(#usedItems) :: { IndexedItem }
@@ -116,6 +119,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
 
         return result
     end)
+
     local itemFilter = Computed(scope, function(use): IndexedItemFilter
         return CreateItemFilter(
             use<<{ IndexedItem }>>(indexedItems),
@@ -124,18 +128,28 @@ return Component<<SelectMenuProps>>(function(scope, props)
             end
         )
     end)
+
     local filteredItems = Computed(scope, function(use): { IndexedItem }
         local usedItems = use<<{ IndexedItem }>>(indexedItems)
         local usedItemFilter = use<<IndexedItemFilter>>(itemFilter)
 
         return usedItemFilter(use<<string>>(effectiveSearchQuery), usedItems)
     end)
+
     local hasNoFilteredItems = Computed(scope, function(use): boolean
         return #use<<{ IndexedItem }>>(filteredItems) == 0
     end)
+
+    local shouldShowEmptyText = Computed(scope, function(use): boolean
+        return
+            use<<boolean>>(hasNoFilteredItems)
+            and use<<string>>(emptyText) ~= ""
+    end)
+
     local isVisible = Computed(scope, function(use): boolean
         return use<<boolean>>(visible)
     end)
+
     local visibilityTransparency = Tween<<number>>(
         scope,
         Computed(scope, function(use): number
@@ -314,7 +328,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
                                 TextTransparency = composedOpaqueTransparency,
                                 TextXAlignment = Enum.TextXAlignment.Center,
                                 TextYAlignment = Enum.TextYAlignment.Center,
-                                Visible = hasNoFilteredItems,
+                                Visible = shouldShowEmptyText,
 
                                 Name = "SelectMenuEmptyText"
                             }),
