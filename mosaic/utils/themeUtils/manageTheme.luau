@@ -10,8 +10,14 @@ local DefaultThemeConfig = require(script.Parent.defaultThemeConfig)
 local ThemeHelpers = require(script.Parent.themeHelpers)
 local CreateTheme = require(script.Parent.createTheme)
 
-local Peek, Value = Fusion.peek, Fusion.Value
+local Peek, Tween, Value = Fusion.peek, Fusion.Tween, Fusion.Value
 local ScopedData = FusionUtils.ScopedData
+
+local THEME_COLOR_TWEEN_INFO = TweenInfo.new(
+    2.5,
+    Enum.EasingStyle.Quart,
+    Enum.EasingDirection.InOut
+)
 
 local THEME_TOKEN_KEYS: { [number]: keyof<Types.ThemeSource> } = {
     "BgPrimary",
@@ -58,11 +64,21 @@ local THEME_TOKEN_KEYS: { [number]: keyof<Types.ThemeSource> } = {
     "FontMonoCaptionSize",
 }
 
-local function CreateThemeState(
+type ThemeTargets = {
+    [keyof<Types.ThemeSource>]: Fusion.Value<any>,
+}
+
+type ManagedTheme = {
+    Public: Types.Theme,
+    Targets: ThemeTargets,
+}
+
+local function CreateManagedTheme(
     scope: Fusion.Scope,
     config: Types.ThemeConfig
-): Types.Theme
+): ManagedTheme
     local source = CreateTheme(config)
+    local targets: ThemeTargets = {}
 
     local theme = {
         GetBg = ThemeHelpers.GetBg,
@@ -78,40 +94,54 @@ local function CreateThemeState(
     } :: any
 
     for _, key in THEME_TOKEN_KEYS do
-        theme[key] = Value(scope, Peek((source :: any)[key]))
+        local sourceValue = Peek((source :: any)[key])
+        local target = Value(scope, sourceValue)
+
+        targets[key] = target
+        theme[key] =
+            if typeof(sourceValue) == "Color3" then
+                Tween(scope, target, THEME_COLOR_TWEEN_INFO)
+            else target
     end
 
-    return theme
+    return {
+        Public = theme,
+        Targets = targets,
+    }
 end
 
-local function UpdateTheme(theme: Types.Theme, config: Types.ThemeConfig)
+local function UpdateTheme(
+    managedTheme: ManagedTheme,
+    config: Types.ThemeConfig
+)
     local source = CreateTheme(config)
 
     for _, key in THEME_TOKEN_KEYS do
-        local themeValue = (theme :: any)[key] :: Fusion.Value<any>
-        themeValue:set(Peek((source :: any)[key]))
+        managedTheme.Targets[key]:set(Peek((source :: any)[key]))
     end
 end
 
 local function SetThemeForScope(scope: Fusion.Scope, config: Types.ThemeConfig)
     local created = false
-    local theme: Types.Theme = ScopedData(scope, "Theme", {
+    local managedTheme: ManagedTheme = ScopedData(scope, "Theme", {
         Mode = "Scoped",
-        Create = function(_parent: Types.Theme?)
+        Create = function(_parent: ManagedTheme?)
             created = true
-            return CreateThemeState(scope, config)
+            return CreateManagedTheme(scope, config)
         end,
     })
 
-    if not created then UpdateTheme(theme, config) end
+    if not created then UpdateTheme(managedTheme, config) end
 end
 
 local function GetThemeForScope(scope: Fusion.Scope): Types.Theme
-    return ScopedData(scope, "Theme", {
-        Create = function(_parent: Types.Theme?)
-            return CreateThemeState(scope, DefaultThemeConfig())
+    local managedTheme: ManagedTheme = ScopedData(scope, "Theme", {
+        Create = function(_parent: ManagedTheme?)
+            return CreateManagedTheme(scope, DefaultThemeConfig())
         end,
     })
+
+    return managedTheme.Public
 end
 
 return {
