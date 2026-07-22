@@ -46,6 +46,9 @@ type SelectMenuProps = {
 	Width: Fusion.UsedAs<UDim>?,
 	MaxHeight: Fusion.UsedAs<number>?,
 	Items: Fusion.UsedAs<{ string }>,
+	EnableSearch: Fusion.UsedAs<boolean>?,
+	SearchState: Fusion.Value<string>?,
+	SearchPlaceholderText: Fusion.UsedAs<string>?,
 	SelectedIdx: Fusion.UsedAs<number?>?,
 	DefaultIdx: Fusion.UsedAs<number>?,
 	Visible: Fusion.UsedAs<boolean>?,
@@ -55,7 +58,8 @@ type SelectMenuProps = {
     OnSearchFocusLost: ((boolean, InputObject?) -> ())?
 }
 
-local MenuChromeHeight = 9
+local MenuPaddingHeight = 8
+local SearchDividerHeight = 1
 
 local VisibilityTweenInfo = TweenInfo.new(
     .23,
@@ -68,6 +72,10 @@ return Component<<SelectMenuProps>>(function(scope, props)
     local props, width = TableExtract(props, "Width", UDim.new(1, 0))
     local props, maxHeight = TableExtract(props, "MaxHeight", math.huge)
     local props, items = TableExtract(props, "Items")
+    local props, enableSearch = TableExtract(props, "EnableSearch", false)
+    local props, providedSearchState = TableExtract(props, "SearchState")
+    local props, searchPlaceholderText =
+        TableExtract(props, "SearchPlaceholderText", "Search Items")
     local props, selectedIdx = TableExtract(props, "SelectedIdx")
     local props = TableExtract(props, "DefaultIdx")
     local props, visible = TableExtract(props, "Visible", true)
@@ -82,7 +90,19 @@ return Component<<SelectMenuProps>>(function(scope, props)
         TableExtract(props, "StrokeTransparency", 0)
 
     local selectedIdxValue = CoerceToValue<<number?>>(scope, selectedIdx)
-    local searchQuery = Value(scope, "")
+    local searchState = providedSearchState or Value(scope, "")
+    local isSearchEnabled = Computed(scope, function(use): boolean
+        return use<<boolean>>(enableSearch)
+    end)
+    local effectiveSearchQuery = Computed(scope, function(use): string
+        return
+            if use<<boolean>>(isSearchEnabled) then
+                use<<string>>(searchState)
+            else ""
+    end)
+    Observer(scope, isSearchEnabled):onChange(function()
+        if not Peek<<boolean>>(isSearchEnabled) then searchState:set("") end
+    end)
     local indexedItems = Computed(scope, function(use): { IndexedItem }
         local usedItems = use<<{ string }>>(items)
         local result = table.create(#usedItems) :: { IndexedItem }
@@ -108,7 +128,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
         local usedItems = use<<{ IndexedItem }>>(indexedItems)
         local usedItemFilter = use<<IndexedItemFilter>>(itemFilter)
 
-        return usedItemFilter(use<<string>>(searchQuery), usedItems)
+        return usedItemFilter(use<<string>>(effectiveSearchQuery), usedItems)
     end)
     local hasNoFilteredItems = Computed(scope, function(use): boolean
         return #use<<{ IndexedItem }>>(filteredItems) == 0
@@ -128,7 +148,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
             not Peek<<boolean>>(isVisible) and
             Peek<<number>>(visibilityTransparency) >= .999
         then
-            searchQuery:set("")
+            searchState:set("")
         end
     end)
     local shouldRender = Computed(scope, function(use): boolean
@@ -140,6 +160,11 @@ return Component<<SelectMenuProps>>(function(scope, props)
         return
             use<<boolean>>(visible)
             and use<<boolean>>(interactable)
+    end)
+    local effectiveSearchInteractable = Computed(scope, function(use): boolean
+        return
+            use<<boolean>>(isSearchEnabled)
+            and use<<boolean>>(effectiveInteractable)
     end)
 
     local nextVariant = GetNextVariant(scope, variant)
@@ -156,6 +181,12 @@ return Component<<SelectMenuProps>>(function(scope, props)
     end)
     local emptyRowHeight = Computed(scope, function(use): number
         return use<<number>>(largeHeight) - 4
+    end)
+    local searchChromeHeight = Computed(scope, function(use): number
+        return
+            if use<<boolean>>(isSearchEnabled) then
+                use<<number>>(searchHeight) + SearchDividerHeight
+            else 0
     end)
     local font = theme:GetFont(scope, "Main", Enum.FontWeight.Medium)
     local fontSize = theme:GetFontSize(scope, "Main", "Title")
@@ -207,20 +238,21 @@ return Component<<SelectMenuProps>>(function(scope, props)
                     ComputeUDim(scope, 0, searchHeight)
                 ),
                 BackgroundTransparency = 1,
-                Text = searchQuery,
-                PlaceholderText = "Search...",
+                Text = searchState,
+                PlaceholderText = searchPlaceholderText,
                 TextColor3 = textColor,
                 PlaceholderColor3 = placeholderColor,
                 TextTransparency = composedOpaqueTransparency,
                 TextSize = fontSize,
                 FontFace = font,
                 ClearTextOnFocus = false,
-                Interactable = effectiveInteractable,
-                TextEditable = effectiveInteractable,
+                Interactable = effectiveSearchInteractable,
+                TextEditable = effectiveSearchInteractable,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 TextTruncate = Enum.TextTruncate.None,
+                Visible = isSearchEnabled,
 
-                [Out "Text"] = searchQuery,
+                [Out "Text"] = searchState,
                 [OnEvent "Focused"] = onSearchFocused,
                 [OnEvent "FocusLost"] = onSearchFocusLost,
 
@@ -236,7 +268,8 @@ return Component<<SelectMenuProps>>(function(scope, props)
                 BackgroundColor3 = strokeColor,
                 BackgroundTransparency = composedStrokeTransparency,
                 BorderSizePixel = 0,
-                Size = UDim2.new(1, 0, 0, 1),
+                Size = UDim2.new(1, 0, 0, SearchDividerHeight),
+                Visible = isSearchEnabled,
 
                 Name = "Divider"
             },
@@ -260,8 +293,8 @@ return Component<<SelectMenuProps>>(function(scope, props)
                                     math.huge,
                                     math.max(
                                         use<<number>>(maxHeight) -
-                                            use<<number>>(searchHeight) -
-                                            MenuChromeHeight,
+                                            use<<number>>(searchChromeHeight) -
+                                            MenuPaddingHeight,
                                         0
                                     )
                                 )
