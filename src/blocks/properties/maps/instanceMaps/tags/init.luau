@@ -17,17 +17,19 @@ local Category = require(script.Parent.Parent.category)
 type CategoryState = Category.State
 
 local CommitRemoveTag = require(script.Parent.commitRemoveTag)
-local CommitTag = require(script.Parent.commitTag)
 local TagChanged = require(script.tagChanged)
+
+type TagRemovedCallback = (tag: string) -> ()
 
 local function CreateTagItem(
     scope: Fusion.Scope,
     instance: Instance,
-    tag: string
+    tag: string,
+    onTagRemoved: TagRemovedCallback
 ): Item
-    local item: Item = {
+    return {
         Value = tag,
-        Writable = true,
+        Writable = false,
         ValueChildren = {
             IconButton(scope, {
                 Image = Assets.Cross,
@@ -36,31 +38,31 @@ local function CreateTagItem(
                     local success, err = CommitRemoveTag(instance, tag)
                     if not success then
                         warn(`Could not remove tag {tag}: {err}`)
+                        return
                     end
+
+                    onTagRemoved(tag)
                 end
             })
         }
     }
-
-    item.TrySetValue = function(newTag: string): (boolean, string?, any?)
-        if newTag == tag then return true, nil, tag end
-
-        local success, err = CommitTag(instance, tag, newTag)
-        return success, err, if success then newTag else nil
-    end
-
-    return item
 end
 
 local function GetTagItems(
     scope: Fusion.Scope,
-    instance: Instance
+    instance: Instance,
+    onTagRemoved: TagRemovedCallback
 ): { Item }
     local tags = instance:GetTags()
     local tagItems = table.create(#tags) :: { Item }
 
     for idx, tag in tags do
-        tagItems[idx] = CreateTagItem(scope, instance, tag)
+        tagItems[idx] = CreateTagItem(
+            scope,
+            instance,
+            tag,
+            onTagRemoved
+        )
     end
 
     return tagItems
@@ -70,20 +72,28 @@ local function ApplyTagChange(
     scope: Fusion.Scope,
     instance: Instance,
     tagItems: { Item },
+    onTagRemoved: TagRemovedCallback,
     tag: string,
     removed: boolean
-)
+): boolean
     if not removed then
-        table.insert(tagItems, CreateTagItem(scope, instance, tag))
-        return
+        table.insert(tagItems, CreateTagItem(
+            scope,
+            instance,
+            tag,
+            onTagRemoved
+        ))
+        return true
     end
 
     for idx, tagItem in tagItems do
         if tagItem.Value ~= tag then continue end
 
         table.remove(tagItems, idx)
-        return
+        return true
     end
+
+    return false
 end
 
 return function(
@@ -92,20 +102,32 @@ return function(
     collapsedStateScope: Fusion.Scope,
     instance: Instance
 ): CategoryState
-    local tagItems = GetTagItems(scope, instance)
+    local publishTagChange: (tag: string, removed: boolean) -> ()
+    local function onTagRemoved(tag: string)
+        publishTagChange(tag, true)
+    end
+
+    local tagItems = GetTagItems(scope, instance, onTagRemoved)
     local tagItemsState = Value(scope, tagItems)
+
+    publishTagChange = function(tag: string, removed: boolean)
+        local changed = ApplyTagChange(
+            scope,
+            instance,
+            tagItems,
+            onTagRemoved,
+            tag,
+            removed
+        )
+        if not changed then return end
+
+        -- Fusion treats mutable tables as dissimilar by design.
+        tagItemsState:set(tagItems)
+    end
 
     table.insert(
         scope,
-        TagChanged(instance, function(
-            tag: string,
-            removed: boolean
-        )
-            ApplyTagChange(scope, instance, tagItems, tag, removed)
-
-            -- Fusion treats mutable tables as dissimilar by design.
-            tagItemsState:set(tagItems)
-        end)
+        TagChanged(instance, publishTagChange)
     )
 
     return Category(scope, outerScope, collapsedStateScope, {
