@@ -186,14 +186,19 @@ local function CreateCachedCollapsedState(
 end
 
 local function ResolveItem(item: Item): ResolvedItem
+    local trySetValue = item.TrySetValue
+    local writable =
+        item.Writable ~= false and
+        trySetValue ~= nil
+
     return {
         Item = item,
         RootItem = item,
         RootValue = item.Value,
         ResolvedValue = item.Value,
         ValueAccessor = nil,
-        TrySetValue = item.TrySetValue,
-        Writable = item.Writable ~= false
+        TrySetValue = if writable then trySetValue else nil,
+        Writable = writable
     }
 end
 
