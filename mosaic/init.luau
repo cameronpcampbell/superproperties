@@ -20,6 +20,7 @@ return {
 
     -- Inputs.
     Input = require(Components.input),
+    Select = require(Components.select),
 
     -- Buttons.
     Button = require(Components.button),
