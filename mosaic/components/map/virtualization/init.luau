@@ -46,7 +46,8 @@ type ResolvedItem = {
     ResolvedValue: any,
     ValueAccessor: IntrinsicAccessor?,
     TrySetValue: TrySetValue<any>?,
-    Writable: boolean
+    Writable: boolean,
+    DisplayAsWritable: boolean
 }
 type CollapseStateNode = {
     IsCollapsed: boolean?,
@@ -198,7 +199,9 @@ local function ResolveItem(item: Item): ResolvedItem
         ResolvedValue = item.Value,
         ValueAccessor = nil,
         TrySetValue = if writable then trySetValue else nil,
-        Writable = writable
+        Writable = writable,
+        DisplayAsWritable =
+            writable or item.DisplayAsWritable == true
     }
 end
 
@@ -206,7 +209,8 @@ local function ResolveIntrinsicItem(
     item: IntrinsicItem,
     rootItem: Item,
     rootValue: any,
-    parentWritable: boolean
+    parentWritable: boolean,
+    parentDisplayAsWritable: boolean
 ): ResolvedItem
     local valueAccessor = item.Value
     local writeValue = valueAccessor.Write
@@ -238,7 +242,8 @@ local function ResolveIntrinsicItem(
         ResolvedValue = valueAccessor.Read(rootValue),
         ValueAccessor = valueAccessor,
         TrySetValue = trySetValue,
-        Writable = parentWritable
+        Writable = parentWritable,
+        DisplayAsWritable = parentDisplayAsWritable
     }
 end
 
@@ -254,7 +259,8 @@ local function GetChildItems(item: ResolvedItem): { ResolvedItem }
                 childItem,
                 item.RootItem,
                 item.RootValue,
-                item.Writable
+                item.Writable,
+                item.DisplayAsWritable
             )
         end
 
@@ -274,7 +280,8 @@ local function GetChildItems(item: ResolvedItem): { ResolvedItem }
             childItem,
             item.RootItem,
             item.RootValue,
-            item.Writable
+            item.Writable,
+            item.DisplayAsWritable
         )
     end
 
@@ -384,6 +391,7 @@ local function CreateItemLayout(
         ResolvedValue = resolvedItem.ResolvedValue,
         TrySetValue = resolvedItem.TrySetValue,
         Writable = resolvedItem.Writable,
+        DisplayAsWritable = resolvedItem.DisplayAsWritable,
         ValueFocusState = valueFocusState,
         ValueFocusElevationState = valueFocusElevationState,
         Depth = depth,

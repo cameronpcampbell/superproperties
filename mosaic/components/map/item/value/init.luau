@@ -41,6 +41,7 @@ type MapItemValueProps = Typeforge.Flatten<
     Types.BaseMapProps & {
         Value: any,
         Writable: boolean,
+        DisplayAsWritable: boolean,
         TrySetValue: Types.TrySetValue<any>?,
         Side: "Right" | "Both",
         CollapsedState: Fusion.Value<boolean>?,
@@ -242,7 +243,9 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
         [Children] = {
             if props.CollapsedState then Arrow(scope, {
                 CollapsedState = props.CollapsedState,
-                Variant = if props.Writable then "Primary" else "Secondary",
+                Variant =
+                    if props.DisplayAsWritable then "Primary"
+                    else "Secondary",
                 Thin = true,
                 LayoutOrder = -1
             }) else nil,
@@ -250,6 +253,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
             valueVariant(scope, {
                 Value = value,
                 Writable = props.Writable,
+                DisplayAsWritable = props.DisplayAsWritable,
                 TrySetValue = props.TrySetValue,
                 OnFocusChanged = onFocusChanged,
                 FocusState = props.FocusState

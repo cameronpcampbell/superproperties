@@ -77,6 +77,7 @@ return function(
             ColorTextVariant(scope, {
                 Value = value,
                 Writable = props.Writable,
+                DisplayAsWritable = props.DisplayAsWritable,
                 TrySetValue = props.TrySetValue :: any,
                 OnFocusChanged = props.OnFocusChanged
             }),
@@ -89,7 +90,9 @@ return function(
         Text(scope, {
             Text =
                 if typeof(value) == "Color3" then FormatColor(value) else value.Name,
-            Variant = if props.Writable then "Primary" else "Secondary",
+            Variant =
+                if props.DisplayAsWritable then "Primary"
+                else "Secondary",
             Size = UDim2.fromScale(1, 0),
 
             [Children] = New(scope, "UIFlexItem") {

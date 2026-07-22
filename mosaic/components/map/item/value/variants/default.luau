@@ -21,7 +21,9 @@ return function(
     return {
         Text(scope, {
             Text = tostring(value),
-            Variant = if props.Writable then "Primary" else "Secondary",
+            Variant =
+                if props.DisplayAsWritable then "Primary"
+                else "Secondary",
             Size = UDim2.fromScale(1, 0),
 
             [Children] = New(scope, "UIFlexItem") {

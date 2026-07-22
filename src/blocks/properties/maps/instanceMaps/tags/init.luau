@@ -30,6 +30,7 @@ local function CreateTagItem(
     return {
         Value = tag,
         Writable = false,
+        DisplayAsWritable = true,
         ValueChildren = {
             IconButton(scope, {
                 Image = Assets.Cross,

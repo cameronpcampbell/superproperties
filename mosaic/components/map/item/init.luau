@@ -223,7 +223,7 @@ local function CreateMapItem(
     if key ~= nil then
         table.insert(itemContentChildren, MapItemKey(scope, {
             Key = key,
-            Writable = layout.Writable,
+            DisplayAsWritable = layout.DisplayAsWritable,
             Variant = props.Variant,
             RowCount = props.RowCount,
             RowIdx = rowIdx,
@@ -246,6 +246,7 @@ local function CreateMapItem(
     table.insert(itemContentChildren, MapItemValue(scope, {
         Value = layout.ResolvedValue,
         Writable = layout.Writable,
+        DisplayAsWritable = layout.DisplayAsWritable,
         TrySetValue = layout.TrySetValue,
         Variant = props.Variant,
         RowCount = props.RowCount,

@@ -36,7 +36,7 @@ local IndicatorGap = 6
 type MapItemKeyProps = Typeforge.Flatten<
     Types.BaseMapProps & {
         Key: string,
-        Writable: boolean,
+        DisplayAsWritable: boolean,
         HasSubItems: boolean,
         Nestedness: number,
         CollapsedState: Fusion.Value<boolean>?,
@@ -74,7 +74,9 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
     if hasSubItems then
         indicator = Arrow(scope, {
             CollapsedState = props.CollapsedState :: Fusion.Value<boolean>,
-            Variant = if props.Writable then "Primary" else "Secondary",
+            Variant =
+                if props.DisplayAsWritable then "Primary"
+                else "Secondary",
             Thin = true,
             LayoutOrder = 0
         })
@@ -119,7 +121,7 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
             Text(scope, {
                 Text = props.Key,
                 Variant =
-                    if props.Writable then "Primary"
+                    if props.DisplayAsWritable then "Primary"
                     else "Secondary",
                 Size = UDim2.fromScale(1, 0),
                 LayoutOrder = 1,

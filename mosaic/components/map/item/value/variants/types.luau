@@ -7,6 +7,7 @@ local Fusion = require(Packages.fusion)
 export type ValueVariantProps<T> = {
     Value: T,
     Writable: boolean,
+    DisplayAsWritable: boolean,
     TrySetValue: ((value: T) -> (boolean, string?, T?))?,
     OnFocusChanged: ((isFocused: boolean) -> ())?,
     FocusState: Fusion.Value<boolean>?
