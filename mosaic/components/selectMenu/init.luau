@@ -91,6 +91,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
 
     local selectedIdxValue = CoerceToValue<<number?>>(scope, selectedIdx)
     local searchState = providedSearchState or Value(scope, "")
+
     local isSearchEnabled = Computed(scope, function(use): boolean
         return use<<boolean>>(enableSearch)
     end)
@@ -157,6 +158,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
         end),
         VisibilityTweenInfo
     )
+
     Observer(scope, visibilityTransparency):onChange(function()
         if
             not Peek<<boolean>>(isVisible) and
@@ -165,16 +167,19 @@ return Component<<SelectMenuProps>>(function(scope, props)
             searchState:set("")
         end
     end)
+
     local shouldRender = Computed(scope, function(use): boolean
         return
             use<<boolean>>(visible)
             or use<<number>>(visibilityTransparency) < .999
     end)
+
     local effectiveInteractable = Computed(scope, function(use): boolean
         return
             use<<boolean>>(visible)
             and use<<boolean>>(interactable)
     end)
+
     local effectiveSearchInteractable = Computed(scope, function(use): boolean
         return
             use<<boolean>>(isSearchEnabled)
@@ -190,30 +195,36 @@ return Component<<SelectMenuProps>>(function(scope, props)
     local placeholderColor = theme:GetFg(scope, "Secondary")
     local cornerRadius = theme:GetCornerRadius(scope, "Md")
     local largeHeight = theme:GetHeight(scope, "Lg")
+    local font = theme:GetFont(scope, "Main", Enum.FontWeight.Medium)
+    local fontSize = theme:GetFontSize(scope, "Main", "Title")
+
     local searchHeight = Computed(scope, function(use): number
         return math.max(use<<number>>(largeHeight) - 2, 0)
     end)
+
     local emptyRowHeight = Computed(scope, function(use): number
         return use<<number>>(largeHeight) - 4
     end)
+
     local searchChromeHeight = Computed(scope, function(use): number
         return
             if use<<boolean>>(isSearchEnabled) then
                 use<<number>>(searchHeight) + SearchDividerHeight
             else 0
     end)
-    local font = theme:GetFont(scope, "Main", Enum.FontWeight.Medium)
-    local fontSize = theme:GetFontSize(scope, "Main", "Title")
+
     local composedBackgroundTransparency = ComposeTransparency(
         scope,
         backgroundTransparency,
         visibilityTransparency
     )
+
     local composedStrokeTransparency = ComposeTransparency(
         scope,
         strokeTransparency,
         visibilityTransparency
     )
+
     local composedOpaqueTransparency = ComposeTransparency(
         scope,
         0,
