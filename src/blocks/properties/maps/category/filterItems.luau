@@ -16,10 +16,6 @@ type ItemFilterFactory = (items: { Item }) -> ItemFilter
 
 local IntrinsicSearchTextsByType: { [string]: { string } } = {}
 
-local function GetItemSearchText(item: Item): string
-    return if item.Key ~= nil then item.Key else tostring(item.Value)
-end
-
 local function GetIntrinsicSearchTexts(item: Item): { string }
     local typeName = typeof(item.Value)
     local existingSearchTexts = IntrinsicSearchTextsByType[typeName]
@@ -39,7 +35,7 @@ end
 local function CreatePropertyItemFilter(items: { Item }): ItemFilter
     return CreateItemFilter(
         items,
-        GetItemSearchText,
+        function(item: Item): string return item.Key end,
         GetIntrinsicSearchTexts
     )
 end

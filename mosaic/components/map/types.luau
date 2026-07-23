@@ -15,9 +15,9 @@ export type BaseMapProps = {
 export type TrySetValue<T> = (value: T) -> (boolean, string?, T?)
 
 export type Item = {
-	Key: string?,
+	Key: string,
 	KeyChildren: { Fusion.Child }?,
-	Value: any,
+	Value: any?,
 	ValueChildren: { Fusion.Child }?,
 	Writable: boolean?,
 	DisplayAsWritable: boolean?,

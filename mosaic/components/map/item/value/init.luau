@@ -30,7 +30,6 @@ local FocusRing = require(Components.focusRing)
 
 local CalculateRowCornerRadii =
     require(script.Parent.Parent.cornerRadii)
-local Arrow = require(script.Parent.Parent.arrow)
 
 local ValueVariants = require(script.variants)
 local DefaultValueVariant = ValueVariants.Default
@@ -43,8 +42,6 @@ type MapItemValueProps = Typeforge.Flatten<
         Writable: boolean,
         DisplayAsWritable: boolean,
         TrySetValue: Types.TrySetValue<any>?,
-        Side: "Right" | "Both",
-        CollapsedState: Fusion.Value<boolean>?,
         Redrawable: boolean,
         HoverState: Fusion.Value<boolean>?,
         FocusState: Fusion.Value<boolean>?,
@@ -75,7 +72,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
     local topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius =
         CalculateRowCornerRadii(
             scope,
-            props.Side,
+            "Right",
             rowCount,
             rowIdx,
             props.Redrawable,
@@ -241,15 +238,6 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
         },
 
         [Children] = {
-            if props.CollapsedState then Arrow(scope, {
-                CollapsedState = props.CollapsedState,
-                Variant =
-                    if props.DisplayAsWritable then "Primary"
-                    else "Secondary",
-                Thin = true,
-                LayoutOrder = -1
-            }) else nil,
-
             valueVariant(scope, {
                 Value = value,
                 Writable = props.Writable,

@@ -83,10 +83,10 @@ local function CreateTagItem(
     onTagRemoved: TagRemovedCallback
 ): Item
     return {
-        Value = tag,
+        Key = tag,
         Writable = false,
         DisplayAsWritable = true,
-        ValueChildren = {
+        KeyChildren = {
             IconButton(scope, {
                 Image = Assets.Cross,
 
@@ -133,7 +133,7 @@ local function ApplyTagChange(
     removed: boolean
 ): boolean
     for idx, tagItem in tagItems do
-        if tagItem.Value ~= tag then continue end
+        if tagItem.Key ~= tag then continue end
 
         if not removed then return false end
 

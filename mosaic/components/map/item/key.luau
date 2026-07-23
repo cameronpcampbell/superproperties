@@ -37,6 +37,7 @@ type MapItemKeyProps = Typeforge.Flatten<
     Types.BaseMapProps & {
         Key: string,
         DisplayAsWritable: boolean,
+        Side: "Left" | "Both",
         HasSubItems: boolean,
         Nestedness: number,
         CollapsedState: Fusion.Value<boolean>?,
@@ -95,7 +96,7 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
     local topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius =
         CalculateRowCornerRadii(
             scope,
-            "Left",
+            props.Side,
             rowCount,
             rowIdx,
             props.Redrawable,

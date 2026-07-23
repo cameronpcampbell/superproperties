@@ -85,15 +85,17 @@ local function CreateMapItem(
     local layout = props.Layout
     local item = layout.Item
     local key = item.Key
-    local hasKey = key ~= nil
+    local hasValue = item.Value ~= nil
     local children = layout.Children
     local hasSubItems = #children > 0
     local redrawable = layout.CanBecomeMapBottom
-    local hasInteractiveValue = layout.Writable
+    local hasInteractiveValue = hasValue and layout.Writable
     local hasKeyChildren =
-        hasKey and item.KeyChildren ~= nil and next(item.KeyChildren) ~= nil
+        item.KeyChildren ~= nil and next(item.KeyChildren) ~= nil
     local hasValueChildren =
-        item.ValueChildren ~= nil and next(item.ValueChildren) ~= nil
+        hasValue
+        and item.ValueChildren ~= nil
+        and next(item.ValueChildren) ~= nil
 
     local keyHoverState: Fusion.Value<boolean>? =
         if hasKeyChildren then Value(scope, false) else nil
@@ -220,53 +222,52 @@ local function CreateMapItem(
 
     local itemContentChildren = {} :: { Fusion.Child }
 
-    if key ~= nil then
-        table.insert(itemContentChildren, MapItemKey(scope, {
-            Key = key,
+    table.insert(itemContentChildren, MapItemKey(scope, {
+        Key = key,
+        DisplayAsWritable = layout.DisplayAsWritable,
+        Variant = props.Variant,
+        RowCount = props.RowCount,
+        RowIdx = rowIdx,
+        Side = if hasValue then "Left" else "Both",
+        HasSubItems = hasSubItems,
+        Nestedness = layout.Depth,
+        CollapsedState = layout.CollapsedState,
+        Redrawable = redrawable,
+        HoverState = keyHoverState,
+        RightChildren = if keyHoverState then
+            CreateRightChildren(
+                scope,
+                "KeyChildren",
+                item.KeyChildren,
+                keyHoverState
+            )
+            else nil
+    }))
+
+    if hasValue then
+        table.insert(itemContentChildren, MapItemValue(scope, {
+            Value = layout.ResolvedValue,
+            Writable = layout.Writable,
             DisplayAsWritable = layout.DisplayAsWritable,
+            TrySetValue = layout.TrySetValue,
             Variant = props.Variant,
             RowCount = props.RowCount,
             RowIdx = rowIdx,
-            HasSubItems = hasSubItems,
-            Nestedness = layout.Depth,
-            CollapsedState = layout.CollapsedState,
             Redrawable = redrawable,
-            HoverState = keyHoverState,
-            RightChildren = if keyHoverState then
+            HoverState = isHoverState,
+            FocusState = isFocusState,
+            FocusElevationState = isFocusElevationState,
+            FocusRingAlphaState = focusRingAlphaState,
+            RightChildren = if hasValueChildren then
                 CreateRightChildren(
                     scope,
-                    "KeyChildren",
-                    item.KeyChildren,
-                    keyHoverState
+                    "ValueChildren",
+                    item.ValueChildren,
+                    isHoverState :: Fusion.Value<boolean>
                 )
                 else nil
         }))
     end
-
-    table.insert(itemContentChildren, MapItemValue(scope, {
-        Value = layout.ResolvedValue,
-        Writable = layout.Writable,
-        DisplayAsWritable = layout.DisplayAsWritable,
-        TrySetValue = layout.TrySetValue,
-        Variant = props.Variant,
-        RowCount = props.RowCount,
-        RowIdx = rowIdx,
-        Side = if hasKey then "Right" else "Both",
-        CollapsedState = if hasKey then nil else layout.CollapsedState,
-        Redrawable = redrawable,
-        HoverState = isHoverState,
-        FocusState = isFocusState,
-        FocusElevationState = isFocusElevationState,
-        FocusRingAlphaState = focusRingAlphaState,
-        RightChildren = if hasValueChildren then
-            CreateRightChildren(
-                scope,
-                "ValueChildren",
-                item.ValueChildren,
-                isHoverState :: Fusion.Value<boolean>
-            )
-            else nil
-    }))
 
     table.insert(itemContentChildren, New(scope, "UIListLayout") {
         Padding = UDim.new(0, 1),
@@ -349,9 +350,7 @@ local function CreateMapItem(
         LayoutOrder = props.LayoutOrder,
         ZIndex = containerZIndex,
 
-        Name =
-            if key ~= nil then `MapItem [{key}]`
-            else "MapItem [Value Only]",
+        Name = `MapItem [{key}]`,
 
         [Children] = rootChildren
     }

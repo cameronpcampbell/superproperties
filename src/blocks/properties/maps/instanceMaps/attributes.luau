@@ -93,12 +93,6 @@ local function CreateCaption(
     }
 end
 
-local function GetAttributeName(item: Item): string
-    local attributeName = item.Key
-    assert(attributeName ~= nil, "Attribute map items must have keys.")
-    return attributeName
-end
-
 local function ShouldOmitAttribute(
     attributeName: string,
     omitRbxAttributes: boolean
@@ -147,7 +141,7 @@ return function(
     local attributeItemsState = Value(scope, attributeItems)
 
     for itemIdx, item in attributeItems do
-        attributeItemIndices[GetAttributeName(item)] = itemIdx
+        attributeItemIndices[item.Key] = itemIdx
     end
 
     local refreshAttribute: (attributeName: string) -> (boolean, any?)
@@ -210,7 +204,7 @@ return function(
 
             for shiftedIdx = itemIdx, #attributeItems do
                 local shiftedItem = attributeItems[shiftedIdx]
-                attributeItemIndices[GetAttributeName(shiftedItem)] = shiftedIdx
+                attributeItemIndices[shiftedItem.Key] = shiftedIdx
             end
         elseif itemIdx then
             local item = attributeItems[itemIdx]
@@ -232,7 +226,7 @@ return function(
     end
 
     for _, item in attributeItems do
-        makeAttributeWritable(item, GetAttributeName(item))
+        makeAttributeWritable(item, item.Key)
     end
 
     table.insert(

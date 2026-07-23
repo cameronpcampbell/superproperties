@@ -32,10 +32,6 @@ type CategoryProps = {
     ShowOnTop: Fusion.UsedAs<boolean>?
 }
 
-local function GetItemLabel(item: Item): string
-    return if item.Key ~= nil then item.Key else tostring(item.Value)
-end
-
 local function SortItems(
     scope: Fusion.Scope,
     items: Fusion.UsedAs<{ Item }>
@@ -44,7 +40,7 @@ local function SortItems(
         local sortedItems = table.clone(use<<{ Item }>>(items))
 
         table.sort(sortedItems, function(leftItem: Item, rightItem: Item)
-            return GetItemLabel(leftItem) < GetItemLabel(rightItem)
+            return leftItem.Key < rightItem.Key
         end)
 
         return sortedItems
