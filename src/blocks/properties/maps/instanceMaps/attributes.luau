@@ -274,9 +274,6 @@ return function(
     )
 
     local nameState = Value<<string?>>(scope, "")
-    local createAttributeDisabled = Computed(scope, function(use): boolean
-        return Trim(use<<string?>>(nameState) or "") == ""
-    end)
     local selectedTypeIdxState = Value<<number?>>(scope, 1)
     local attributeMenu: GuiObject
     local addButton: GuiObject
@@ -292,6 +289,11 @@ return function(
         end,
         Name = "AttributesMenuFocusTarget"
     })
+    local createAttributeDisabled = Computed(scope, function(use): boolean
+        return
+            not use<<boolean>>(popoverFocus.State)
+            or Trim(use<<string?>>(nameState) or "") == ""
+    end)
 
     local function createAttribute()
         local attributeName = Trim(Peek<<string?>>(nameState) or "")
@@ -358,6 +360,7 @@ return function(
                 Text = nameState,
                 PlaceholderText = "Enter a name...",
                 ParentPopoverFocus = popoverFocus,
+                Interactable = popoverFocus.State,
                 LayoutOrder = 1
             }),
 
@@ -366,6 +369,7 @@ return function(
                 Items = AttributeTypeLabels,
                 SelectedIdx = selectedTypeIdxState,
                 ParentPopoverFocus = popoverFocus,
+                Interactable = popoverFocus.State,
                 LayoutOrder = 2
             }),
 
