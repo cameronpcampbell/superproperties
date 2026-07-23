@@ -35,6 +35,9 @@ local CreateMapLayout, CreateMapSizeTween,
     Virtualization.ComputeVirtualizedRows
 local ZIndices = require(script.zIndices)
 
+local StrokeInset = 1
+local VerticalStrokeInset = StrokeInset * 2
+
 export type Item = Types.Item
 export type Items = Types.Items
 export type VirtualListData = Virtualization.VirtualListData
@@ -73,7 +76,7 @@ return Component<<MapProps>>(function(scope, props)
     local height = theme:GetHeight(scope, "Lg")
     local cornerRadius = theme:GetCornerRadius(scope, "Md")
 
-    local rowHeight = ComputeAdd(scope, height, - 2)
+    local rowHeight = ComputeAdd(scope, height, - VerticalStrokeInset)
 
     local layout =
         if virtualListData then virtualListData.Layout
@@ -112,6 +115,21 @@ return Component<<MapProps>>(function(scope, props)
         return reveal > 0 and reveal < 1
     end)
 
+    local animatedContentSize = Computed(
+        scope,
+        function(use: Fusion.Use): UDim2
+            local mapSize = use<<UDim2>>(animatedMapSize)
+
+            return UDim2.new(
+                UDim.new(1, 0),
+                UDim.new(
+                    mapSize.Height.Scale,
+                    mapSize.Height.Offset - VerticalStrokeInset
+                )
+            )
+        end
+    )
+
     local headerZIndex = Computed(scope, function(use: Fusion.Use): number
         return
             if use<<boolean>>(showOnTop) then ZIndices.Focus
@@ -143,26 +161,26 @@ return Component<<MapProps>>(function(scope, props)
             else ZIndices.Default
     end)
 
-    local mapChildren: { Fusion.Child } = {
-        visibleRows,
+    local mapContent = New(scope, "Frame") {
+        BackgroundTransparency = 1,
+        Size = animatedContentSize,
+        ClipsDescendants = clipsDescendants,
 
-        New(scope, "UIListLayout") {
-            Padding = UDim.new(0, 1),
-            SortOrder = Enum.SortOrder.LayoutOrder
-        },
+        Name = "MapContent",
 
-        New(scope, "UIPadding") {
-            PaddingLeft = UDim.new(0, 1),
-            PaddingRight = UDim.new(0, 1),
-            PaddingTop = UDim.new(0, 1),
-            PaddingBottom = UDim.new(0, 1),
-        },
+        [Children] = ({
+            visibleRows,
+
+            New(scope, "UIListLayout") {
+                Padding = UDim.new(0, 1),
+                SortOrder = Enum.SortOrder.LayoutOrder
+            }
+        } :: { Fusion.Child })
     }
 
     return Supercorner.new(scope, CombineProps({
         BackgroundColor3 = strokeColor,
         Size = animatedMapSize,
-        ClipsDescendants = clipsDescendants,
         ZIndex = mapZIndex,
         CornerRadius = Peek<<number>>(cornerRadius),
         CornerSmoothing = 1,
@@ -171,6 +189,15 @@ return Component<<MapProps>>(function(scope, props)
 
         RootChildren = New(scope, "UIFlexItem") {},
 
-        [Children] = mapChildren
+        [Children] = {
+            mapContent,
+
+            New(scope, "UIPadding") {
+                PaddingLeft = UDim.new(0, StrokeInset),
+                PaddingRight = UDim.new(0, StrokeInset),
+                PaddingTop = UDim.new(0, StrokeInset),
+                PaddingBottom = UDim.new(0, StrokeInset)
+            }
+        }
     }, props :: any))
 end)
