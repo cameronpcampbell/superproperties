@@ -280,6 +280,12 @@ return function(
     local selectedTypeIdxState = Value<<number?>>(scope, 1)
     local attributeMenu: GuiObject
     local addButton: GuiObject
+
+    local function resetCreateAttributeForm()
+        nameState:set("")
+        selectedTypeIdxState:set(1)
+    end
+
     local popoverFocus = PopoverFocus(scope, {
         GetInteractionRoots = function(): { GuiObject }
             return { attributeMenu, addButton }
@@ -329,6 +335,7 @@ return function(
         end
 
         refreshAttribute(attributeName)
+        resetCreateAttributeForm()
         popoverFocus.Release()
     end
 
@@ -394,8 +401,7 @@ return function(
                 return
             end
 
-            nameState:set("")
-            selectedTypeIdxState:set(1)
+            resetCreateAttributeForm()
             popoverFocus.Capture()
         end
     }) :: GuiObject
