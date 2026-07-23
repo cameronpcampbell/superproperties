@@ -1,7 +1,5 @@
 --!strict
 
-local SelectionService = game:GetService("Selection")
-
 local Packages = script.packages
 
 local Fusion = require(Packages.fusion)
@@ -10,6 +8,7 @@ local Children, OnEvent, Value, Peek =
     Fusion.Value, Fusion.peek
 
 local Mosaic = require(Packages.mosaic)
+local SelectionService = Mosaic.SelectionService
 
 local Blocks = script.blocks
 local Properties = require(Blocks.properties)

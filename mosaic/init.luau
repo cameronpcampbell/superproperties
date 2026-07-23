@@ -45,5 +45,6 @@ return {
     GetTheme = ThemeUtils.GetThemeForScope,
     SetTheme = ThemeUtils.SetThemeForScope,
     DefaultThemeConfig = ThemeUtils.DefaultThemeConfig,
-    CreateItemFilter = require(Utils.filterItems)
+    CreateItemFilter = require(Utils.filterItems),
+    SelectionService = require(Utils.selectionService)
 }
