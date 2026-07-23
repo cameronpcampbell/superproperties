@@ -12,12 +12,16 @@ local New, Children, OnEvent =
 local Components = script.Parent.Parent.Parent.Parent.Parent
 local Text = require(Components.text)
 local Icon = require(Components.icon)
+local PopoverFocus =
+    require(Components.Parent.coreComponents.popoverFocus)
 
 local Utils = Components.Parent.utils
 local SelectionService = require(Utils.selectionService)
 
 local Types = require(script.Parent.types)
 local CreateSidePadding = require(script.Parent.utils.createSidePadding)
+
+local SelectionSettleTime = .1
 
 return function(
     scope: Fusion.Scope,
@@ -28,45 +32,6 @@ return function(
     local writable = props.Writable and trySetValue ~= nil
 
     local classIcon = StudioService:GetClassIcon(value.ClassName)
-
-    local pickPending = false
-    local alive = true
-
-    table.insert(scope, function()
-        alive = false
-    end)
-
-    local function SetFocused(focused: boolean)
-        if props.OnFocusChanged then
-            props.OnFocusChanged(focused)
-        end
-    end
-
-    local function BeginPick()
-        if not writable or pickPending then return end
-
-        pickPending = true
-        SetFocused(true)
-
-        task.spawn(function()
-            local pickedInstance =
-                SelectionService:PickInstanceAsync()
-
-            pickPending = false
-            if not alive then return end
-
-            SetFocused(false)
-            if pickedInstance == nil then return end
-
-            local setValue = trySetValue
-            if setValue == nil then return end
-
-            local success, err = setValue(pickedInstance)
-            if not success then
-                warn(`SuperProperties: {err or "Could not set value."}`)
-            end
-        end)
-    end
 
     local content = New(scope, "Frame") {
         Size = UDim2.fromScale(1, 1),
@@ -115,7 +80,123 @@ return function(
     } :: { Fusion.Child }
 
     if writable then
-        table.insert(children, New(scope, "TextButton") {
+        local pickPending = false
+        local activePickToken: SelectionService.PickToken? = nil
+        local alive = true
+        local cancelRevision = 0
+
+        local hitArea: TextButton
+        local popoverFocus: PopoverFocus.Controller
+
+        local function CancelActivePick()
+            local token = activePickToken
+            if token then
+                activePickToken = nil
+                SelectionService:CancelPick(token)
+            end
+        end
+
+        local function InputFinished(input: InputObject): boolean
+            return
+                input.UserInputState == Enum.UserInputState.End
+                or input.UserInputState == Enum.UserInputState.Cancel
+        end
+
+        local function SchedulePickCancellation(
+            inputThatCausedFocusLoss: InputObject?
+        )
+            local token = activePickToken
+            if token == nil then return end
+
+            cancelRevision += 1
+            local revision = cancelRevision
+
+            task.spawn(function()
+                local input = inputThatCausedFocusLoss
+                if input then
+                    local inputStateChanged =
+                        input:GetPropertyChangedSignal("UserInputState")
+
+                    while alive and not InputFinished(input) do
+                        inputStateChanged:Wait()
+                    end
+                end
+
+                -- Explorer publishes its selection after releasing UI focus.
+                task.wait(SelectionSettleTime)
+
+                if not alive then return end
+                if revision ~= cancelRevision then return end
+                if activePickToken ~= token then return end
+
+                CancelActivePick()
+            end)
+        end
+
+        popoverFocus = PopoverFocus(scope, {
+            GetInteractionRoots = function(): { GuiObject }
+                return { hitArea }
+            end,
+            OnFocusChanged = function(
+                isFocused: boolean,
+                inputThatCausedFocusLoss: InputObject?
+            )
+                if isFocused then
+                    cancelRevision += 1
+                else
+                    SchedulePickCancellation(inputThatCausedFocusLoss)
+                end
+
+                if props.OnFocusChanged then
+                    props.OnFocusChanged(isFocused)
+                end
+            end,
+            Name = "InstanceFocusTarget"
+        })
+
+        local function BeginPick()
+            if pickPending then return end
+
+            cancelRevision += 1
+            local token: SelectionService.PickToken = {}
+            activePickToken = token
+            pickPending = true
+
+            task.spawn(function()
+                local pickedInstance =
+                    SelectionService:PickInstanceAsync(token, function()
+                        if alive and activePickToken == token then
+                            popoverFocus.Capture()
+                        end
+                    end)
+
+                if activePickToken == token then
+                    activePickToken = nil
+                end
+
+                pickPending = false
+                if not alive then return end
+
+                popoverFocus.Release()
+                if pickedInstance == nil then return end
+
+                local setValue = trySetValue
+                if setValue == nil then return end
+
+                local success, err = setValue(pickedInstance)
+                if not success then
+                    warn(`SuperProperties: {err or "Could not set value."}`)
+                end
+            end)
+        end
+
+        table.insert(scope, function()
+            alive = false
+            cancelRevision += 1
+            CancelActivePick()
+        end)
+
+        hitArea = New(scope, "TextButton") {
             Size = UDim2.fromScale(1, 1),
             BackgroundTransparency = 1,
             Text = "",
@@ -126,7 +207,10 @@ return function(
             Name = "InstanceValueHitArea",
 
             [OnEvent "Activated"] = BeginPick
-        })
+        } :: TextButton
+
+        table.insert(children, popoverFocus.Target)
+        table.insert(children, hitArea)
     end
 
     return New(scope, "Frame") {
