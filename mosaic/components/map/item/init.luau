@@ -95,7 +95,7 @@ end
 local function CreateMapItem(
     scope: Fusion.Scope,
     props: MapItemProps,
-    bottomRowZIndexOut: Fusion.Value<number>?
+    subtreeZIndexOut: Fusion.Value<number>?
 ): Instance
     local layout = props.Layout
     local item = layout.Item
@@ -167,13 +167,15 @@ local function CreateMapItem(
         return metadata.RowIndices[layout] or 0
     end)
 
-    local bottomRowZIndex = bottomRowZIndexOut
+    local childSubtreeZIndices =
+        table.create(#children) :: { Fusion.Value<number> }
     local nestedChildren: Fusion.Child = {}
 
     if hasSubItems then
-        local nestedBottomRowZIndex: Fusion.Value<number> =
-            bottomRowZIndex or Value<<number>>(scope, ZIndices.Default)
-        bottomRowZIndex = nestedBottomRowZIndex
+        for childIdx in children do
+            childSubtreeZIndices[childIdx] =
+                Value<<number>>(scope, ZIndices.Default)
+        end
 
         nestedChildren = Computed(scope, function(
             use: Fusion.Use,
@@ -191,7 +193,7 @@ local function CreateMapItem(
                     LayoutOrder = childIdx,
                     RowCount = props.RowCount,
                     RowMetadata = props.RowMetadata
-                }, if childIdx == #children then nestedBottomRowZIndex else nil)
+                }, childSubtreeZIndices[childIdx])
             end
 
             table.insert(mountedChildren, New(nestedScope, "UIListLayout") {
@@ -204,46 +206,44 @@ local function CreateMapItem(
         end)
     end
 
-    if bottomRowZIndex then
-        local usedBottomRowZIndex = bottomRowZIndex
-        local computeOwnBottomRowZIndex = Computed(
-            scope,
-            function(use: Fusion.Use): number?
-                if hasSubItems
-                    and use<<boolean>>(layout.ChildrenMounted)
-                then
-                    return nil
-                end
+    local containerZIndex: Fusion.UsedAs<number> = rowZIndex
+    if hasSubItems then
+        containerZIndex = Computed(scope, function(use: Fusion.Use): number
+            local highestZIndex = use<<number>>(rowZIndex)
+            if not use<<boolean>>(layout.ChildrenMounted) then
+                return highestZIndex
+            end
 
-                return use<<number>>(rowZIndex)
+            for _, childSubtreeZIndex in childSubtreeZIndices do
+                highestZIndex = math.max(
+                    highestZIndex,
+                    use<<number>>(childSubtreeZIndex)
+                )
+            end
+
+            return highestZIndex
+        end)
+    end
+
+    if subtreeZIndexOut then
+        local usedSubtreeZIndexOut = subtreeZIndexOut
+        local computedSubtreeZIndex = Computed(
+            scope,
+            function(use: Fusion.Use): number
+                return use<<number>>(containerZIndex)
             end
         )
 
-        local function publishOwnBottomRowZIndex()
-            local ownBottomRowZIndex =
-                Peek<<number?>>(computeOwnBottomRowZIndex)
-            if ownBottomRowZIndex == nil then return end
-            if Peek<<number>>(usedBottomRowZIndex) == ownBottomRowZIndex then
+        local function publishSubtreeZIndex()
+            local subtreeZIndex = Peek<<number>>(computedSubtreeZIndex)
+            if Peek<<number>>(usedSubtreeZIndexOut) == subtreeZIndex then
                 return
             end
 
-            usedBottomRowZIndex:set(ownBottomRowZIndex)
+            usedSubtreeZIndexOut:set(subtreeZIndex)
         end
 
-        Observer(scope, computeOwnBottomRowZIndex)
-            :onBind(publishOwnBottomRowZIndex)
-    end
-
-    local containerZIndex: Fusion.UsedAs<number> = rowZIndex
-    if hasSubItems then
-        local usedBottomRowZIndex =
-            bottomRowZIndex :: Fusion.Value<number>
-        containerZIndex = Computed(scope, function(use: Fusion.Use): number
-            return math.max(
-                use<<number>>(rowZIndex),
-                use<<number>>(usedBottomRowZIndex)
-            )
-        end)
+        Observer(scope, computedSubtreeZIndex):onBind(publishSubtreeZIndex)
     end
 
     local theme = GetThemeForScope(scope)
