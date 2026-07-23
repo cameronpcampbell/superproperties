@@ -16,6 +16,8 @@ local Component = FusionUtils.Component
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
+local Root = require(Utils.root)
+
 local Components = script.Parent
 local Background = require(Components.background)
 
@@ -64,6 +66,21 @@ return Component<<WidgetProps>>(function(scope, props)
         }
     }, props :: { [any]: any })
 
+    local root = New(scope, "Frame") {
+        AnchorPoint = Vector2.zero,
+        Position = UDim2.fromScale(0, 0),
+        Size = UDim2.fromScale(1, 1),
+        AutomaticSize = Enum.AutomaticSize.None,
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        ZIndex = math.huge,
+
+        Name = "WidgetRoot",
+
+        [Children] = content,
+    } :: Frame
+    Root.AddRoot(scope, root)
+
     local debugGuiName = `CAMERONPCAMPBELL:MOSAIC_DEBUG[{id}]`
     local found = StarterGui:FindFirstChild(debugGuiName)
     if found then found:Destroy() end
@@ -84,6 +101,6 @@ return Component<<WidgetProps>>(function(scope, props)
         Name = id,
         Enabled = enabled,
 
-        [Children] = content,
+        [Children] = root,
     }
 end)
