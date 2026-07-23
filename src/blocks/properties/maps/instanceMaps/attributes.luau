@@ -15,6 +15,10 @@ local Button, Container, IconButton, Input, Placement, PopoverFocus, Select =
 local Map = require(Packages.mosaic.components.map)
 type Item = Map.Item
 
+local InstanceHandle = require(
+    Packages.mosaic.components.map.item.value.variants["instanceHandle.types"]
+)
+
 local Assets = require(script.Parent.Parent.Parent.Parent.Parent.assets)
 
 local Category = require(script.Parent.Parent.category)
@@ -53,7 +57,11 @@ local AttributeTypes: { AttributeTypeOption } = {
     { Label = "ColorSequence", DefaultValue = ColorSequence.new(Color3.new()) },
     { Label = "NumberRange", DefaultValue = NumberRange.new(0) },
     { Label = "Rect", DefaultValue = Rect.new() },
-    { Label = "Font", DefaultValue = Font.fromEnum(Enum.Font.SourceSans) }
+    { Label = "Font", DefaultValue = Font.fromEnum(Enum.Font.SourceSans) },
+    {
+        Label = "Instance",
+        DefaultValue = InstanceHandle.new(workspace)
+    }
 }
 local AttributeTypeLabels = table.create(#AttributeTypes) :: { string }
 
@@ -144,8 +152,7 @@ return function(
         ): (boolean, string?, string?)
             return renameAttribute(attributeName, requestedName)
         end
-        item.ValueWritable = true
-        item.ValueChildren = {
+        item.KeyChildren = {
             IconButton(scope, {
                 Image = Assets.Cross,
 
@@ -154,6 +161,7 @@ return function(
                 end
             })
         }
+        item.ValueWritable = true
         item.TrySetValue = function(value: any): (boolean, string?, any?)
             if item.Value == value then return true, nil, item.Value end
 

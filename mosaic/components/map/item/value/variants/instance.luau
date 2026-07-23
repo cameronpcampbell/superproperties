@@ -21,11 +21,35 @@ local Utils = Components.Parent.utils
 local SelectionService = require(Utils.selectionService)
 
 local Types = require(script.Parent.types)
+local InstanceHandle = require(script.Parent["instanceHandle.types"])
+type InstanceHandle = InstanceHandle.InstanceHandle
+type InstanceValue = Instance | InstanceHandle | nil
+
 local CreateSidePadding = require(script.Parent.utils.createSidePadding)
 local HoverTweenInfo = require(script.Parent.Parent.Parent.hoverTweenInfo)
 
 local SelectionSettleTime = .1
 local InstanceIconSize = 13
+
+local EmptyHandleTargets =
+    setmetatable({} :: { [Instance]: boolean }, {
+        __mode = "k"
+    })
+
+-- SetAttribute deletes an attribute when given nil, but InstanceHandle has no
+-- empty constructor. Use a destroyed weakly-referenced target so clearing an
+-- InstanceHandle value can preserve the attribute while resolving as Empty.
+local function CreateEmptyInstanceHandle(): InstanceHandle
+    local target = Instance.new("Folder")
+    local handle = InstanceHandle.new(target)
+
+    EmptyHandleTargets[target] = true
+    target:Destroy()
+
+    return handle
+end
+
+local EmptyInstanceHandle = CreateEmptyInstanceHandle()
 
 local function InputFinished(input: InputObject): boolean
     return
@@ -48,9 +72,19 @@ end
 
 return function(
     scope: Fusion.Scope,
-    props: Types.ValueVariantProps<Instance?>
+    props: Types.ValueVariantProps<InstanceValue>
 ): Fusion.Child
-    local value = props.Value
+    local storedValue = props.Value
+    local storedValueType = typeof(storedValue) :: string
+    local usesInstanceHandle = storedValueType == "InstanceHandle"
+    local value: Instance? =
+        if usesInstanceHandle
+        then (storedValue :: InstanceHandle):Get()
+        else storedValue :: Instance?
+    if value and EmptyHandleTargets[value] then
+        value = nil
+    end
+
     local trySetValue = props.TrySetValue
     local writable = props.Writable and trySetValue ~= nil
 
@@ -61,7 +95,13 @@ return function(
         local setValue = trySetValue
         if setValue == nil then return end
 
-        local success, err = setValue(nextValue)
+        local committedValue: InstanceValue =
+            if usesInstanceHandle
+            then if nextValue ~= nil
+                then InstanceHandle.new(nextValue)
+                else EmptyInstanceHandle
+            else nextValue
+        local success, err = setValue(committedValue)
         if not success then
             warn(`SuperProperties: {err or "Could not set value."}`)
         end

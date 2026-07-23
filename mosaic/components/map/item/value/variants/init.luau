@@ -2,6 +2,7 @@
 
 local Types = require(script.types)
 local Vector = require(script.vector)
+local InstanceValue = require(script.instance)
 
 export type ValueVariantProps<T> = Types.ValueVariantProps<T>
 export type ValueVariantFn<T> = Types.ValueVariantFn<T>
@@ -19,6 +20,7 @@ return {
     CFrame = require(script.cframe),
     UDim = require(script.udim),
     UDim2 = require(script.udim2),
-    Instance = require(script.instance),
+    Instance = InstanceValue,
+    InstanceHandle = InstanceValue,
     Default = require(script.default)
 }
