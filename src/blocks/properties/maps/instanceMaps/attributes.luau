@@ -8,10 +8,9 @@ local Children, Computed, New, OnEvent, Peek, Value =
     Fusion.Value
 
 local Mosaic = require(Packages.mosaic)
-local Button, Container, IconButton, Input, Placement, PopoverFocus, Select,
-    Text =
+local Button, Container, IconButton, Input, Placement, PopoverFocus, Select =
     Mosaic.Button, Mosaic.Container, Mosaic.IconButton, Mosaic.Input,
-    Mosaic.Placement, Mosaic.PopoverFocus, Mosaic.Select, Mosaic.Text
+    Mosaic.Placement, Mosaic.PopoverFocus, Mosaic.Select
 
 local Map = require(Packages.mosaic.components.map)
 type Item = Map.Item
@@ -38,7 +37,6 @@ local MENU_OFFSET = 4
 local MENU_GAP = 6
 local MENU_PADDING = 7
 local MENU_RIGHT_INSET = 6
-local CAPTION_LEFT_PADDING = 7
 
 local AttributeTypes: { AttributeTypeOption } = {
     { Label = "string", DefaultValue = "" },
@@ -65,33 +63,6 @@ end
 
 local function Trim(text: string): string
     return text:match("^%s*(.-)%s*$") or ""
-end
-
-local function CreateCaption(
-    scope: Fusion.Scope,
-    caption: string,
-    layoutOrder: number
-): Fusion.Child
-    return New(scope, "Frame") {
-        Size = UDim2.new(1, 0, 0, 0),
-        AutomaticSize = Enum.AutomaticSize.Y,
-        BackgroundTransparency = 1,
-        LayoutOrder = layoutOrder,
-
-        [Children] = {
-            Text(scope, {
-                Text = caption,
-                Variant = "Secondary",
-                FontSize = "Caption",
-                Size = UDim2.new(1, 0, 0, 0),
-                AutomaticSize = Enum.AutomaticSize.Y
-            }),
-
-            New(scope, "UIPadding") {
-                PaddingLeft = UDim.new(0, CAPTION_LEFT_PADDING)
-            }
-        }
-    }
 end
 
 local function ShouldOmitAttribute(
@@ -361,28 +332,24 @@ return function(
         Name = "CreateAttributeMenu",
 
         [Children] = {
-            CreateCaption(scope, "Name", 1),
-
             Input(scope, {
                 Variant = "Quaternary",
                 Text = nameState,
                 PlaceholderText = "Enter a name...",
                 ParentPopoverFocus = popoverFocus,
-                LayoutOrder = 2
+                LayoutOrder = 1
             }),
-
-            CreateCaption(scope, "Type", 3),
 
             Select(scope, {
                 Variant = "Quaternary",
                 Items = AttributeTypeLabels,
                 SelectedIdx = selectedTypeIdxState,
                 ParentPopoverFocus = popoverFocus,
-                LayoutOrder = 4
+                LayoutOrder = 2
             }),
 
             Button(scope, {
-                LayoutOrder = 5,
+                LayoutOrder = 3,
                 Disabled = createAttributeDisabled,
 
                 [OnEvent "MouseButton1Click"] = createAttribute,
