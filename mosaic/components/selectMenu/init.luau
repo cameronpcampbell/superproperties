@@ -2,7 +2,6 @@
 --!nolint LocalShadow
 
 local Packages = script.Parent.Parent.Parent
-local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
 local New, Children, Value, Peek, Out, OnEvent, Computed, Observer, Tween =
@@ -32,6 +31,7 @@ local CoreComponents = script.Parent.Parent.coreComponents
 local CoreInput = require(CoreComponents.input)
 
 local Components = script.Parent.Parent.components
+local Container = require(Components.container)
 local Scrollable = require(Components.scrollable)
 local Text = require(Components.text)
 
@@ -45,7 +45,7 @@ type IndexedItemFilter =
     (query: string?, items: { IndexedItem }) -> { IndexedItem }
 
 type SelectMenuProps = {
-	Variant: ThemeUtils.BgVariantSubLayer?,
+	Variant: ThemeUtils.BgVariantLayer?,
 	Width: Fusion.UsedAs<UDim>?,
 	MaxHeight: Fusion.UsedAs<number>?,
 	Items: Fusion.UsedAs<{ string }>,
@@ -191,13 +191,18 @@ return Component<<SelectMenuProps>>(function(scope, props)
     end)
 
     local nextVariant = GetNextVariant(scope, variant)
+    local scrollableVariant = Computed(scope, function(use)
+        local usedVariant = use<<ThemeUtils.BgVariantLayer>>(variant)
+
+        return
+            if usedVariant == "Quaternary" then usedVariant
+            else use<<ThemeUtils.BgVariantLayer>>(nextVariant)
+    end)
 
     local theme = GetThemeForScope(scope)
-    local bgColor = theme:GetBg(scope, variant)
     local strokeColor = theme:GetBg(scope, nextVariant)
     local textColor = theme:GetFg(scope, "Primary")
     local placeholderColor = theme:GetFg(scope, "Secondary")
-    local cornerRadius = theme:GetCornerRadius(scope, "Md")
     local largeHeight = theme:GetHeight(scope, "Lg")
     local font = theme:GetFont(scope, "Main", Enum.FontWeight.Medium)
     local fontSize = theme:GetFontSize(scope, "Main", "Title")
@@ -235,16 +240,13 @@ return Component<<SelectMenuProps>>(function(scope, props)
         visibilityTransparency
     )
 
-    return Supercorner.new(scope :: any, CombineProps({
-        BackgroundColor3 = bgColor,
+    return Container(scope, CombineProps({
+        Variant = variant,
         BackgroundTransparency = composedBackgroundTransparency,
         StrokeColor = strokeColor,
         StrokeTransparency = composedStrokeTransparency,
-        StrokeThickness = 1,
         Size = ComputeUDim2(scope, width, UDim.new(0, 0)),
         AutomaticSize = Enum.AutomaticSize.Y,
-        CornerRadius = Peek<<number>>(cornerRadius),
-        CornerSmoothing = 1,
         Visible = shouldRender,
 
         Name = "SelectMenu",
@@ -309,7 +311,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
 
                 [Children] = {
                     Scrollable(scope, {
-                        Variant = nextVariant,
+                        Variant = scrollableVariant,
                         Size = UDim2.new(1, 0, 0, 0),
                         AutomaticSize = Enum.AutomaticSize.Y,
                         PaddingRight = UDim.new(0, 3),

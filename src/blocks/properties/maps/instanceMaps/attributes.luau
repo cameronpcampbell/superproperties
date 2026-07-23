@@ -3,10 +3,13 @@
 local Packages = script.Parent.Parent.Parent.Parent.Parent.packages
 
 local Fusion = require(Packages.fusion)
-local Value = Fusion.Value
+local Children, New, OnEvent, Peek, Value =
+    Fusion.Children, Fusion.New, Fusion.OnEvent, Fusion.peek, Fusion.Value
 
 local Mosaic = require(Packages.mosaic)
-local IconButton = Mosaic.IconButton
+local Button, Container, IconButton, Input, PopoverFocus, Select, Text =
+    Mosaic.Button, Mosaic.Container, Mosaic.IconButton, Mosaic.Input,
+    Mosaic.PopoverFocus, Mosaic.Select, Mosaic.Text
 
 local Map = require(Packages.mosaic.components.map)
 type Item = Map.Item
@@ -22,7 +25,65 @@ type AttributesMapProps = {
     OmitRbxAttributes: boolean
 }
 
+type AttributeTypeOption = {
+    Label: string,
+    DefaultValue: any
+}
+
 local RbxAttributePrefix = "RBX_"
+local MenuOffset = 4
+local MenuGap = 6
+local MenuPadding = 7
+local MenuRightInset = 6
+local CaptionLeftPadding = 7
+
+local AttributeTypes: { AttributeTypeOption } = {
+    { Label = "String", DefaultValue = "" },
+    { Label = "Number", DefaultValue = 0 },
+    { Label = "Boolean", DefaultValue = false },
+    { Label = "Color3", DefaultValue = Color3.new() },
+    { Label = "Vector2", DefaultValue = Vector2.new() },
+    { Label = "Vector3", DefaultValue = Vector3.new() },
+    { Label = "CFrame", DefaultValue = CFrame.new() },
+    { Label = "UDim", DefaultValue = UDim.new() },
+    { Label = "UDim2", DefaultValue = UDim2.new() }
+}
+local AttributeTypeLabels = table.create(#AttributeTypes) :: { string }
+
+for idx, option in AttributeTypes do
+    AttributeTypeLabels[idx] = option.Label
+end
+
+local function Trim(text: string): string
+    return text:match("^%s*(.-)%s*$") or ""
+end
+
+local function CreateCaption(
+    scope: Fusion.Scope,
+    caption: string,
+    layoutOrder: number
+): Fusion.Child
+    return New(scope, "Frame") {
+        Size = UDim2.new(1, 0, 0, 0),
+        AutomaticSize = Enum.AutomaticSize.Y,
+        BackgroundTransparency = 1,
+        LayoutOrder = layoutOrder,
+
+        [Children] = {
+            Text(scope, {
+                Text = caption,
+                Variant = "Secondary",
+                FontSize = "Caption",
+                Size = UDim2.new(1, 0, 0, 0),
+                AutomaticSize = Enum.AutomaticSize.Y
+            }),
+
+            New(scope, "UIPadding") {
+                PaddingLeft = UDim.new(0, CaptionLeftPadding)
+            }
+        }
+    }
+end
 
 local function GetAttributeName(item: Item): string
     local attributeName = item.Key
@@ -148,13 +209,141 @@ return function(
         instance.AttributeChanged:Connect(refreshAttribute)
     )
 
+    local nameState = Value(scope, "")
+    local selectedTypeIdxState = Value<<number?>>(scope, 1)
+    local attributeMenu: GuiObject
+    local addButton: GuiObject
+    local popoverFocus = PopoverFocus(scope, {
+        GetInteractionRoots = function(): { GuiObject }
+            return { attributeMenu, addButton }
+        end,
+        Name = "AttributesMenuFocusTarget"
+    })
+
+    local function createAttribute()
+        local attributeName = Trim(Peek<<string>>(nameState))
+        if attributeName == "" then
+            warn("SuperProperties: Attribute name cannot be empty.")
+            return
+        end
+
+        if ShouldOmitAttribute(attributeName, props.OmitRbxAttributes) then
+            warn(
+                `SuperProperties: Attribute names beginning with {RbxAttributePrefix} are hidden.`
+            )
+            return
+        end
+
+        if instance:GetAttribute(attributeName) ~= nil then
+            warn(
+                `SuperProperties: Attribute {attributeName} already exists.`
+            )
+            return
+        end
+
+        local selectedTypeIdx =
+            Peek<<number?>>(selectedTypeIdxState)
+        local attributeType =
+            if selectedTypeIdx == nil then nil
+            else AttributeTypes[selectedTypeIdx]
+        if attributeType == nil then
+            warn("SuperProperties: Select an attribute type.")
+            return
+        end
+
+        local success, err = CommitAttribute(
+            instance,
+            attributeName,
+            attributeType.DefaultValue
+        )
+        if not success then
+            warn(`Could not create attribute {attributeName}: {err}`)
+            return
+        end
+
+        refreshAttribute(attributeName)
+        popoverFocus.Release()
+    end
+
+    attributeMenu = Container(scope, {
+        Variant = "Tertiary",
+        Size = UDim2.new(.5, 0, 0, 0),
+        AutomaticSize = Enum.AutomaticSize.Y,
+        Position = UDim2.new(1, -MenuRightInset, 1, MenuOffset),
+        AnchorPoint = Vector2.new(1, 0),
+        Visible = popoverFocus.State,
+        ZIndex = 4,
+
+        Name = "CreateAttributeMenu",
+
+        [Children] = {
+            CreateCaption(scope, "Name", 1),
+
+            Input(scope, {
+                Variant = "Quaternary",
+                Text = nameState,
+                PlaceholderText = "Enter a name...",
+                ParentPopoverFocus = popoverFocus,
+                LayoutOrder = 2
+            }),
+
+            CreateCaption(scope, "Type", 3),
+
+            Select(scope, {
+                Variant = "Quaternary",
+                Items = AttributeTypeLabels,
+                SelectedIdx = selectedTypeIdxState,
+                ParentPopoverFocus = popoverFocus,
+                LayoutOrder = 4
+            }),
+
+            Button(scope, {
+                LayoutOrder = 5,
+
+                [OnEvent "MouseButton1Click"] = createAttribute,
+                [Children] = "Create"
+            }),
+
+            New(scope, "UIListLayout") {
+                FillDirection = Enum.FillDirection.Vertical,
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Padding = UDim.new(0, MenuGap)
+            },
+
+            New(scope, "UIPadding") {
+                PaddingLeft = UDim.new(0, MenuPadding),
+                PaddingRight = UDim.new(0, MenuPadding),
+                PaddingTop = UDim.new(0, MenuPadding),
+                PaddingBottom = UDim.new(0, MenuPadding)
+            }
+        }
+    }) :: GuiObject
+
+    addButton = IconButton(scope, {
+        Image = Assets.Add,
+
+        [OnEvent "MouseButton1Click"] = function()
+            if Peek<<boolean>>(popoverFocus.State) then
+                popoverFocus.Release()
+                return
+            end
+
+            nameState:set("")
+            selectedTypeIdxState:set(1)
+            popoverFocus.Capture()
+        end
+    }) :: GuiObject
+
     return Category(scope, outerScope, collapsedStateScope, {
         Name = "Attributes",
-        HeaderChildren = {
-            IconButton(scope, {
-                Image = Assets.Add
-            })
-        },
+        HeaderChildren = ({
+            addButton
+        } :: { Fusion.Child }),
+        HeaderOverlay = ({
+            attributeMenu,
+            popoverFocus.Target
+        } :: Fusion.Child),
+        ShowOnTop = popoverFocus.State,
         Items = attributeItemsState,
         EmptyText = "No Attributes have been added yet."
     })

@@ -32,7 +32,8 @@ local Text = require(Components.text)
 
 type ButtonProps = {
 	Variant: ThemeUtils.AccentVariant?,
-	Width: UDim?
+	Width: UDim?,
+	[Fusion.SpecialKey]: any
 }
 
 local function TransformChild(scope: Fusion.Scope, child: unknown): Fusion.Child?

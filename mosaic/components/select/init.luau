@@ -46,7 +46,8 @@ type SelectProps = {
     SelectedIdx: Fusion.UsedAs<number?>?,
     PlaceholderText: Fusion.UsedAs<string>?,
     MenuMaxHeight: Fusion.UsedAs<number>?,
-    OnFocusChanged: ((boolean) -> ())?,
+    OnFocusChanged: ((boolean, InputObject?) -> ())?,
+    ParentPopoverFocus: PopoverFocus.Controller?,
     ZIndex: Fusion.UsedAs<number>?
 }
 
@@ -72,6 +73,8 @@ return Component<<SelectProps>>(function(scope, props)
         TableExtract(props, "MenuMaxHeight", MenuMaxHeight)
     local props, onFocusChanged =
         TableExtract(props, "OnFocusChanged")
+    local props, parentPopoverFocus =
+        TableExtract(props, "ParentPopoverFocus")
     local props, zIndex = TableExtract(props, "ZIndex", 1)
 
     local selectedIdxState =
@@ -87,11 +90,33 @@ return Component<<SelectProps>>(function(scope, props)
 
     local selectMenu: GuiObject
     local hitArea: TextButton
-    local popoverFocus = PopoverFocus(scope, {
+    local popoverFocus: PopoverFocus.Controller
+    popoverFocus = PopoverFocus(scope, {
         GetInteractionRoots = function(): { GuiObject }
             return { selectMenu, hitArea }
         end,
-        OnFocusChanged = onFocusChanged,
+        OnFocusChanged = function(
+            isFocused: boolean,
+            inputThatCausedFocusLoss: InputObject?
+        )
+            if parentPopoverFocus then
+                if isFocused then
+                    parentPopoverFocus.ChildFocused(popoverFocus.Target)
+                elseif inputThatCausedFocusLoss ~= nil then
+                    parentPopoverFocus.ChildFocusLost(
+                        inputThatCausedFocusLoss
+                    )
+                elseif Peek<<boolean>>(parentPopoverFocus.State) then
+                    -- Selecting an item releases this popover without an
+                    -- outside click. Return focus to the parent popover.
+                    parentPopoverFocus.Capture()
+                end
+            end
+
+            if onFocusChanged then
+                onFocusChanged(isFocused, inputThatCausedFocusLoss)
+            end
+        end,
         Name = "SelectFocusTarget"
     })
     local isFocusState = popoverFocus.State
@@ -205,6 +230,7 @@ return Component<<SelectProps>>(function(scope, props)
     )
 
     selectMenu = SelectMenu(scope, {
+        Variant = variant,
         Items = items,
         SelectedIdx = selectedIdxState,
         Width = UDim.new(1, 2),

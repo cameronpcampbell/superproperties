@@ -28,6 +28,7 @@ local TableExtract = TableUtils.Extract
 
 local CoreComponents = script.Parent.Parent.coreComponents
 local CoreInput = require(CoreComponents.input)
+local PopoverFocus = require(CoreComponents.popoverFocus)
 
 local Components = script.Parent.Parent.components
 local FocusRing = require(Components.focusRing)
@@ -40,6 +41,7 @@ type InputProps = {
 	Width: UDim?,
 	LeftChildren: Fusion.Child?,
 	RightChildren: Fusion.Child?,
+	ParentPopoverFocus: PopoverFocus.Controller?,
 }
 
 return Component<<InputProps>>(function(scope, props)
@@ -51,6 +53,8 @@ return Component<<InputProps>>(function(scope, props)
     local props, width = TableExtract(props, "Width", UDim.new(1, 0))
     local props, leftChildren = TableExtract(props, "LeftChildren")
     local props, rightChildren = TableExtract(props, "RightChildren")
+    local props, parentPopoverFocus =
+        TableExtract(props, "ParentPopoverFocus")
 
     local isHoverState, isFocusState = Value(scope, false), Value(scope, false)
     local themeColorModifier =
@@ -98,6 +102,48 @@ return Component<<InputProps>>(function(scope, props)
             )
         else nil
 
+    local input: TextBox
+
+    input = CoreInput(scope, {
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        Text = computeVisualText,
+        PlaceholderText = placeholderText,
+        TextSize = fontSize,
+        TextColor3 = textColor,
+        PlaceholderColor3 = textPlaceholderColor,
+        FontFace = font,
+        ClearTextOnFocus = false,
+        ClipsDescendants = true,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextTruncate = textTruncate,
+
+        [OnEvent "Focused"] = function()
+            isFocusState:set(true)
+            if parentPopoverFocus then
+                parentPopoverFocus.ChildFocused(input)
+            end
+        end,
+
+        [OnEvent "FocusLost"] = function(
+            _enterPressed: boolean,
+            inputThatCausedFocusLoss: InputObject?
+        )
+            isFocusState:set(false)
+            if parentPopoverFocus then
+                parentPopoverFocus.ChildFocusLost(
+                    inputThatCausedFocusLoss
+                )
+            end
+        end,
+
+        [Out "Text"] = textOutProxy,
+
+        [Children] = New(scope, "UIFlexItem") {
+            FlexMode = Enum.UIFlexMode.Shrink
+        }
+    }) :: TextBox
+
     return Supercorner.new(scope :: any, CombineProps({
         BackgroundColor3 = bgColor,
         StrokeColor = tweenComputeStrokeColor,
@@ -124,29 +170,7 @@ return Component<<InputProps>>(function(scope, props)
         [Children] = {
             leftChildren,
 
-            CoreInput(scope, {
-                Size = UDim2.fromScale(1, 1),
-                BackgroundTransparency = 1,
-                Text = computeVisualText,
-                PlaceholderText = placeholderText,
-                TextSize = fontSize,
-                TextColor3 = textColor,
-                PlaceholderColor3 = textPlaceholderColor,
-                FontFace = font,
-                ClearTextOnFocus = false,
-                ClipsDescendants = true,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                TextTruncate = textTruncate,
-
-                [OnEvent "Focused"] = function() isFocusState:set(true) end,
-                [OnEvent "FocusLost"] = function() isFocusState:set(false) end,
-
-                [Out "Text"] = textOutProxy,
-
-                [Children] = New(scope, "UIFlexItem") {
-                    FlexMode = Enum.UIFlexMode.Shrink
-                }
-            }),
+            input,
 
             rightChildren,
 

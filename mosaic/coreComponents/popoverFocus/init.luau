@@ -7,7 +7,7 @@ local New, OnEvent, Peek, Value =
 
 export type Props = {
     GetInteractionRoots: () -> { GuiObject },
-    OnFocusChanged: ((boolean) -> ())?,
+    OnFocusChanged: ((boolean, InputObject?) -> ())?,
     Name: string?
 }
 
@@ -38,16 +38,43 @@ return function(scope: Fusion.Scope, props: Props): Controller
     local isChildFocused = false
     local childFocusTransferPending = false
     local focusTarget: TextBox
+    local focusRevision = 0
 
     table.insert(scope, function()
         scopeAlive = false
     end)
 
-    local function setFocused(isFocused: boolean)
+    local function setFocused(
+        isFocused: boolean,
+        inputThatCausedFocusLoss: InputObject?
+    )
         if Peek<<boolean>>(focusState) == isFocused then return end
 
         focusState:set(isFocused)
-        if props.OnFocusChanged then props.OnFocusChanged(isFocused) end
+        if props.OnFocusChanged then
+            props.OnFocusChanged(isFocused, inputThatCausedFocusLoss)
+        end
+    end
+
+    local function cancelPendingFocusLoss()
+        focusRevision += 1
+    end
+
+    local function deferFocusLoss(
+        inputThatCausedFocusLoss: InputObject?
+    )
+        focusRevision += 1
+        local revision = focusRevision
+
+        task.defer(function()
+            if not scopeAlive then return end
+            if revision ~= focusRevision then return end
+            if not Peek<<boolean>>(focusState) then return end
+            if childFocusTransferPending or isChildFocused then return end
+            if focusTarget:IsFocused() then return end
+
+            setFocused(false, inputThatCausedFocusLoss)
+        end)
     end
 
     local function captureTargetDeferred()
@@ -71,13 +98,17 @@ return function(scope: Fusion.Scope, props: Props): Controller
                     -- Gui clicks release TextBox focus before Activated fires.
                     -- Restore the hidden target after that click has a chance to
                     -- focus a child or close the popover.
+                    cancelPendingFocusLoss()
                     captureTargetDeferred()
                     return
                 end
             end
         end
 
-        setFocused(false)
+        -- Roblox can omit the causal InputObject while transferring focus
+        -- between TextBoxes. Give the next child one task tick to claim focus
+        -- before treating this as an outside dismissal.
+        deferFocusLoss(inputThatCausedFocusLoss)
     end
 
     focusTarget = New(scope, "TextBox") {
@@ -93,7 +124,8 @@ return function(scope: Fusion.Scope, props: Props): Controller
         Name = props.Name or "PopoverFocusTarget",
 
         [OnEvent "Focused"] = function()
-            setFocused(true)
+            cancelPendingFocusLoss()
+            setFocused(true, nil)
         end,
 
         [OnEvent "FocusLost"] = function(
@@ -105,17 +137,19 @@ return function(scope: Fusion.Scope, props: Props): Controller
     } :: TextBox
 
     local function capture()
+        cancelPendingFocusLoss()
         childFocusTransferPending = false
         isChildFocused = false
 
         if not focusTarget:IsFocused() then focusTarget:CaptureFocus() end
-        setFocused(true)
+        setFocused(true, nil)
     end
 
     local function release()
+        cancelPendingFocusLoss()
         childFocusTransferPending = false
         isChildFocused = false
-        setFocused(false)
+        setFocused(false, nil)
 
         local child = childFocusTarget
         if child and child:IsFocused() then child:ReleaseFocus(false) end
@@ -123,9 +157,10 @@ return function(scope: Fusion.Scope, props: Props): Controller
     end
 
     local function captureChild(child: TextBox)
+        cancelPendingFocusLoss()
         childFocusTarget = child
         isChildFocused = false
-        setFocused(true)
+        setFocused(true, nil)
 
         if child:IsFocused() then
             childFocusTransferPending = false
@@ -149,10 +184,11 @@ return function(scope: Fusion.Scope, props: Props): Controller
     end
 
     local function childFocused(child: TextBox?)
+        cancelPendingFocusLoss()
         if child then childFocusTarget = child end
         childFocusTransferPending = false
         isChildFocused = true
-        setFocused(true)
+        setFocused(true, nil)
     end
 
     local function childFocusLost(
