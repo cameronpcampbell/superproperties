@@ -97,7 +97,32 @@ local function FindVisibleRange(
     return firstRow, lastRow
 end
 
+local function CalculateTopSpacerHeight(
+    geometry: RowGeometry,
+    firstVisibleRow: number,
+    firstRowRetained: boolean,
+    rowGap: number
+): number
+    if firstVisibleRow <= 1 then return 0 end
+
+    local spacerHeight =
+        geometry.SpacerHeights[firstVisibleRow] or 0
+
+    if firstRowRetained then
+        local firstRowTop = geometry.Tops[1]
+        local firstRowBottom = geometry.Bottoms[1]
+
+        if firstRowTop and firstRowBottom then
+            spacerHeight -=
+                firstRowBottom - firstRowTop + rowGap
+        end
+    end
+
+    return math.max(spacerHeight, 0)
+end
+
 return {
     BuildRowGeometry = BuildRowGeometry,
-    FindVisibleRange = FindVisibleRange
+    FindVisibleRange = FindVisibleRange,
+    CalculateTopSpacerHeight = CalculateTopSpacerHeight
 }

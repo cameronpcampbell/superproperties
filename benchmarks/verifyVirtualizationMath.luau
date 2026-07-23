@@ -19,6 +19,36 @@ AssertEqual(geometry.SpacerHeights[1], 0, "first spacer")
 AssertEqual(geometry.SpacerHeights[2], 10, "second spacer")
 AssertEqual(geometry.SpacerHeights[3], 31, "third spacer")
 AssertEqual(geometry.TotalHeight, 64, "total height")
+AssertEqual(
+    VirtualizationMath.CalculateTopSpacerHeight(
+        geometry,
+        3,
+        false,
+        1
+    ),
+    31,
+    "ordinary top spacer"
+)
+AssertEqual(
+    VirtualizationMath.CalculateTopSpacerHeight(
+        geometry,
+        2,
+        true,
+        1
+    ),
+    0,
+    "retained first row adjacent spacer"
+)
+AssertEqual(
+    VirtualizationMath.CalculateTopSpacerHeight(
+        geometry,
+        3,
+        true,
+        1
+    ),
+    20,
+    "retained first row top spacer"
+)
 
 local function AssertRange(
     viewportTop: number,

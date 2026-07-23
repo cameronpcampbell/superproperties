@@ -157,6 +157,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
             local header = mapProps.Header
             local emptyText = mapProps.EmptyText
             local width = mapProps.Width or UDim.new(1, 0)
+            local showOnTop = mapProps.ShowOnTop or false
             local collapsedState = CoerceToValue<<boolean>>(
                 scope, mapProps.Collapsed or false
             )
@@ -200,6 +201,8 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
             end)
 
             local mapOccluded = Computed(scope, function(use: Fusion.Use): boolean
+                if use<<boolean>>(showOnTop) then return false end
+
                 local focusedRootRange =
                     use<<Vector2>>(layout.FocusedRootRange)
 

@@ -89,6 +89,7 @@ export type VirtualRowsConfig = {
     HeaderChildren: { Fusion.Child }?,
     HeaderOverlay: Fusion.Child?,
     HeaderZIndex: Fusion.UsedAs<number>,
+    ShowOnTop: Fusion.UsedAs<boolean>,
     EmptyText: string?,
     Layout: MapLayout,
     CollapsedState: Fusion.Value<boolean>,
@@ -826,11 +827,17 @@ local function ComputeVisibleRootDescriptors(
         end
 
         local descriptors = {} :: RootRowDescriptors
-        if firstRow > lastRow then return descriptors end
 
-        for rootIdx = firstRow, lastRow do
-            local descriptor = rootRows[rootIdx]
-            if descriptor then descriptors[rootIdx] = descriptor end
+        if firstRow <= lastRow then
+            for rootIdx = firstRow, lastRow do
+                local descriptor = rootRows[rootIdx]
+                if descriptor then descriptors[rootIdx] = descriptor end
+            end
+        end
+
+        if config.Header and use<<boolean>>(config.ShowOnTop) then
+            local headerDescriptor = rootRows[1]
+            if headerDescriptor then descriptors[1] = headerDescriptor end
         end
 
         return descriptors
@@ -909,7 +916,16 @@ local function ComputeTopSpacerHeight(
         local rootGeometry =
             use<<RootRowGeometry>>(config.Layout.RootGeometry)
 
-        return rootGeometry.SpacerHeights[visibleRange.X] or 0
+        local headerPinned =
+            config.Header ~= nil
+            and use<<boolean>>(config.ShowOnTop)
+
+        return VirtualizationMath.CalculateTopSpacerHeight(
+            rootGeometry,
+            visibleRange.X,
+            headerPinned,
+            RowGap
+        )
     end)
 end
 

@@ -124,6 +124,7 @@ return Component<<MapProps>>(function(scope, props)
         HeaderChildren = headerChildren,
         HeaderOverlay = headerOverlay,
         HeaderZIndex = headerZIndex,
+        ShowOnTop = showOnTop,
         EmptyText = emptyText,
         Layout = layout,
         CollapsedState = collapsedState,
