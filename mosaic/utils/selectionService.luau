@@ -134,7 +134,7 @@ end)
 local SelectionServiceWrapper: Wrapper = setmetatable({
     SelectionChanged = selectionChangedEvent.Event
 }, {
-    __index = function(_, key)
+    __index = function(_, key): any
         if key == "SelectionThickness" then
             return SelectionService.SelectionThickness
         end
