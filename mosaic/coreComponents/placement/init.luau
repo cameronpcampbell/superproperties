@@ -33,32 +33,54 @@ local function GetGuiParent(instance: Instance): GuiBase2d?
         else nil
 end
 
-local function GetViewport(instance: Instance): LayerCollector?
+local function GetViewport(
+    instance: Instance
+): (GuiBase2d?, { GuiObject })
     local ancestor = instance.Parent
+    local clipAncestors: { GuiObject } = {}
 
     while ancestor do
+        if ancestor:IsA("GuiObject") then
+            table.insert(clipAncestors, ancestor)
+
+            if ancestor.ClipsDescendants then
+                return ancestor, clipAncestors
+            end
+        end
+
         if ancestor:IsA("LayerCollector") then
-            return ancestor :: LayerCollector
+            return ancestor, clipAncestors
         end
 
         ancestor = ancestor.Parent
     end
 
-    return nil
+    return nil, clipAncestors
+end
+
+local function EqualInstances<T>(left: { T }, right: { T }): boolean
+    if #left ~= #right then return false end
+
+    for idx, instance in left do
+        if instance ~= right[idx] then return false end
+    end
+
+    return true
 end
 
 local function GetPositionOffsetScale(
     parent: GuiBase2d,
-    viewport: LayerCollector
+    viewport: GuiBase2d
 ): number
     local scale = 1
     local ancestor: Instance? = parent
 
-    while ancestor and ancestor ~= viewport do
+    while ancestor do
         for _, child in ancestor:GetChildren() do
             if child:IsA("UIScale") then scale *= child.Scale end
         end
 
+        if ancestor == viewport then break end
         ancestor = ancestor.Parent
     end
 
@@ -96,7 +118,8 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
     local scopeAlive = true
     local placementQueued = false
     local observedParent: GuiBase2d? = nil
-    local observedViewport: LayerCollector? = nil
+    local observedViewport: GuiBase2d? = nil
+    local observedClipAncestors: { GuiObject } = {}
     local geometryConnections: { RBXScriptConnection } = {}
     local QueuePlacement: () -> ()
 
@@ -120,10 +143,14 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
 
     local function RefreshGeometryConnections()
         local nextParent = GetGuiParent(target)
-        local nextViewport = GetViewport(target)
+        local nextViewport, nextClipAncestors = GetViewport(target)
 
         if nextParent == observedParent
             and nextViewport == observedViewport
+            and EqualInstances(
+                nextClipAncestors,
+                observedClipAncestors
+            )
         then
             return
         end
@@ -131,6 +158,7 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
         DisconnectGeometryConnections()
         observedParent = nextParent
         observedViewport = nextViewport
+        observedClipAncestors = nextClipAncestors
 
         local function ObserveGeometry(gui: GuiBase2d)
             table.insert(
@@ -148,6 +176,14 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
         if nextParent then ObserveGeometry(nextParent) end
         if nextViewport and nextViewport ~= nextParent then
             ObserveGeometry(nextViewport)
+        end
+
+        for _, ancestor in nextClipAncestors do
+            table.insert(
+                geometryConnections,
+                ancestor:GetPropertyChangedSignal("ClipsDescendants")
+                    :Connect(QueuePlacement)
+            )
         end
     end
 
