@@ -89,7 +89,8 @@ local function GetAttributeItems(
 
         attributeItems[attributeIdx] = {
             Key = attributeName,
-            Value = attributeValue
+            Value = attributeValue,
+            ValueType = typeof(attributeValue)
         }
 
         attributeIdx += 1
@@ -190,13 +191,18 @@ return function(
             end
         elseif itemIdx then
             local item = attributeItems[itemIdx]
-            if item.Value == value then return false, value end
+            local valueType = typeof(value)
+            if item.Value == value and item.ValueType == valueType then
+                return false, value
+            end
 
             item.Value = value
+            item.ValueType = valueType
         else
             local item: Item = {
                 Key = attributeName,
-                Value = value
+                Value = value,
+                ValueType = typeof(value)
             }
             makeAttributeWritable(item, attributeName)
             table.insert(attributeItems, item)

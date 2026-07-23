@@ -45,6 +45,7 @@ type ResolvedItem = {
     RootItem: Item,
     RootValue: any,
     ResolvedValue: any,
+    ValueType: string?,
     ValueAccessor: IntrinsicAccessor?,
     TrySetKey: TrySet<string>?,
     TrySetValue: TrySet<any>?,
@@ -204,6 +205,7 @@ end
 local function ResolveItem(item: Item): ResolvedItem
     local trySetKey = item.TrySetKey
     local trySetValue = item.TrySetValue
+    local valueType = item.ValueType
     local keyWritable =
         item.KeyWritable ~= false and
         trySetKey ~= nil
@@ -211,11 +213,16 @@ local function ResolveItem(item: Item): ResolvedItem
         item.ValueWritable ~= false and
         trySetValue ~= nil
 
+    if valueType == nil and item.Value ~= nil then
+        valueType = typeof(item.Value)
+    end
+
     return {
         Item = item,
         RootItem = item,
         RootValue = item.Value,
         ResolvedValue = item.Value,
+        ValueType = valueType,
         ValueAccessor = nil,
         TrySetKey = if keyWritable then trySetKey else nil,
         TrySetValue = if valueWritable then trySetValue else nil,
@@ -235,6 +242,7 @@ local function ResolveIntrinsicItem(
 ): ResolvedItem
     local valueAccessor = item.Value
     local writeValue = valueAccessor.Write
+    local resolvedValue = valueAccessor.Read(rootValue)
     local trySetRootValue = rootItem.TrySetValue
     local trySetValue: TrySet<any>? = nil
 
@@ -260,7 +268,8 @@ local function ResolveIntrinsicItem(
         Item = item,
         RootItem = rootItem,
         RootValue = rootValue,
-        ResolvedValue = valueAccessor.Read(rootValue),
+        ResolvedValue = resolvedValue,
+        ValueType = typeof(resolvedValue),
         ValueAccessor = valueAccessor,
         TrySetKey = nil,
         TrySetValue = trySetValue,
@@ -414,6 +423,7 @@ local function CreateItemLayout(
     return {
         Item = item,
         ResolvedValue = resolvedItem.ResolvedValue,
+        ValueType = resolvedItem.ValueType,
         TrySetKey = resolvedItem.TrySetKey,
         TrySetValue = resolvedItem.TrySetValue,
         KeyWritable = resolvedItem.KeyWritable,

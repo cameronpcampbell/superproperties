@@ -31,13 +31,14 @@ end
 
 return function(
     scope: Fusion.Scope,
-    props: Types.ValueVariantProps<Instance>
+    props: Types.ValueVariantProps<Instance?>
 ): Fusion.Child
     local value = props.Value
     local trySetValue = props.TrySetValue
     local writable = props.Writable and trySetValue ~= nil
 
-    local classIcon = StudioService:GetClassIcon(value.ClassName)
+    local classIcon =
+        if value then StudioService:GetClassIcon(value.ClassName) else nil
 
     local content = New(scope, "Frame") {
         Size = UDim2.fromScale(1, 1),
@@ -47,7 +48,7 @@ return function(
 
         [Children] = {
             Text(scope, {
-                Text = value.Name,
+                Text = if value then value.Name else "nil",
                 Variant =
                     if props.DisplayAsWritable then "Primary"
                     else "Secondary",
@@ -59,12 +60,14 @@ return function(
                 }
             }),
 
-            Icon(scope, {
-                Image = classIcon.Image,
-                Size = UDim2.fromOffset(13, 13),
-                ImageRectOffset = classIcon.ImageRectOffset,
-                ImageRectSize = classIcon.ImageRectSize
-            }),
+            if classIcon then
+                Icon(scope, {
+                    Image = classIcon.Image,
+                    Size = UDim2.fromOffset(13, 13),
+                    ImageRectOffset = classIcon.ImageRectOffset,
+                    ImageRectSize = classIcon.ImageRectSize
+                })
+                else {},
 
             CreateSidePadding(scope),
 

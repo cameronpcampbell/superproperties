@@ -38,7 +38,8 @@ type ReflectionItem = {
 type Category = {
     Properties: {{
         Key: string,
-        Value: any
+        Value: any,
+        ValueType: string
     }}
 }
 
@@ -82,7 +83,8 @@ local function BuildReflection(className: string): { ReflectionItem }
             Owner = owner,
             Serialized = idx % 5 ~= 0,
             Type = {
-                Name = if idx % 3 == 0 then "string" else "double"
+                EngineType = if idx % 3 == 0 then "string" else "double",
+                ScriptType = if idx % 3 == 0 then "string" else "number"
             },
             ContentType = nil,
             Display = {
@@ -313,7 +315,8 @@ local function BaselineGetProperties(
             CreateOrGetCategory(properties, display.Category).Properties,
             {
                 Key = name,
-                Value = value
+                Value = value,
+                ValueType = item.Type.ScriptType or typeof(value)
             }
         )
     end
@@ -323,6 +326,7 @@ end
 
 type PropertyPlan = {
     Name: string,
+    ValueType: string?,
     Read: ((instance: { [string]: any }) -> any)?
 }
 
@@ -378,6 +382,7 @@ local function BuildClassPlan(className: string): ClassPlan
 
         table.insert(category.Properties, {
             Name = item.Name,
+            ValueType = item.Type.ScriptType,
             Read =
                 if customReadWrite then customReadWrite.Read
                 else nil
@@ -418,7 +423,8 @@ local function OptimizedGetProperties(
         local propertyPlans = categoryPlan.Properties
         local items = table.create(#propertyPlans) :: {{
             Key: string,
-            Value: any
+            Value: any,
+            ValueType: string
         }}
         local itemCount = 0
 
@@ -438,7 +444,8 @@ local function OptimizedGetProperties(
             itemCount += 1
             items[itemCount] = {
                 Key = name,
-                Value = value
+                Value = value,
+                ValueType = propertyPlan.ValueType or typeof(value)
             }
         end
 
@@ -459,7 +466,7 @@ local function Consume(properties: Properties): number
         checksum += #categoryName + #category.Properties
 
         for _, item in category.Properties do
-            checksum += #item.Key + item.Value
+            checksum += #item.Key + #item.ValueType + item.Value
         end
     end
 
@@ -552,8 +559,10 @@ local function ValidateEquivalent(instance: SyntheticInstance)
         )
 
         local baselineValues: { [string]: any } = {}
+        local baselineValueTypes: { [string]: string } = {}
         for _, item in baselineCategory.Properties do
             baselineValues[item.Key] = item.Value
+            baselineValueTypes[item.Key] = item.ValueType
         end
 
         local previousKey: string? = nil
@@ -566,11 +575,20 @@ local function ValidateEquivalent(instance: SyntheticInstance)
                 baselineValues[item.Key] == item.Value,
                 `property changed: {item.Key}`
             )
+            assert(
+                baselineValueTypes[item.Key] == item.ValueType,
+                `property type changed: {item.Key}`
+            )
             baselineValues[item.Key] = nil
+            baselineValueTypes[item.Key] = nil
             previousKey = item.Key
         end
 
         assert(next(baselineValues) == nil, `properties missing in {categoryName}`)
+        assert(
+            next(baselineValueTypes) == nil,
+            `property types missing in {categoryName}`
+        )
     end
 
     for categoryName in optimized do

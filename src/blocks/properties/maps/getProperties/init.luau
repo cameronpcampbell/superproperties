@@ -15,6 +15,7 @@ type Item = Map.Item
 
 export type PropertyPlan = {
 	Name: string,
+	ValueType: string?,
 	Read: ((Instance) -> any)?,
 	Write: ((Instance, any) -> ())?,
 	Writable: boolean,
@@ -151,6 +152,7 @@ local function BuildClassPlan(className: string): ClassPlan
 		local customReadWrite = item.CustomReadWrite
 		local propertyPlan: PropertyPlan = {
 			Name = item.Name,
+			ValueType = item.Type.ScriptType,
 			Read = if customReadWrite then customReadWrite.Read else nil,
 			Write = if customReadWrite then customReadWrite.Write else nil,
 			Writable = customReadWrite ~= nil or item.Permits.Write ~= nil,
@@ -242,6 +244,7 @@ local function GetProperties(instance: Instance): Snapshot
 			items[itemCount] = {
 				Key = name,
 				Value = value,
+				ValueType = propertyPlan.ValueType or typeof(value),
 				ValueWritable = IsPropertyWritable(instance, propertyPlan),
 			}
 

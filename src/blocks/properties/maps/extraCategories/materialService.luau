@@ -36,7 +36,8 @@ local function GetMaterials(): { Item }
     for idx, enumItem in IncludedMaterials do
         materials[idx] = {
             Key = enumItem.Name,
-            Value = enumItem.Name
+            Value = enumItem.Name,
+            ValueType = "string"
         }
     end
 

@@ -99,7 +99,7 @@ local function CreateMapItem(
     local layout = props.Layout
     local item = layout.Item
     local key = item.Key
-    local hasValue = item.Value ~= nil
+    local hasValue = layout.ValueType ~= nil
     local children = layout.Children
     local hasSubItems = #children > 0
     local redrawable = layout.CanBecomeMapBottom
@@ -280,6 +280,7 @@ local function CreateMapItem(
     if hasValue then
         table.insert(itemContentChildren, MapItemValue(scope, {
             Value = layout.ResolvedValue,
+            ValueType = layout.ValueType :: string,
             Writable = layout.ValueWritable,
             DisplayAsWritable = layout.DisplayAsWritable,
             TrySetValue = layout.TrySetValue,
