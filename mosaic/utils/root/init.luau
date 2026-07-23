@@ -51,6 +51,20 @@ local RootRecordsByFrame = setmetatable({}, {
     __mode = "k",
 }) :: { [Frame]: RootRecord }
 
+local function UpdateContextParent(
+    context: RootContext,
+    parent: RootContext?
+)
+    if parent and parent.Destroyed then parent = nil end
+    if context.Parent == parent then return end
+
+    local previousParent = context.Parent
+    if previousParent then previousParent.Children[context] = nil end
+
+    context.Parent = parent
+    if parent then parent.Children[context] = true end
+end
+
 local function DestroyContext(context: RootContext)
     if context.Destroyed then return end
     context.Destroyed = true
@@ -74,18 +88,19 @@ local function GetOrCreateContext(scope: Fusion.Scope): RootContext
             if parent and parent.Destroyed then parent = nil end
 
             local context: RootContext = {
-                Parent = parent,
+                Parent = nil,
                 Children = {},
                 Roots = {},
                 Events = {},
                 Destroyed = false,
             }
 
-            if parent then parent.Children[context] = true end
+            UpdateContextParent(context, parent)
 
             return context
         end,
         Destroy = DestroyContext,
+        UpdateParent = UpdateContextParent,
     })
 end
 

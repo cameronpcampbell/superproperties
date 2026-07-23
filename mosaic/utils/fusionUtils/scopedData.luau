@@ -26,15 +26,21 @@ export type Options<T> = {
 
     -- Runs when the scope which owns the value is destroyed.
     Destroy: ((value: T) -> ())?,
+
+    -- Relinks an existing scoped value when its nearest parent value is
+    -- created after it.
+    UpdateParent: ((value: T, parent: T) -> ())?,
 }
 
 type Entry = {
     Value: any,
     Destroy: ((value: any) -> ())?,
+    UpdateParent: ((value: any, parent: any) -> ())?,
 }
 
 type Context = {
     Parent: Context?,
+    Children: { [Context]: true },
     Values: { [string]: Entry },
 }
 
@@ -70,8 +76,11 @@ local function CreateContext(
 ): Context
     local context: Context = {
         Parent = parent,
+        Children = {},
         Values = {},
     }
+
+    if parent then parent.Children[context] = true end
 
     ContextsByScope[scope] = context
     InstallContext(scope, context)
@@ -79,11 +88,19 @@ local function CreateContext(
     table.insert(scope, function()
         ContextsByScope[scope] = nil
 
+        local currentParent = context.Parent
+        if currentParent then currentParent.Children[context] = nil end
+
+        for child in context.Children do
+            child.Parent = nil
+        end
+
         for _, entry in context.Values do
             local destroy = entry.Destroy
             if destroy then destroy(entry.Value) end
         end
 
+        table.clear(context.Children)
         table.clear(context.Values)
         context.Parent = nil
     end)
@@ -102,6 +119,22 @@ local function FindEntry(context: Context?, key: string): Entry?
     end
 
     return nil
+end
+
+local function UpdateDescendantParents(
+    context: Context,
+    key: string,
+    value: any
+)
+    for child in context.Children do
+        local entry = child.Values[key]
+        if entry then
+            local updateParent = entry.UpdateParent
+            if updateParent then updateParent(entry.Value, value) end
+        else
+            UpdateDescendantParents(child, key, value)
+        end
+    end
 end
 
 local function ScopedData<T>(
@@ -141,7 +174,9 @@ local function ScopedData<T>(
     ownContext.Values[key] = {
         Value = value,
         Destroy = if options then options.Destroy else nil,
+        UpdateParent = if options then options.UpdateParent else nil,
     }
+    UpdateDescendantParents(ownContext, key, value)
 
     return value
 end
