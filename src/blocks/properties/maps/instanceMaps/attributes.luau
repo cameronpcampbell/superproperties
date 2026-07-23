@@ -38,15 +38,21 @@ local MenuRightInset = 6
 local CaptionLeftPadding = 7
 
 local AttributeTypes: { AttributeTypeOption } = {
-    { Label = "String", DefaultValue = "" },
-    { Label = "Number", DefaultValue = 0 },
-    { Label = "Boolean", DefaultValue = false },
+    { Label = "string", DefaultValue = "" },
+    { Label = "boolean", DefaultValue = false },
+    { Label = "number", DefaultValue = 0 },
+    { Label = "UDim", DefaultValue = UDim.new() },
+    { Label = "UDim2", DefaultValue = UDim2.new() },
+    { Label = "BrickColor", DefaultValue = BrickColor.new() },
     { Label = "Color3", DefaultValue = Color3.new() },
     { Label = "Vector2", DefaultValue = Vector2.new() },
     { Label = "Vector3", DefaultValue = Vector3.new() },
     { Label = "CFrame", DefaultValue = CFrame.new() },
-    { Label = "UDim", DefaultValue = UDim.new() },
-    { Label = "UDim2", DefaultValue = UDim2.new() }
+    { Label = "NumberSequence", DefaultValue = NumberSequence.new(0) },
+    { Label = "ColorSequence", DefaultValue = ColorSequence.new(Color3.new()) },
+    { Label = "NumberRange", DefaultValue = NumberRange.new(0) },
+    { Label = "Rect", DefaultValue = Rect.new() },
+    { Label = "Font", DefaultValue = Font.fromEnum(Enum.Font.SourceSans) }
 }
 local AttributeTypeLabels = table.create(#AttributeTypes) :: { string }
 
@@ -144,8 +150,31 @@ return function(
 
     local refreshAttribute: (attributeName: string) -> (boolean, any?)
 
+    local function removeAttribute(attributeName: string)
+        local success, err = CommitAttribute(
+            instance,
+            attributeName,
+            nil
+        )
+        if not success then
+            warn(`Could not remove attribute {attributeName}: {err}`)
+            return
+        end
+
+        refreshAttribute(attributeName)
+    end
+
     local function makeAttributeWritable(item: Item, attributeName: string)
         item.Writable = true
+        item.ValueChildren = {
+            IconButton(scope, {
+                Image = Assets.Cross,
+
+                [OnEvent "MouseButton1Click"] = function()
+                    removeAttribute(attributeName)
+                end
+            })
+        }
         item.TrySetValue = function(value: any): (boolean, string?, any?)
             if item.Value == value then return true, nil, item.Value end
 
@@ -273,6 +302,7 @@ return function(
         AnchorPoint = Vector2.new(1, 0),
         Visible = popoverFocus.State,
         ZIndex = 4,
+        ContentZIndex = 4,
 
         Name = "CreateAttributeMenu",
 

@@ -24,6 +24,7 @@ type ContainerProps = {
 	Variant: ThemeUtils.BgVariantLayer?,
 	CornerRadius: ThemeUtils.CornerRadiusVariant?,
 	AutomaticSize: Enum.AutomaticSize?,
+	ContentZIndex: Fusion.UsedAs<number>?,
 	[Fusion.SpecialKey]: any
 }
 
@@ -33,6 +34,8 @@ return Component<<ContainerProps>>(function(scope, props)
         TableExtract(props, "CornerRadius", "Md")
     local props, automaticSize =
         TableExtract(props, "AutomaticSize", Enum.AutomaticSize.None)
+    local props, contentZIndex =
+        TableExtract(props, "ContentZIndex", 2)
     local props, children = TableExtract(props, Children)
     local props, rootChildren = TableExtract(props, "RootChildren")
 
@@ -57,7 +60,7 @@ return Component<<ContainerProps>>(function(scope, props)
                 else UDim2.new(1, 0, 0, 0),
             AutomaticSize = automaticSize,
             BackgroundTransparency = 1,
-            ZIndex = 2,
+            ZIndex = contentZIndex,
 
             Name = "ContainerContent",
 

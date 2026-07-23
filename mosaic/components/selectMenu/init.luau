@@ -222,6 +222,22 @@ return Component<<SelectMenuProps>>(function(scope, props)
             else 0
     end)
 
+    local listContentSizeState =
+        Value<<Vector2>>(scope, Vector2.new())
+    local listViewportHeight = Computed(scope, function(use): number
+        local availableHeight = math.max(
+            use<<number>>(maxHeight) -
+                use<<number>>(searchChromeHeight) -
+                MenuPaddingHeight,
+            0
+        )
+
+        return math.min(
+            use<<Vector2>>(listContentSizeState).Y,
+            availableHeight
+        )
+    end)
+
     local composedBackgroundTransparency = ComposeTransparency(
         scope,
         backgroundTransparency,
@@ -312,24 +328,16 @@ return Component<<SelectMenuProps>>(function(scope, props)
                 [Children] = {
                     Scrollable(scope, {
                         Variant = scrollableVariant,
-                        Size = UDim2.new(1, 0, 0, 0),
-                        AutomaticSize = Enum.AutomaticSize.Y,
+                        Size = ComputeUDim2(
+                            scope,
+                            UDim.new(1, 0),
+                            ComputeUDim(scope, 0, listViewportHeight)
+                        ),
+                        AutomaticSize = Enum.AutomaticSize.None,
+                        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+                        ClipsDescendants = true,
                         PaddingRight = UDim.new(0, 3),
                         Transparency = visibilityTransparency,
-
-                        RootChildren = New(scope, "UISizeConstraint") {
-                            MaxSize = Computed(scope, function(use: Fusion.Use)
-                                return Vector2.new(
-                                    math.huge,
-                                    math.max(
-                                        use<<number>>(maxHeight) -
-                                            use<<number>>(searchChromeHeight) -
-                                            MenuPaddingHeight,
-                                        0
-                                    )
-                                )
-                            end)
-                        },
 
                         [Children] = {
                             Text(scope, {
@@ -370,7 +378,10 @@ return Component<<SelectMenuProps>>(function(scope, props)
                             New(scope, "UIListLayout") {
                                 Padding = UDim.new(0, 1),
                                 FillDirection = Enum.FillDirection.Vertical,
-                                SortOrder = Enum.SortOrder.LayoutOrder
+                                SortOrder = Enum.SortOrder.LayoutOrder,
+
+                                [Out "AbsoluteContentSize"] =
+                                    listContentSizeState
                             },
                         }
                     }),
