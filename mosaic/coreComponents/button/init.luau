@@ -17,6 +17,7 @@ local DEFAULT_CURSOR = "rbxasset://SystemCursors/Arrow"
 local POINTER_CURSOR = "rbxasset://SystemCursors/PointingHand"
 
 local MOUSE_LEAVE_EVENT = OnEvent "MouseLeave"
+local MOUSE_BUTTON_1_UP_EVENT = OnEvent "MouseButton1Up"
 
 local PluginInstance = script:FindFirstAncestorOfClass("Plugin") :: Plugin?
 local PluginMouse =
@@ -29,6 +30,8 @@ type ButtonProps = {
 return ConstructorComponent<<ButtonProps>>(function(scope, constructor, props)
     local onMouseLeaveEvent =
         (props :: { [any]: any })[MOUSE_LEAVE_EVENT] :: () -> ()
+    local onMouseButton1UpEvent =
+        (props :: { [any]: any })[MOUSE_BUTTON_1_UP_EVENT] :: (() -> ())?
 
     local cursorList =
         ScopedData(scope, "CursorList") :: { string }
@@ -71,6 +74,7 @@ return ConstructorComponent<<ButtonProps>>(function(scope, constructor, props)
         function()
             restorePointer()
             onMouseLeaveEvent()
+            if onMouseButton1UpEvent then onMouseButton1UpEvent() end
         end
     )
 
