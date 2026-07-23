@@ -36,6 +36,7 @@ local Scrollable = require(Components.scrollable)
 local Text = require(Components.text)
 
 local SelectMenuItem = require(script.item)
+local SelectMenuPlacement = require(script.placement)
 
 type IndexedItem = {
     Idx: number,
@@ -48,6 +49,8 @@ type SelectMenuProps = {
 	Variant: ThemeUtils.BgVariantLayer?,
 	Width: Fusion.UsedAs<UDim>?,
 	MaxHeight: Fusion.UsedAs<number>?,
+	Position: Fusion.UsedAs<UDim2>?,
+	AnchorPoint: Fusion.UsedAs<Vector2>?,
 	Items: Fusion.UsedAs<{ string }>,
 	EnableSearch: Fusion.UsedAs<boolean>?,
 	SearchState: Fusion.Value<string>?,
@@ -71,10 +74,55 @@ local VisibilityTweenInfo = TweenInfo.new(
     Enum.EasingDirection.InOut
 )
 
+local function GetGuiParent(instance: Instance): GuiBase2d?
+    local parent = instance.Parent
+
+    return
+        if parent and parent:IsA("GuiBase2d") then parent :: GuiBase2d
+        else nil
+end
+
+local function GetViewport(instance: Instance): LayerCollector?
+    local ancestor = instance.Parent
+
+    while ancestor do
+        if ancestor:IsA("LayerCollector") then
+            return ancestor :: LayerCollector
+        end
+
+        ancestor = ancestor.Parent
+    end
+
+    return nil
+end
+
+
+local function GetPositionOffsetScale(
+    parent: GuiBase2d,
+    viewport: LayerCollector
+): number
+    local scale = 1
+    local ancestor: Instance? = parent
+
+    while ancestor and ancestor ~= viewport do
+        for _, child in ancestor:GetChildren() do
+            if child:IsA("UIScale") then scale *= child.Scale end
+        end
+
+        ancestor = ancestor.Parent
+    end
+
+    return scale
+end
+
 return Component<<SelectMenuProps>>(function(scope, props)
     local props, variant = TableExtract(props, "Variant", "Tertiary")
     local props, width = TableExtract(props, "Width", UDim.new(1, 0))
     local props, maxHeight = TableExtract(props, "MaxHeight", math.huge)
+    local props, preferredPosition =
+        TableExtract(props, "Position", UDim2.fromScale(0, 0))
+    local props, preferredAnchorPoint =
+        TableExtract(props, "AnchorPoint", Vector2.zero)
     local props, items = TableExtract(props, "Items")
     local props, enableSearch = TableExtract(props, "EnableSearch", false)
     local props, providedSearchState = TableExtract(props, "SearchState")
@@ -97,6 +145,19 @@ return Component<<SelectMenuProps>>(function(scope, props)
 
     local selectedIdxValue = CoerceToValue<<number?>>(scope, selectedIdx)
     local searchState = providedSearchState or Value(scope, "")
+
+    local effectivePreferredPosition = Computed(scope, function(use): UDim2
+        return use<<UDim2>>(preferredPosition)
+    end)
+
+    local effectivePreferredAnchorPoint = Computed(scope, function(use): Vector2
+        return use<<Vector2>>(preferredAnchorPoint)
+    end)
+
+    local renderedPosition =
+        Value(scope, Peek<<UDim2>>(effectivePreferredPosition))
+    local renderedAnchorPoint =
+        Value(scope, Peek<<Vector2>>(effectivePreferredAnchorPoint))
 
     local isSearchEnabled = Computed(scope, function(use): boolean
         return use<<boolean>>(enableSearch)
@@ -258,13 +319,15 @@ return Component<<SelectMenuProps>>(function(scope, props)
         visibilityTransparency
     )
 
-    return Container(scope, CombineProps({
+    local selectMenuRoot = Container(scope, CombineProps({
         Variant = variant,
         BackgroundTransparency = composedBackgroundTransparency,
         StrokeColor = strokeColor,
         StrokeTransparency = composedStrokeTransparency,
         Size = ComputeUDim2(scope, width, UDim.new(0, 0)),
         AutomaticSize = Enum.AutomaticSize.Y,
+        Position = renderedPosition,
+        AnchorPoint = renderedAnchorPoint,
         Visible = shouldRender,
 
         Name = "SelectMenu",
@@ -409,5 +472,154 @@ return Component<<SelectMenuProps>>(function(scope, props)
                 PaddingBottom = UDim.new(0, 1),
             },
         }
-    }, props))
+    }, props)) :: GuiObject
+
+    local scopeAlive = true
+    local placementQueued = false
+    local observedParent: GuiBase2d? = nil
+    local observedViewport: LayerCollector? = nil
+    local geometryConnections: { RBXScriptConnection } = {}
+    local QueuePlacement: () -> ()
+
+    local function DisconnectGeometryConnections()
+        for _, connection in geometryConnections do
+            connection:Disconnect()
+        end
+
+        table.clear(geometryConnections)
+    end
+
+    local function SetPlacement(position: UDim2, anchorPoint: Vector2)
+        if Peek<<UDim2>>(renderedPosition) ~= position then
+            renderedPosition:set(position)
+        end
+
+        if Peek<<Vector2>>(renderedAnchorPoint) ~= anchorPoint then
+            renderedAnchorPoint:set(anchorPoint)
+        end
+    end
+
+    local function RefreshGeometryConnections()
+        local nextParent = GetGuiParent(selectMenuRoot)
+        local nextViewport = GetViewport(selectMenuRoot)
+
+        if nextParent == observedParent
+            and nextViewport == observedViewport
+        then
+            return
+        end
+
+        DisconnectGeometryConnections()
+        observedParent = nextParent
+        observedViewport = nextViewport
+
+        local function ObserveGeometry(gui: GuiBase2d)
+            table.insert(
+                geometryConnections,
+                gui:GetPropertyChangedSignal("AbsolutePosition")
+                    :Connect(QueuePlacement)
+            )
+            table.insert(
+                geometryConnections,
+                gui:GetPropertyChangedSignal("AbsoluteSize")
+                    :Connect(QueuePlacement)
+            )
+        end
+
+        if nextParent then ObserveGeometry(nextParent) end
+        if nextViewport and nextViewport ~= nextParent then
+            ObserveGeometry(nextViewport)
+        end
+    end
+
+    local function UpdatePlacement()
+        RefreshGeometryConnections()
+
+        local usedPreferredPosition =
+            Peek<<UDim2>>(effectivePreferredPosition)
+        local usedPreferredAnchorPoint =
+            Peek<<Vector2>>(effectivePreferredAnchorPoint)
+
+        if not Peek<<boolean>>(shouldRender) then
+            SetPlacement(
+                usedPreferredPosition,
+                usedPreferredAnchorPoint
+            )
+            return
+        end
+
+        local parent = observedParent
+        local viewport = observedViewport
+        local menuSize = selectMenuRoot.AbsoluteSize
+
+        if not parent
+            or not viewport
+            or menuSize.X <= 0
+            or menuSize.Y <= 0
+            or viewport.AbsoluteSize.X <= 0
+            or viewport.AbsoluteSize.Y <= 0
+        then
+            SetPlacement(
+                usedPreferredPosition,
+                usedPreferredAnchorPoint
+            )
+            return
+        end
+
+        local positionOffsetScale =
+            GetPositionOffsetScale(parent, viewport)
+        if positionOffsetScale <= 0 then
+            SetPlacement(
+                usedPreferredPosition,
+                usedPreferredAnchorPoint
+            )
+            return
+        end
+
+        local placement = SelectMenuPlacement.Fit({
+            PreferredPosition = usedPreferredPosition,
+            PreferredAnchorPoint = usedPreferredAnchorPoint,
+            ParentPosition = parent.AbsolutePosition,
+            ParentSize = parent.AbsoluteSize,
+            MenuSize = menuSize,
+            ViewportPosition = viewport.AbsolutePosition,
+            ViewportSize = viewport.AbsoluteSize,
+            PositionOffsetScale = positionOffsetScale
+        })
+
+        SetPlacement(placement.Position, placement.AnchorPoint)
+    end
+
+    QueuePlacement = function()
+        if placementQueued then return end
+        placementQueued = true
+
+        task.defer(function()
+            placementQueued = false
+            if not scopeAlive then return end
+
+            UpdatePlacement()
+        end)
+    end
+
+    table.insert(scope, function()
+        scopeAlive = false
+        DisconnectGeometryConnections()
+    end)
+
+    table.insert(
+        scope,
+        selectMenuRoot:GetPropertyChangedSignal("AbsoluteSize")
+            :Connect(QueuePlacement)
+    )
+    table.insert(
+        scope,
+        selectMenuRoot.AncestryChanged:Connect(QueuePlacement)
+    )
+
+    Observer(scope, effectivePreferredPosition):onChange(QueuePlacement)
+    Observer(scope, effectivePreferredAnchorPoint):onChange(QueuePlacement)
+    Observer(scope, shouldRender):onBind(QueuePlacement)
+
+    return selectMenuRoot
 end)

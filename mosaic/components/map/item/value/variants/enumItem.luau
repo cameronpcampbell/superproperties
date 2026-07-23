@@ -19,7 +19,7 @@ local Assets = require(Components.Parent.assets)
 local PopoverFocus = require(Components.Parent.coreComponents.popoverFocus)
 
 local ChevronGap = 6
-local ChevronSize = 9
+local ChevronWidth = 6
 local MenuGap = 4
 local MenuMaxHeight = 150
 local PointerCursor = "rbxasset://SystemCursors/PointingHand"
@@ -188,14 +188,14 @@ return function(
             PaddingLeft = UDim.new(0, SidePadding),
             PaddingRight = UDim.new(
                 0,
-                SidePadding + ChevronSize + ChevronGap
+                SidePadding + ChevronWidth + ChevronGap
             )
         }
     })
 
     local chevrons = Icon(scope, {
         Image = Assets.ChevronsThin,
-        Size = UDim2.fromOffset(ChevronSize, ChevronSize),
+        Width = ChevronWidth,
         Position = UDim2.new(1, -SidePadding, .5, 0),
         AnchorPoint = Vector2.new(1, .5),
         ZIndex = 1,

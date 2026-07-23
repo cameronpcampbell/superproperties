@@ -235,7 +235,7 @@ return Component<<SelectProps>>(function(scope, props)
         SelectedIdx = selectedIdxState,
         Width = UDim.new(1, 2),
         MaxHeight = menuMaxHeight,
-        Position = UDim2.new(0, -1, 0, MenuGap),
+        Position = UDim2.new(0, -1, 1, MenuGap),
         Visible = isFocusState,
         Interactable = isFocusState,
         OutRenderVisible = menuRenderVisibleState,
@@ -243,8 +243,8 @@ return Component<<SelectProps>>(function(scope, props)
     }) :: GuiObject
 
     local menuHost = New(scope, "Frame") {
-        Size = UDim2.new(1, 0, 0, 0),
-        Position = UDim2.fromScale(0, 1),
+        Size = UDim2.fromScale(1, 1),
+        Position = UDim2.fromScale(0, 0),
         AutomaticSize = Enum.AutomaticSize.None,
         BackgroundTransparency = 1,
         ClipsDescendants = false,
@@ -281,6 +281,7 @@ return Component<<SelectProps>>(function(scope, props)
 
             Icon(scope, {
                 Image = Assets.ChevronsThin,
+                Width = 6,
                 LayoutOrder = 2,
 
                 Name = "SelectChevrons"
