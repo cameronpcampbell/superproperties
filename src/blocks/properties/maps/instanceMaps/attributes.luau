@@ -22,6 +22,7 @@ local Category = require(script.Parent.Parent.category)
 type CategoryState = Category.State
 
 local CommitAttribute = require(script.Parent.commitAttribute)
+local CommitRenameAttribute = require(script.Parent.commitRenameAttribute)
 
 type AttributesMapProps = {
     OmitRbxAttributes: boolean
@@ -145,6 +146,10 @@ return function(
     end
 
     local refreshAttribute: (attributeName: string) -> (boolean, any?)
+    local renameAttribute: (
+        attributeName: string,
+        requestedName: string
+    ) -> (boolean, string?, string?)
 
     local function removeAttribute(attributeName: string)
         local success, err = CommitAttribute(
@@ -161,6 +166,12 @@ return function(
     end
 
     local function makeAttributeWritable(item: Item, attributeName: string)
+        item.KeyWritable = true
+        item.TrySetKey = function(
+            requestedName: string
+        ): (boolean, string?, string?)
+            return renameAttribute(attributeName, requestedName)
+        end
         item.ValueWritable = true
         item.ValueChildren = {
             IconButton(scope, {
@@ -223,6 +234,49 @@ return function(
 
         attributeItemsState:set(attributeItems)
         return true, value
+    end
+
+    renameAttribute = function(
+        attributeName: string,
+        requestedName: string
+    ): (boolean, string?, string?)
+        local newAttributeName = Trim(requestedName)
+
+        if newAttributeName == attributeName then
+            return true, nil, attributeName
+        end
+
+        if newAttributeName == "" then
+            return false, "Attribute name cannot be empty.", nil
+        end
+
+        if ShouldOmitAttribute(
+            newAttributeName,
+            props.OmitRbxAttributes
+        ) then
+            return false,
+                `Attribute names beginning with {RBX_ATTRIBUTE_PREFIX} are hidden.`,
+                nil
+        end
+
+        if attributeItemIndices[newAttributeName] ~= nil then
+            return false,
+                `Attribute {newAttributeName} already exists.`,
+                nil
+        end
+
+        local success, err = CommitRenameAttribute(
+            instance,
+            attributeName,
+            newAttributeName
+        )
+
+        if success then
+            refreshAttribute(attributeName)
+            refreshAttribute(newAttributeName)
+        end
+
+        return success, err, if success then newAttributeName else nil
     end
 
     for _, item in attributeItems do
