@@ -31,26 +31,6 @@ local HoverTweenInfo = require(script.Parent.Parent.Parent.hoverTweenInfo)
 local SelectionSettleTime = .1
 local InstanceIconSize = 13
 
-local EmptyHandleTargets =
-    setmetatable({} :: { [Instance]: boolean }, {
-        __mode = "k"
-    })
-
--- SetAttribute deletes an attribute when given nil, but InstanceHandle has no
--- empty constructor. Use a destroyed weakly-referenced target so clearing an
--- InstanceHandle value can preserve the attribute while resolving as Empty.
-local function CreateEmptyInstanceHandle(): InstanceHandle
-    local target = Instance.new("Folder")
-    local handle = InstanceHandle.new(target)
-
-    EmptyHandleTargets[target] = true
-    target:Destroy()
-
-    return handle
-end
-
-local EmptyInstanceHandle = CreateEmptyInstanceHandle()
-
 local function InputFinished(input: InputObject): boolean
     return
         input.UserInputState == Enum.UserInputState.End
@@ -81,7 +61,7 @@ return function(
         if usesInstanceHandle
         then (storedValue :: InstanceHandle):Get()
         else storedValue :: Instance?
-    if value and EmptyHandleTargets[value] then
+    if value and InstanceHandle.IsEmptyTarget(value) then
         value = nil
     end
 
@@ -99,7 +79,7 @@ return function(
             if usesInstanceHandle
             then if nextValue ~= nil
                 then InstanceHandle.new(nextValue)
-                else EmptyInstanceHandle
+                else InstanceHandle.Empty
             else nextValue
         local success, err = setValue(committedValue)
         if not success then

@@ -60,7 +60,7 @@ local AttributeTypes: { AttributeTypeOption } = {
     { Label = "Font", DefaultValue = Font.fromEnum(Enum.Font.SourceSans) },
     {
         Label = "Instance",
-        DefaultValue = InstanceHandle.new(workspace)
+        DefaultValue = InstanceHandle.Empty
     }
 }
 local AttributeTypeLabels = table.create(#AttributeTypes) :: { string }
