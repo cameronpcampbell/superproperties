@@ -48,10 +48,13 @@ return function(
 
         [Children] = {
             Text(scope, {
-                Text = if value then value.Name else "nil",
+                Text = if value then value.Name else "Empty",
                 Variant =
                     if props.DisplayAsWritable then "Primary"
                     else "Secondary",
+                FontStyle =
+                    if value then Enum.FontStyle.Normal
+                    else Enum.FontStyle.Italic,
                 Size = UDim2.fromScale(1, 0),
                 LayoutOrder = 0,
 
