@@ -22,6 +22,7 @@ export type Props = {
     Position: Fusion.UsedAs<UDim2>?,
     AnchorPoint: Fusion.UsedAs<Vector2>?,
     Enabled: Fusion.UsedAs<boolean>?,
+    StickToViewport: Fusion.UsedAs<boolean>?,
     [any]: any
 }
 
@@ -93,6 +94,8 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
     local props, preferredAnchorPoint =
         TableExtract(props, "AnchorPoint", Vector2.zero)
     local props, enabled = TableExtract(props, "Enabled", true)
+    local props, stickToViewport =
+        TableExtract(props, "StickToViewport", false)
 
     local effectivePreferredPosition = Computed(scope, function(use): UDim2
         return use<<UDim2>>(preferredPosition)
@@ -103,6 +106,9 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
         end)
     local effectiveEnabled = Computed(scope, function(use): boolean
         return use<<boolean>>(enabled)
+    end)
+    local effectiveStickToViewport = Computed(scope, function(use): boolean
+        return use<<boolean>>(stickToViewport)
     end)
 
     local renderedPosition =
@@ -239,7 +245,9 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
             TargetSize = targetSize,
             ViewportPosition = viewport.AbsolutePosition,
             ViewportSize = viewport.AbsoluteSize,
-            PositionOffsetScale = positionOffsetScale
+            PositionOffsetScale = positionOffsetScale,
+            StickToViewport =
+                Peek<<boolean>>(effectiveStickToViewport)
         })
 
         SetPlacement(placement.Position, placement.AnchorPoint)
@@ -272,6 +280,7 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
     Observer(scope, effectivePreferredPosition):onChange(QueuePlacement)
     Observer(scope, effectivePreferredAnchorPoint):onChange(QueuePlacement)
     Observer(scope, effectiveEnabled):onBind(QueuePlacement)
+    Observer(scope, effectiveStickToViewport):onChange(QueuePlacement)
 
     return target
 end)
