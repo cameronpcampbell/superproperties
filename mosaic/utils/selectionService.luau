@@ -2,6 +2,12 @@
 
 local SelectionService = game:GetService("Selection")
 
+local INSTANCE_PICKER_CURSOR = "rbxasset://SystemCursors/Cross"
+
+local PluginInstance = script:FindFirstAncestorOfClass("Plugin") :: Plugin?
+local PluginMouse =
+    if PluginInstance then PluginInstance:GetMouse() else nil
+
 export type Wrapper = {
     SelectionChanged: RBXScriptSignal,
     SelectionThickness: number,
@@ -14,12 +20,32 @@ export type Wrapper = {
 
 type PickState = {
     Before: { Instance },
-    WaitingThread: thread
+    WaitingThread: thread,
+    PreviousCursor: string?,
+    ActivatedPlugin: boolean
 }
 
 local selectionChangedEvent = Instance.new("BindableEvent")
 local publishedSelection = SelectionService:Get()
 local activePick: PickState? = nil
+
+local function RestorePickerState(pick: PickState)
+    if PluginMouse then
+        -- Do not overwrite a cursor set by another owner while the pick was
+        -- active.
+        if PluginMouse.Icon == INSTANCE_PICKER_CURSOR then
+            PluginMouse.Icon = pick.PreviousCursor or ""
+        end
+    end
+
+    if
+        pick.ActivatedPlugin
+        and PluginInstance
+        and PluginInstance:IsActivated()
+    then
+        PluginInstance:Deactivate()
+    end
+end
 
 local function SelectionsEqual(
     left: { Instance },
@@ -70,6 +96,7 @@ SelectionService.SelectionChanged:Connect(function()
         -- cannot be interpreted as another picked instance.
         activePick = nil
         SelectionService:Set(pick.Before)
+        RestorePickerState(pick)
         task.defer(pick.WaitingThread, pickedInstance)
         return
     end
@@ -108,17 +135,47 @@ end
 
 function SelectionServiceWrapper:PickInstanceAsync(): Instance?
     local previousPick = activePick
+    local previousCursor =
+        if previousPick then previousPick.PreviousCursor
+        else if PluginMouse then PluginMouse.Icon
+        else nil
+    local activatedPlugin =
+        if previousPick then previousPick.ActivatedPlugin
+        else false
+
     if previousPick then
         activePick = nil
         task.defer(previousPick.WaitingThread)
     end
 
+    if PluginInstance and not PluginInstance:IsActivated() then
+        PluginInstance:Activate(false)
+        activatedPlugin = true
+    end
+
     activePick = {
         Before = SelectionService:Get(),
-        WaitingThread = coroutine.running()
+        WaitingThread = coroutine.running(),
+        PreviousCursor = previousCursor,
+        ActivatedPlugin = activatedPlugin
     }
 
+    if PluginMouse then
+        PluginMouse.Icon = INSTANCE_PICKER_CURSOR
+    end
+
     return coroutine.yield()
+end
+
+if PluginInstance then
+    PluginInstance.Unloading:Connect(function()
+        local pick = activePick
+        if not pick then return end
+
+        activePick = nil
+        RestorePickerState(pick)
+        task.defer(pick.WaitingThread)
+    end)
 end
 
 return SelectionServiceWrapper
