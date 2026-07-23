@@ -23,6 +23,12 @@ local CreateSidePadding = require(script.Parent.utils.createSidePadding)
 
 local SelectionSettleTime = .1
 
+local function InputFinished(input: InputObject): boolean
+    return
+        input.UserInputState == Enum.UserInputState.End
+        or input.UserInputState == Enum.UserInputState.Cancel
+end
+
 return function(
     scope: Fusion.Scope,
     props: Types.ValueVariantProps<Instance>
@@ -96,12 +102,6 @@ return function(
             end
         end
 
-        local function InputFinished(input: InputObject): boolean
-            return
-                input.UserInputState == Enum.UserInputState.End
-                or input.UserInputState == Enum.UserInputState.Cancel
-        end
-
         local function SchedulePickCancellation(
             inputThatCausedFocusLoss: InputObject?
         )
@@ -163,6 +163,11 @@ return function(
             pickPending = true
 
             task.spawn(function()
+                if not alive or activePickToken ~= token then
+                    pickPending = false
+                    return
+                end
+
                 local pickedInstance =
                     SelectionService:PickInstanceAsync(token, function()
                         if alive and activePickToken == token then

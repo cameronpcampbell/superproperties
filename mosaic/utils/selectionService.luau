@@ -39,12 +39,6 @@ type PickState = {
 local selectionChangedEvent = Instance.new("BindableEvent")
 local publishedSelection = SelectionService:Get()
 local activePick: PickState? = nil
-local cancelledPickTokens =
-    {} :: { [PickToken]: boolean }
-
-setmetatable(cancelledPickTokens, {
-    __mode = "k"
-})
 
 local function RestorePickerState(pick: PickState)
     if PluginMouse then
@@ -169,11 +163,6 @@ function SelectionServiceWrapper:PickInstanceAsync(
     token: PickToken?,
     onReady: (() -> ())?
 ): Instance?
-    if token and cancelledPickTokens[token] then
-        cancelledPickTokens[token] = nil
-        return nil
-    end
-
     local previousPick = activePick
     local previousCursor =
         if previousPick then previousPick.PreviousCursor
@@ -183,27 +172,9 @@ function SelectionServiceWrapper:PickInstanceAsync(
         if previousPick then previousPick.ActivatedPlugin
         else false
 
-    local activatedNow = false
     if PluginInstance and not PluginInstance:IsActivated() then
         PluginInstance:Activate(false)
         activatedPlugin = true
-        activatedNow = true
-    end
-
-    -- Activating the plugin can synchronously move focus away from the field.
-    if token and cancelledPickTokens[token] then
-        cancelledPickTokens[token] = nil
-
-        if
-            activatedNow
-            and previousPick == nil
-            and PluginInstance
-            and PluginInstance:IsActivated()
-        then
-            PluginInstance:Deactivate()
-        end
-
-        return nil
     end
 
     if previousPick then
@@ -232,11 +203,7 @@ end
 
 function SelectionServiceWrapper:CancelPick(token: PickToken): boolean
     local pick = activePick
-    if not pick or pick.Token ~= token then
-        -- PickInstanceAsync may not have registered this token yet.
-        cancelledPickTokens[token] = true
-        return true
-    end
+    if not pick or pick.Token ~= token then return false end
 
     return FinishPick(pick, nil, false)
 end
