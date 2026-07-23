@@ -4,9 +4,9 @@
 local Packages = script.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
-local New, Children, Value, Peek, OnEvent =
-    Fusion.New, Fusion.Children, Fusion.Value,
-    Fusion.peek, Fusion.OnEvent
+local New, Children, Value, Peek, Computed, OnEvent, Tween =
+    Fusion.New, Fusion.Children, Fusion.Value, Fusion.peek,
+    Fusion.Computed, Fusion.OnEvent, Fusion.Tween
 
 local Utils = script.Parent.Parent.utils
 
@@ -33,10 +33,22 @@ local Text = require(Components.text)
 type ButtonProps = {
 	Variant: ThemeUtils.AccentVariant?,
 	Width: UDim?,
+	Disabled: Fusion.UsedAs<boolean>?,
 	[Fusion.SpecialKey]: any
 }
 
-local function TransformChild(scope: Fusion.Scope, child: unknown): Fusion.Child?
+local DisabledTransparency = 0.5
+local TransparencyTweenInfo = TweenInfo.new(
+    0.25,
+    Enum.EasingStyle.Exponential,
+    Enum.EasingDirection.InOut
+)
+
+local function TransformChild(
+    scope: Fusion.Scope,
+    child: unknown,
+    transparency: Fusion.UsedAs<number>
+): Fusion.Child?
     local childTypeof = typeof(child)
 
     if childTypeof ~= "string" then
@@ -53,6 +65,7 @@ local function TransformChild(scope: Fusion.Scope, child: unknown): Fusion.Child
             Size = UDim2.fromOffset(9, 9),
             BackgroundTransparency = 1,
             ImageColor3 = accentFgColor,
+            ImageTransparency = transparency,
             Image = child
         }
 
@@ -60,6 +73,7 @@ local function TransformChild(scope: Fusion.Scope, child: unknown): Fusion.Child
         return Text (scope, {
             Text = child :: string,
             TextColor3 = accentFgColor,
+            TextTransparency = transparency,
             UseAccentFg = true
         })
 
@@ -69,18 +83,34 @@ end
 return Component<<ButtonProps>>(function(scope, props)
     local props, variant = TableExtract(props, "Variant", "Primary")
     local props, width = TableExtract(props, "Width", UDim.new(1, 0))
+    local props, disabled = TableExtract(props, "Disabled", false)
     local props, children = TableExtract(props, Children)
 
     local isHoverState, isFocusState = Value(scope, false), Value(scope, false)
     local themeColorModifier = CalcColorModifier(scope, isHoverState, isFocusState)
+
+    local disabledTransparency = Tween<<number>>(
+        scope,
+        Computed(scope, function(use, scope)
+            return
+                if use<<boolean>>(disabled) then DisabledTransparency
+                else 0
+        end),
+        TransparencyTweenInfo
+    )
 
     local theme = GetThemeForScope(scope)
     local accentColor = theme:GetAccent(scope, variant, themeColorModifier)
     local cornerRadius = theme:GetCornerRadius(scope, "Md")
     local height = theme:GetHeight(scope, "Lg")
 
+    local gradientEnabled = Computed(scope, function(use): boolean
+        return not use<<boolean>>(disabled)
+    end)
+
     return CoreButton(scope, HighlightSupercorner, {
         Button = true,
+        Enabled = gradientEnabled,
         GradientTransparency = 0.78,
         BackgroundColor3 = Oktween(
             scope, accentColor,
@@ -88,21 +118,40 @@ return Component<<ButtonProps>>(function(scope, props)
                 .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
             )
         ),
+        BackgroundTransparency = disabledTransparency,
+        StrokeTransparency = disabledTransparency,
         StrokeThickness = 1,
         Size = ComputeUDim2(scope, width, ComputeUDim(scope, 0, height)),
         CornerRadius = Peek<<number>>(cornerRadius),
         CornerSmoothing = 1,
+        Interactable = gradientEnabled,
 
-        [OnEvent "MouseEnter"] = function() isHoverState:set(true) end,
+        [OnEvent "MouseEnter"] = function()
+            if Peek<<boolean>>(disabled) then return end
+
+            isHoverState:set(true)
+        end,
+
         [OnEvent "MouseLeave"] = function() isHoverState:set(false) end,
 
-        [OnEvent "MouseButton1Down"] = function() isFocusState:set(true) end,
+        [OnEvent "MouseButton1Down"] = function()
+            if Peek<<boolean>>(disabled) then return end
+
+            isFocusState:set(true)
+        end,
+
         [OnEvent "MouseButton1Up"] = function() isFocusState:set(false) end,
 
         RootChildren = New(scope, "UIFlexItem") {},
 
         [Children] = {
-            ChildrenTransform(scope, TransformChild, children),
+            ChildrenTransform(scope, function(childScope, child)
+                return TransformChild(
+                    childScope,
+                    child,
+                    disabledTransparency
+                )
+            end, children),
 
             New(scope, "UIListLayout") {
                 FillDirection = Enum.FillDirection.Horizontal,

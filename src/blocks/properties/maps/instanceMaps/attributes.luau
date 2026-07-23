@@ -3,8 +3,9 @@
 local Packages = script.Parent.Parent.Parent.Parent.Parent.packages
 
 local Fusion = require(Packages.fusion)
-local Children, New, OnEvent, Peek, Value =
-    Fusion.Children, Fusion.New, Fusion.OnEvent, Fusion.peek, Fusion.Value
+local Children, Computed, New, OnEvent, Peek, Value =
+    Fusion.Children, Fusion.Computed, Fusion.New, Fusion.OnEvent, Fusion.peek,
+    Fusion.Value
 
 local Mosaic = require(Packages.mosaic)
 local Button, Container, IconButton, Input, PopoverFocus, Select, Text =
@@ -239,6 +240,9 @@ return function(
     )
 
     local nameState = Value(scope, "")
+    local createAttributeDisabled = Computed(scope, function(use): boolean
+        return Trim(use<<string>>(nameState)) == ""
+    end)
     local selectedTypeIdxState = Value<<number?>>(scope, 1)
     local attributeMenu: GuiObject
     local addButton: GuiObject
@@ -329,6 +333,7 @@ return function(
 
             Button(scope, {
                 LayoutOrder = 5,
+                Disabled = createAttributeDisabled,
 
                 [OnEvent "MouseButton1Click"] = createAttribute,
                 [Children] = "Create"
