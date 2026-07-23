@@ -89,7 +89,11 @@ return function(
         GetInteractionRoots = function(): { GuiObject }
             return { selectMenu, hitArea }
         end,
-        OnFocusChanged = props.OnFocusChanged,
+        OnFocusChanged =
+            if props.OnFocusChanged == nil then nil
+            else function(isFocused: boolean)
+                props.OnFocusChanged(isFocused)
+            end,
         Name = "EnumItemFocusTarget"
     })
     local inputFocusState = popoverFocus.State

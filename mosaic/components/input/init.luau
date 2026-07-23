@@ -35,7 +35,7 @@ local FocusRing = require(Components.focusRing)
 
 type InputProps = {
 	Variant: ThemeUtils.BgVariantLayer?,
-	Text: Fusion.UsedAs<string?>?,
+	Text: (Fusion.UsedAs<string> | Fusion.UsedAs<string?>)?,
 	PlaceholderText: Fusion.UsedAs<string>?,
 	TextTruncate: Fusion.UsedAs<Enum.TextTruncate>?,
 	Width: UDim?,
@@ -61,7 +61,7 @@ return Component<<InputProps>>(function(scope, props)
         CalcColorModifier(scope, isHoverState, isFocusState, "Stroke")
 
     local computeVisualText = Computed(scope, function(use, scope)
-        local usedText = use<<string?>>(text)
+        local usedText = use(text)
         return if usedText == nil then "" else usedText
     end)
     local textValue = if IsValue(text) then

@@ -34,7 +34,7 @@ type ButtonProps = {
 	Variant: ThemeUtils.AccentVariant?,
 	Width: UDim?,
 	Disabled: Fusion.UsedAs<boolean>?,
-	[Fusion.SpecialKey]: any
+	[string | Fusion.SpecialKey]: any
 }
 
 local DisabledTransparency = 0.5

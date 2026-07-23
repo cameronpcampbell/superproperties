@@ -31,12 +31,12 @@ type AttributeTypeOption = {
     DefaultValue: any
 }
 
-local RbxAttributePrefix = "RBX_"
-local MenuOffset = 4
-local MenuGap = 6
-local MenuPadding = 7
-local MenuRightInset = 6
-local CaptionLeftPadding = 7
+local RBX_ATTRIBUTE_PREFIX = "RBX_"
+local MENU_OFFSET = 4
+local MENU_GAP = 6
+local MENU_PADDING = 7
+local MENU_RIGHT_INSET = 6
+local CAPTION_LEFT_PADDING = 7
 
 local AttributeTypes: { AttributeTypeOption } = {
     { Label = "string", DefaultValue = "" },
@@ -86,7 +86,7 @@ local function CreateCaption(
             }),
 
             New(scope, "UIPadding") {
-                PaddingLeft = UDim.new(0, CaptionLeftPadding)
+                PaddingLeft = UDim.new(0, CAPTION_LEFT_PADDING)
             }
         }
     }
@@ -103,8 +103,8 @@ local function ShouldOmitAttribute(
     omitRbxAttributes: boolean
 ): boolean
     return omitRbxAttributes
-        and string.sub(attributeName, 1, #RbxAttributePrefix)
-            == RbxAttributePrefix
+        and string.sub(attributeName, 1, #RBX_ATTRIBUTE_PREFIX)
+            == RBX_ATTRIBUTE_PREFIX
 end
 
 local function GetAttributeItems(
@@ -262,7 +262,7 @@ return function(
 
         if ShouldOmitAttribute(attributeName, props.OmitRbxAttributes) then
             warn(
-                `SuperProperties: Attribute names beginning with {RbxAttributePrefix} are hidden.`
+                `SuperProperties: Attribute names beginning with {RBX_ATTRIBUTE_PREFIX} are hidden.`
             )
             return
         end
@@ -302,7 +302,7 @@ return function(
         Variant = "Tertiary",
         Size = UDim2.new(.5, 0, 0, 0),
         AutomaticSize = Enum.AutomaticSize.Y,
-        Position = UDim2.new(1, -MenuRightInset, 1, MenuOffset),
+        Position = UDim2.new(1, -MENU_RIGHT_INSET, 1, MENU_OFFSET),
         AnchorPoint = Vector2.new(1, 0),
         Visible = popoverFocus.State,
         ZIndex = 4,
@@ -342,14 +342,14 @@ return function(
             New(scope, "UIListLayout") {
                 FillDirection = Enum.FillDirection.Vertical,
                 SortOrder = Enum.SortOrder.LayoutOrder,
-                Padding = UDim.new(0, MenuGap)
+                Padding = UDim.new(0, MENU_GAP)
             },
 
             New(scope, "UIPadding") {
-                PaddingLeft = UDim.new(0, MenuPadding),
-                PaddingRight = UDim.new(0, MenuPadding),
-                PaddingTop = UDim.new(0, MenuPadding),
-                PaddingBottom = UDim.new(0, MenuPadding)
+                PaddingLeft = UDim.new(0, MENU_PADDING),
+                PaddingRight = UDim.new(0, MENU_PADDING),
+                PaddingTop = UDim.new(0, MENU_PADDING),
+                PaddingBottom = UDim.new(0, MENU_PADDING)
             }
         }
     }) :: GuiObject

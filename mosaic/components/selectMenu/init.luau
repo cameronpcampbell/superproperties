@@ -192,11 +192,13 @@ return Component<<SelectMenuProps>>(function(scope, props)
 
     local nextVariant = GetNextVariant(scope, variant)
     local scrollableVariant = Computed(scope, function(use)
+        : ThemeUtils.BgVariantLayer
         local usedVariant = use<<ThemeUtils.BgVariantLayer>>(variant)
 
         return
             if usedVariant == "Quaternary" then usedVariant
-            else use<<ThemeUtils.BgVariantLayer>>(nextVariant)
+            else use<<ThemeUtils.BgVariant>>(nextVariant)
+                :: ThemeUtils.BgVariantLayer
     end)
 
     local theme = GetThemeForScope(scope)

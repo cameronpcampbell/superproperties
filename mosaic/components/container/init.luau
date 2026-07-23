@@ -25,7 +25,7 @@ type ContainerProps = {
 	CornerRadius: ThemeUtils.CornerRadiusVariant?,
 	AutomaticSize: Enum.AutomaticSize?,
 	ContentZIndex: Fusion.UsedAs<number>?,
-	[Fusion.SpecialKey]: any
+	[string | Fusion.SpecialKey]: any
 }
 
 return Component<<ContainerProps>>(function(scope, props)
