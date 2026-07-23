@@ -5,12 +5,12 @@ export type Placement = {
     AnchorPoint: Vector2
 }
 
-export type FitProps = {
+export type Props = {
     PreferredPosition: UDim2,
     PreferredAnchorPoint: Vector2,
     ParentPosition: Vector2,
     ParentSize: Vector2,
-    MenuSize: Vector2,
+    TargetSize: Vector2,
     ViewportPosition: Vector2,
     ViewportSize: Vector2,
     PositionOffsetScale: number?
@@ -57,7 +57,7 @@ local function ResolveTopLeft(
     placement: Placement,
     parentPosition: Vector2,
     parentSize: Vector2,
-    menuSize: Vector2,
+    targetSize: Vector2,
     positionOffsetScale: number
 ): Vector2
     local position = placement.Position
@@ -70,56 +70,56 @@ local function ResolveTopLeft(
     )
 
     return attachmentPoint - Vector2.new(
-        menuSize.X * anchorPoint.X,
-        menuSize.Y * anchorPoint.Y
+        targetSize.X * anchorPoint.X,
+        targetSize.Y * anchorPoint.Y
     )
 end
 
 local function FitAxis(
-    menuStart: number,
-    menuSize: number,
+    targetStart: number,
+    targetSize: number,
     viewportStart: number,
     viewportEnd: number
 ): number
-    local endAlignedStart = viewportEnd - menuSize
+    local endAlignedStart = viewportEnd - targetSize
 
     return math.clamp(
-        menuStart,
+        targetStart,
         math.min(viewportStart, endAlignedStart),
         math.max(viewportStart, endAlignedStart)
     )
 end
 
 local function GetCorrection(
-    menuPosition: Vector2,
-    menuSize: Vector2,
+    targetPosition: Vector2,
+    targetSize: Vector2,
     viewportPosition: Vector2,
     viewportSize: Vector2
 ): Vector2
     local viewportEnd = viewportPosition + viewportSize
     local fittedPosition = Vector2.new(
         FitAxis(
-            menuPosition.X,
-            menuSize.X,
+            targetPosition.X,
+            targetSize.X,
             viewportPosition.X,
             viewportEnd.X
         ),
         FitAxis(
-            menuPosition.Y,
-            menuSize.Y,
+            targetPosition.Y,
+            targetSize.Y,
             viewportPosition.Y,
             viewportEnd.Y
         )
     )
 
-    return fittedPosition - menuPosition
+    return fittedPosition - targetPosition
 end
 
 local function GetCorrectionScore(correction: Vector2): number
     return correction.X * correction.X + correction.Y * correction.Y
 end
 
-local function Fit(props: FitProps): Placement
+local function Fit(props: Props): Placement
     local positionOffsetScale = props.PositionOffsetScale or 1
     if positionOffsetScale <= 0 then positionOffsetScale = 1 end
 
@@ -134,10 +134,10 @@ local function Fit(props: FitProps): Placement
             bestPlacement,
             props.ParentPosition,
             props.ParentSize,
-            props.MenuSize,
+            props.TargetSize,
             positionOffsetScale
         ),
-        props.MenuSize,
+        props.TargetSize,
         props.ViewportPosition,
         props.ViewportSize
     )
@@ -154,10 +154,10 @@ local function Fit(props: FitProps): Placement
                 placement,
                 props.ParentPosition,
                 props.ParentSize,
-                props.MenuSize,
+                props.TargetSize,
                 positionOffsetScale
             ),
-            props.MenuSize,
+            props.TargetSize,
             props.ViewportPosition,
             props.ViewportSize
         )
@@ -184,6 +184,4 @@ local function Fit(props: FitProps): Placement
     }
 end
 
-return {
-    Fit = Fit
-}
+return Fit
