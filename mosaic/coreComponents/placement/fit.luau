@@ -129,19 +129,20 @@ local function Fit(props: Props): Placement
         props.PreferredAnchorPoint,
         firstFlip
     )
-    local bestCorrection = GetCorrection(
-        ResolveTopLeft(
-            bestPlacement,
-            props.ParentPosition,
-            props.ParentSize,
+    local bestScore = GetCorrectionScore(
+        GetCorrection(
+            ResolveTopLeft(
+                bestPlacement,
+                props.ParentPosition,
+                props.ParentSize,
+                props.TargetSize,
+                positionOffsetScale
+            ),
             props.TargetSize,
-            positionOffsetScale
-        ),
-        props.TargetSize,
-        props.ViewportPosition,
-        props.ViewportSize
+            props.ViewportPosition,
+            props.ViewportSize
+        )
     )
-    local bestScore = GetCorrectionScore(bestCorrection)
 
     for idx = 2, #FlipCandidates do
         local placement = GetCandidate(
@@ -166,22 +167,10 @@ local function Fit(props: Props): Placement
         if score >= bestScore then continue end
 
         bestPlacement = placement
-        bestCorrection = correction
         bestScore = score
     end
 
-    local position = bestPlacement.Position
-    local offsetCorrection = bestCorrection / positionOffsetScale
-
-    return {
-        Position = UDim2.new(
-            position.X.Scale,
-            position.X.Offset + offsetCorrection.X,
-            position.Y.Scale,
-            position.Y.Offset + offsetCorrection.Y
-        ),
-        AnchorPoint = bestPlacement.AnchorPoint
-    }
+    return bestPlacement
 end
 
 return Fit
