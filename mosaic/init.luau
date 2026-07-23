@@ -38,6 +38,7 @@ return {
     Text = require(Components.text),
 
     -- Core components.
+    Placement = require(CoreComponents.placement),
     PopoverFocus = require(CoreComponents.popoverFocus),
 
     -- Utils.

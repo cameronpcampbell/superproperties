@@ -8,9 +8,10 @@ local Children, Computed, New, OnEvent, Peek, Value =
     Fusion.Value
 
 local Mosaic = require(Packages.mosaic)
-local Button, Container, IconButton, Input, PopoverFocus, Select, Text =
+local Button, Container, IconButton, Input, Placement, PopoverFocus, Select,
+    Text =
     Mosaic.Button, Mosaic.Container, Mosaic.IconButton, Mosaic.Input,
-    Mosaic.PopoverFocus, Mosaic.Select, Mosaic.Text
+    Mosaic.Placement, Mosaic.PopoverFocus, Mosaic.Select, Mosaic.Text
 
 local Map = require(Packages.mosaic.components.map)
 type Item = Map.Item
@@ -298,12 +299,13 @@ return function(
         popoverFocus.Release()
     end
 
-    attributeMenu = Container(scope, {
+    attributeMenu = Placement(scope, Container, {
         Variant = "Tertiary",
         Size = UDim2.new(.5, 0, 0, 0),
         AutomaticSize = Enum.AutomaticSize.Y,
         Position = UDim2.new(1, -MENU_RIGHT_INSET, 1, MENU_OFFSET),
         AnchorPoint = Vector2.new(1, 0),
+        Enabled = popoverFocus.State,
         Visible = popoverFocus.State,
         ZIndex = 4,
         ContentZIndex = 4,
