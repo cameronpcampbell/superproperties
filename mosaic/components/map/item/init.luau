@@ -28,8 +28,6 @@ local MapItemValue = require(script.value)
 local HoverTweenInfo = require(script.hoverTweenInfo)
 local ZIndices = require(script.Parent.zIndices)
 
-local FocusRingActiveAlphaThreshold = .15
-
 local function UseBooleanState(
     use: Fusion.Use,
     state: Fusion.Value<boolean>?
@@ -42,7 +40,8 @@ local function UseActiveFocusRing(
     state: Fusion.Value<number>?
 ): boolean
     return state ~= nil
-        and use<<number>>(state) >= FocusRingActiveAlphaThreshold
+        and use<<number>>(state)
+            >= ZIndices.FocusRingActiveAlphaThreshold
 end
 
 type MapItemProps = Typeforge.Flatten<{

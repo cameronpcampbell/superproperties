@@ -21,6 +21,7 @@ local FocusRing = require(Components.focusRing)
 
 local FocusTransitionTweenInfo = require(script.Parent.value.focusTransitionTweenInfo)
 local HoverTweenInfo = require(script.Parent.hoverTweenInfo)
+local ZIndices = require(script.Parent.Parent.zIndices)
 
 local FocusElevationReleasePadding = 1 / 30
 
@@ -73,6 +74,23 @@ local function CreateMapItemInteraction(
         props.FocusElevationState :: Fusion.Value<boolean>
     local focusRingAlphaState =
         props.FocusRingAlphaState :: Fusion.Value<number>
+
+    interactionProps.ZIndex = Computed(
+        scope,
+        function(use: Fusion.Use): number
+            local focusRingAlpha =
+                use<<number>>(focusRingAlphaState)
+
+            if focusRingAlpha >= ZIndices.FocusRingActiveAlphaThreshold then
+                return ZIndices.Focus
+            end
+            if use<<boolean>>(isFocusElevationState) then
+                return ZIndices.DisappearingFocus
+            end
+            return ZIndices.Default
+        end
+    )
+
     local theme = GetThemeForScope(scope)
     local strokeColorModifier: Fusion.UsedAs<ThemeUtils.ThemeColorModifier?> =
         CalcColorModifier(scope, isHoverState, isFocusState, "Stroke")
