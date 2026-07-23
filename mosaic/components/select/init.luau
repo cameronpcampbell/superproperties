@@ -321,7 +321,11 @@ return Component<<SelectProps>>(function(scope, props)
         end,
 
         [OnEvent "Activated"] = function()
-            popoverFocus.Capture()
+            if Peek<<boolean>>(isFocusState) then
+                popoverFocus.Release()
+            else
+                popoverFocus.Capture()
+            end
         end
     }) :: TextButton
 
