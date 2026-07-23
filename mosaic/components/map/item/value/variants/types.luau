@@ -10,7 +10,8 @@ export type ValueVariantProps<T> = {
     DisplayAsWritable: boolean,
     TrySetValue: ((value: T) -> (boolean, string?, T?))?,
     OnFocusChanged: ((isFocused: boolean) -> ())?,
-    FocusState: Fusion.Value<boolean>?
+    FocusState: Fusion.Value<boolean>?,
+    HoverState: Fusion.Value<boolean>?
 }
 
 export type ValueVariantFn<T> =

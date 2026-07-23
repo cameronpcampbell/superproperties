@@ -99,6 +99,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
 					TrySetValue = props.TrySetValue,
 					OnFocusChanged = interaction.OnFocusChanged,
 					FocusState = props.FocusState,
+					HoverState = props.HoverState,
 				}),
 
 				props.RightChildren,
