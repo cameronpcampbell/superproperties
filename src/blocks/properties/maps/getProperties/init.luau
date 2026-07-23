@@ -14,273 +14,262 @@ local Types = require(script.types)
 type Item = Map.Item
 
 export type PropertyPlan = {
-    Name: string,
-    Read: ((Instance) -> any)?,
-    Write: ((Instance, any) -> ())?,
-    Writable: boolean,
-    Poll: boolean
+	Name: string,
+	Read: ((Instance) -> any)?,
+	Write: ((Instance, any) -> ())?,
+	Writable: boolean,
+	Poll: boolean,
 }
 
 type CategoryPlan = {
-    Name: string,
-    Properties: { PropertyPlan }
+	Name: string,
+	Properties: { PropertyPlan },
 }
 
 type ClassPlan = {
-    Categories: { CategoryPlan }
+	Categories: { CategoryPlan },
 }
 
 export type CategorySnapshot = {
-    Name: string,
-    Items: { Item }
+	Name: string,
+	Items: { Item },
 }
 
 export type PropertyLocation = {
-    Plan: PropertyPlan,
-    CategoryIndex: number,
-    ItemIndex: number
+	Plan: PropertyPlan,
+	CategoryIndex: number,
+	ItemIndex: number,
 }
 
 export type Snapshot = {
-    Categories: { CategorySnapshot },
-    LocationsByName: { [string]: PropertyLocation }
+	Categories: { CategorySnapshot },
+	LocationsByName: { [string]: PropertyLocation },
 }
 
 local ClassPlansByName: { [string]: ClassPlan } = {}
-local PluginReflectionSecurity = SecurityCapabilities.fromCurrent():Add(
-    Enum.SecurityCapability.Basic,
-    Enum.SecurityCapability.Plugin,
-    Enum.SecurityCapability.PluginOrOpenCloud
-)
+local PluginReflectionSecurity =
+	SecurityCapabilities.fromCurrent()
+		:Add(Enum.SecurityCapability.Basic, Enum.SecurityCapability.Plugin, Enum.SecurityCapability.PluginOrOpenCloud)
 
-local function MergeTables(
-    target: { [any]: any },
-    source: { [any]: any }
-)
-    for sourceKey, sourceValue in source do
-        local targetValue = target[sourceKey]
+local function MergeTables(target: { [any]: any }, source: { [any]: any })
+	for sourceKey, sourceValue in source do
+		local targetValue = target[sourceKey]
 
-        if type(targetValue) ~= "table" or type(sourceValue) ~= "table" then
-            target[sourceKey] = sourceValue
-            continue
-        end
+		if type(targetValue) ~= "table" or type(sourceValue) ~= "table" then
+			target[sourceKey] = sourceValue
+			continue
+		end
 
-        target[sourceKey] = MergeTables(table.clone(targetValue), sourceValue)
-    end
+		target[sourceKey] = MergeTables(table.clone(targetValue), sourceValue)
+	end
 
-    return target
+	return target
 end
 
 local function ApplyOwnerPatches(
-    item: Types.ReflectionPropertiesItem,
-    patchCategory: { [string]: any },
-    itemOwner: string?
+	item: Types.ReflectionPropertiesItem,
+	patchCategory: { [string]: any },
+	itemOwner: string?
 ): Types.PatchedReflectionPropertiesItem
-    if not itemOwner then return item :: Types.PatchedReflectionPropertiesItem end
+	if not itemOwner then
+		return item :: Types.PatchedReflectionPropertiesItem
+	end
 
-    local patchOwner = patchCategory[itemOwner]
-    if not patchOwner then return item :: Types.PatchedReflectionPropertiesItem end
+	local patchOwner = patchCategory[itemOwner]
+	if not patchOwner then
+		return item :: Types.PatchedReflectionPropertiesItem
+	end
 
-    local patchProperty = patchOwner[item.Name]
-    if not patchProperty then return item :: Types.PatchedReflectionPropertiesItem end
+	local patchProperty = patchOwner[item.Name]
+	if not patchProperty then
+		return item :: Types.PatchedReflectionPropertiesItem
+	end
 
-    return MergeTables(table.clone(item) :: any, patchProperty)
+	return MergeTables(table.clone(item) :: any, patchProperty)
 end
 
-local function ApplyPatches(
-    item: Types.ReflectionPropertiesItem
-): Types.PatchedReflectionPropertiesItem
-    local itemDisplay = item.Display
-    if not itemDisplay then return item :: Types.PatchedReflectionPropertiesItem end
+local function ApplyPatches(item: Types.ReflectionPropertiesItem): Types.PatchedReflectionPropertiesItem
+	local itemDisplay = item.Display
+	if not itemDisplay then
+		return item :: Types.PatchedReflectionPropertiesItem
+	end
 
-    local patchCategory = Patches[itemDisplay.Category]
-    if not patchCategory then return item :: Types.PatchedReflectionPropertiesItem end
+	local patchCategory = Patches[itemDisplay.Category]
+	if not patchCategory then
+		return item :: Types.PatchedReflectionPropertiesItem
+	end
 
-    local patchedItem = ApplyOwnerPatches(item, patchCategory, item.Owner)
-    patchedItem = ApplyOwnerPatches(patchedItem, patchCategory, "*")
+	local patchedItem = ApplyOwnerPatches(item, patchCategory, item.Owner)
+	patchedItem = ApplyOwnerPatches(patchedItem, patchCategory, "*")
 
-    return patchedItem
+	return patchedItem
 end
 
 local function CreateOrGetCategoryPlan(
-    categories: { CategoryPlan },
-    categoriesByName: { [string]: CategoryPlan },
-    categoryName: string
+	categories: { CategoryPlan },
+	categoriesByName: { [string]: CategoryPlan },
+	categoryName: string
 ): CategoryPlan
-    local existingCategory = categoriesByName[categoryName]
-    if existingCategory then return existingCategory end
+	local existingCategory = categoriesByName[categoryName]
+	if existingCategory then
+		return existingCategory
+	end
 
-    local category = {
-        Name = categoryName,
-        Properties = {}
-    }
+	local category = {
+		Name = categoryName,
+		Properties = {},
+	}
 
-    categoriesByName[categoryName] = category
-    table.insert(categories, category)
+	categoriesByName[categoryName] = category
+	table.insert(categories, category)
 
-    return category
+	return category
 end
 
 local function BuildClassPlan(className: string): ClassPlan
-    local categoriesByName: { [string]: CategoryPlan } = {}
-    local classPlan: ClassPlan = {
-        Categories = {}
-    }
+	local categoriesByName: { [string]: CategoryPlan } = {}
+	local classPlan: ClassPlan = {
+		Categories = {},
+	}
 
-    local reflectedProperties = ReflectionService:GetPropertiesOfClass(
-        className,
-        { Security = PluginReflectionSecurity }
-    )
+	local reflectedProperties =
+		ReflectionService:GetPropertiesOfClass(className, { Security = PluginReflectionSecurity })
 
-    for _, reflectedItem in reflectedProperties do
-        local item = ApplyPatches(reflectedItem)
-        local itemDisplay = item.Display
+	for _, reflectedItem in reflectedProperties do
+		local item = ApplyPatches(reflectedItem)
+		local itemDisplay = item.Display
 
-        if not itemDisplay then continue end
-        if itemDisplay.DeprecationMessage then continue end
+		if not itemDisplay then
+			continue
+		end
+		if itemDisplay.DeprecationMessage then
+			continue
+		end
 
-        local category = CreateOrGetCategoryPlan(
-            classPlan.Categories,
-            categoriesByName,
-            itemDisplay.Category
-        )
+		local category = CreateOrGetCategoryPlan(classPlan.Categories, categoriesByName, itemDisplay.Category)
 
-        local customReadWrite = item.CustomReadWrite
-        local propertyPlan: PropertyPlan = {
-            Name = item.Name,
-            Read =
-                if customReadWrite then customReadWrite.Read
-                else nil,
-            Write =
-                if customReadWrite then customReadWrite.Write
-                else nil,
-            Writable = customReadWrite ~= nil or
-                item.Permits.Write ~= nil,
-            Poll = customReadWrite ~= nil and
-                customReadWrite.Poll == true
-        }
+		local customReadWrite = item.CustomReadWrite
+		local propertyPlan: PropertyPlan = {
+			Name = item.Name,
+			Read = if customReadWrite then customReadWrite.Read else nil,
+			Write = if customReadWrite then customReadWrite.Write else nil,
+			Writable = customReadWrite ~= nil or item.Permits.Write ~= nil,
+			Poll = customReadWrite ~= nil and customReadWrite.Poll == true,
+		}
 
-        table.insert(category.Properties, propertyPlan)
-    end
+		table.insert(category.Properties, propertyPlan)
+	end
 
-    for _, category in classPlan.Categories do
-        table.sort(category.Properties, function(
-            leftProperty: PropertyPlan,
-            rightProperty: PropertyPlan
-        )
-            return leftProperty.Name < rightProperty.Name
-        end)
-    end
+	for _, category in classPlan.Categories do
+		table.sort(category.Properties, function(leftProperty: PropertyPlan, rightProperty: PropertyPlan)
+			return leftProperty.Name < rightProperty.Name
+		end)
+	end
 
-    return classPlan
+	return classPlan
 end
 
 local function GetClassPlan(className: string): ClassPlan
-    local classPlan = ClassPlansByName[className]
-    if classPlan then return classPlan end
+	local classPlan = ClassPlansByName[className]
+	if classPlan then
+		return classPlan
+	end
 
-    local classPlan = BuildClassPlan(className)
-    ClassPlansByName[className] = classPlan
+	local classPlan = BuildClassPlan(className)
+	ClassPlansByName[className] = classPlan
 
-    return classPlan
+	return classPlan
 end
 
 local function ReadProperty(instance: Instance, name: string): any
-    return (instance :: any)[name]
+	return (instance :: any)[name]
 end
 
-local function ReadPlannedProperty(
-    instance: Instance,
-    propertyPlan: PropertyPlan
-): (boolean, any)
-    if propertyPlan.Read then
-        return pcall(propertyPlan.Read, instance)
-    end
+local function ReadPlannedProperty(instance: Instance, propertyPlan: PropertyPlan): (boolean, any)
+	if propertyPlan.Read then
+		return pcall(propertyPlan.Read, instance)
+	end
 
-    return pcall(ReadProperty, instance, propertyPlan.Name)
+	return pcall(ReadProperty, instance, propertyPlan.Name)
 end
 
-local function WriteProperty(
-    instance: Instance,
-    name: string,
-    value: any
-)
-    (instance :: any)[name] = value
+local function WriteProperty(instance: Instance, name: string, value: any)
+	(instance :: any)[name] = value
 end
 
-local function IsPropertyWritable(
-    instance: Instance,
-    propertyPlan: PropertyPlan
-): boolean
-    if not propertyPlan.Writable then return false end
-    if propertyPlan.Name ~= "Parent" then return true end
+local function IsPropertyWritable(instance: Instance, propertyPlan: PropertyPlan): boolean
+	if not propertyPlan.Writable then
+		return false
+	end
+	if propertyPlan.Name ~= "Parent" then
+		return true
+	end
 
-    return instance.Parent ~= game and instance ~= Workspace.Terrain
+	return instance.Parent ~= game and instance ~= Workspace.Terrain
 end
 
-local function WritePlannedProperty(
-    instance: Instance,
-    propertyPlan: PropertyPlan,
-    value: any
-): (boolean, any)
-    if not IsPropertyWritable(instance, propertyPlan) then
-        return false, `Property '{propertyPlan.Name}' is read-only.`
-    end
+local function WritePlannedProperty(instance: Instance, propertyPlan: PropertyPlan, value: any): (boolean, any)
+	if not IsPropertyWritable(instance, propertyPlan) then
+		return false, `Property '{propertyPlan.Name}' is read-only.`
+	end
 
-    if propertyPlan.Write then
-        return pcall(propertyPlan.Write, instance, value)
-    end
+	if propertyPlan.Write then
+		return pcall(propertyPlan.Write, instance, value)
+	end
 
-    return pcall(WriteProperty, instance, propertyPlan.Name, value)
+	return pcall(WriteProperty, instance, propertyPlan.Name, value)
 end
 
 local function GetProperties(instance: Instance): Snapshot
-    local categories: { CategorySnapshot } = {}
-    local locationsByName: { [string]: PropertyLocation } = {}
-    local classPlan = GetClassPlan(instance.ClassName)
+	local categories: { CategorySnapshot } = {}
+	local locationsByName: { [string]: PropertyLocation } = {}
+	local classPlan = GetClassPlan(instance.ClassName)
 
-    for _, categoryPlan in classPlan.Categories do
-        local propertyPlans = categoryPlan.Properties
-        local items = table.create(#propertyPlans) :: { Item }
-        local categoryIndex = #categories + 1
-        local itemCount = 0
+	for _, categoryPlan in classPlan.Categories do
+		local propertyPlans = categoryPlan.Properties
+		local items = table.create(#propertyPlans) :: { Item }
+		local categoryIndex = #categories + 1
+		local itemCount = 0
 
-        for _, propertyPlan in propertyPlans do
-            local name = propertyPlan.Name
-            local readSuccess, value =
-                ReadPlannedProperty(instance, propertyPlan)
-            if not readSuccess then continue end
+		for _, propertyPlan in propertyPlans do
+			local name = propertyPlan.Name
+			local readSuccess, value = ReadPlannedProperty(instance, propertyPlan)
+			if not readSuccess then
+				continue
+			end
 
-            itemCount += 1
-            items[itemCount] = {
-                Key = name,
-                Value = value,
-                Writable = IsPropertyWritable(instance, propertyPlan)
-            }
+			itemCount += 1
+			items[itemCount] = {
+				Key = name,
+				Value = value,
+				ValueWritable = IsPropertyWritable(instance, propertyPlan),
+			}
 
-            locationsByName[name] = {
-                Plan = propertyPlan,
-                CategoryIndex = categoryIndex,
-                ItemIndex = itemCount
-            }
-        end
+			locationsByName[name] = {
+				Plan = propertyPlan,
+				CategoryIndex = categoryIndex,
+				ItemIndex = itemCount,
+			}
+		end
 
-        if itemCount == 0 then continue end
+		if itemCount == 0 then
+			continue
+		end
 
-        categories[categoryIndex] = {
-            Name = categoryPlan.Name,
-            Items = items
-        }
-    end
+		categories[categoryIndex] = {
+			Name = categoryPlan.Name,
+			Items = items,
+		}
+	end
 
-    return {
-        Categories = categories,
-        LocationsByName = locationsByName
-    }
+	return {
+		Categories = categories,
+		LocationsByName = locationsByName,
+	}
 end
 
 return {
-    Read = GetProperties,
-    ReadProperty = ReadPlannedProperty,
-    WriteProperty = WritePlannedProperty
+	Read = GetProperties,
+	ReadProperty = ReadPlannedProperty,
+	WriteProperty = WritePlannedProperty,
 }

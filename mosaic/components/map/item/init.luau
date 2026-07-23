@@ -30,6 +30,21 @@ local ZIndices = require(script.Parent.zIndices)
 
 local FocusRingActiveAlphaThreshold = .15
 
+local function UseBooleanState(
+    use: Fusion.Use,
+    state: Fusion.Value<boolean>?
+): boolean
+    return state ~= nil and use<<boolean>>(state)
+end
+
+local function UseActiveFocusRing(
+    use: Fusion.Use,
+    state: Fusion.Value<number>?
+): boolean
+    return state ~= nil
+        and use<<number>>(state) >= FocusRingActiveAlphaThreshold
+end
+
 type MapItemProps = Typeforge.Flatten<{
     Variant: ThemeUtils.BgVariantLayer,
     Layout: Types.ItemLayout,
@@ -89,7 +104,8 @@ local function CreateMapItem(
     local children = layout.Children
     local hasSubItems = #children > 0
     local redrawable = layout.CanBecomeMapBottom
-    local hasInteractiveValue = hasValue and layout.Writable
+    local hasInteractiveKey = layout.KeyWritable
+    local hasInteractiveValue = hasValue and layout.ValueWritable
     local hasKeyChildren =
         item.KeyChildren ~= nil and next(item.KeyChildren) ~= nil
     local hasValueChildren =
@@ -98,37 +114,50 @@ local function CreateMapItem(
         and next(item.ValueChildren) ~= nil
 
     local keyHoverState: Fusion.Value<boolean>? =
-        if hasKeyChildren then Value(scope, false) else nil
-    local isHoverState: Fusion.Value<boolean>? =
+        if hasInteractiveKey or hasKeyChildren
+        then Value(scope, false)
+        else nil
+    local valueHoverState: Fusion.Value<boolean>? =
         if hasInteractiveValue or hasValueChildren
         then Value(scope, false)
         else nil
-    local isFocusState: Fusion.Value<boolean>? = nil
-    local isFocusElevationState: Fusion.Value<boolean>? = nil
-    local focusRingAlphaState: Fusion.Value<number>? = nil
+    local keyFocusState: Fusion.Value<boolean>? = nil
+    local keyFocusElevationState: Fusion.Value<boolean>? = nil
+    local keyFocusRingAlphaState: Fusion.Value<number>? = nil
+    local valueFocusState: Fusion.Value<boolean>? = nil
+    local valueFocusElevationState: Fusion.Value<boolean>? = nil
+    local valueFocusRingAlphaState: Fusion.Value<number>? = nil
     local rowZIndex: Fusion.UsedAs<number> = ZIndices.Default
 
+    if hasInteractiveKey then
+        keyFocusState = layout.KeyFocusState
+        keyFocusElevationState = layout.KeyFocusElevationState
+        keyFocusRingAlphaState = Value(scope, 0)
+    end
+
     if hasInteractiveValue then
-        isFocusState = layout.ValueFocusState
-        isFocusElevationState = layout.ValueFocusElevationState
-        focusRingAlphaState = Value(scope, 0)
+        valueFocusState = layout.ValueFocusState
+        valueFocusElevationState = layout.ValueFocusElevationState
+        valueFocusRingAlphaState = Value(scope, 0)
+    end
 
+    if hasInteractiveKey or hasInteractiveValue then
         rowZIndex = Computed(scope, function(use: Fusion.Use): number
-            local focusRingAlpha = use<<number>>(
-                focusRingAlphaState :: Fusion.Value<number>
-            )
-            local isFocusElevated = use<<boolean>>(
-                isFocusElevationState :: Fusion.Value<boolean>
-            )
-            local isHovered = use<<boolean>>(
-                isHoverState :: Fusion.Value<boolean>
-            )
-
-            if focusRingAlpha >= FocusRingActiveAlphaThreshold then
+            if UseActiveFocusRing(use, keyFocusRingAlphaState)
+                or UseActiveFocusRing(use, valueFocusRingAlphaState)
+            then
                 return ZIndices.Focus
             end
-            if isFocusElevated then return ZIndices.DisappearingFocus end
-            if isHovered then return ZIndices.Hover end
+            if UseBooleanState(use, keyFocusElevationState)
+                or UseBooleanState(use, valueFocusElevationState)
+            then
+                return ZIndices.DisappearingFocus
+            end
+            if UseBooleanState(use, keyHoverState)
+                or UseBooleanState(use, valueHoverState)
+            then
+                return ZIndices.Hover
+            end
             return ZIndices.Default
         end)
     end
@@ -224,7 +253,9 @@ local function CreateMapItem(
 
     table.insert(itemContentChildren, MapItemKey(scope, {
         Key = key,
+        Writable = layout.KeyWritable,
         DisplayAsWritable = layout.DisplayAsWritable,
+        TrySetKey = layout.TrySetKey,
         Variant = props.Variant,
         RowCount = props.RowCount,
         RowIdx = rowIdx,
@@ -234,6 +265,9 @@ local function CreateMapItem(
         CollapsedState = layout.CollapsedState,
         Redrawable = redrawable,
         HoverState = keyHoverState,
+        FocusState = keyFocusState,
+        FocusElevationState = keyFocusElevationState,
+        FocusRingAlphaState = keyFocusRingAlphaState,
         RightChildren = if keyHoverState then
             CreateRightChildren(
                 scope,
@@ -247,23 +281,23 @@ local function CreateMapItem(
     if hasValue then
         table.insert(itemContentChildren, MapItemValue(scope, {
             Value = layout.ResolvedValue,
-            Writable = layout.Writable,
+            Writable = layout.ValueWritable,
             DisplayAsWritable = layout.DisplayAsWritable,
             TrySetValue = layout.TrySetValue,
             Variant = props.Variant,
             RowCount = props.RowCount,
             RowIdx = rowIdx,
             Redrawable = redrawable,
-            HoverState = isHoverState,
-            FocusState = isFocusState,
-            FocusElevationState = isFocusElevationState,
-            FocusRingAlphaState = focusRingAlphaState,
+            HoverState = valueHoverState,
+            FocusState = valueFocusState,
+            FocusElevationState = valueFocusElevationState,
+            FocusRingAlphaState = valueFocusRingAlphaState,
             RightChildren = if hasValueChildren then
                 CreateRightChildren(
                     scope,
                     "ValueChildren",
                     item.ValueChildren,
-                    isHoverState :: Fusion.Value<boolean>
+                    valueHoverState :: Fusion.Value<boolean>
                 )
                 else nil
         }))

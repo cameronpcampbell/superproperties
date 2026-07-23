@@ -24,7 +24,7 @@ local MapContentPadding = 1
 
 type Item = Types.Item
 type Items = Types.Items
-type TrySetValue<T> = Types.TrySetValue<T>
+type TrySet<T> = Types.TrySet<T>
 type IntrinsicAccessor = Types.IntrinsicAccessor
 type IntrinsicItem = Types.IntrinsicItem
 type IntrinsicItems = Types.IntrinsicItems
@@ -46,8 +46,10 @@ type ResolvedItem = {
     RootValue: any,
     ResolvedValue: any,
     ValueAccessor: IntrinsicAccessor?,
-    TrySetValue: TrySetValue<any>?,
-    Writable: boolean,
+    TrySetKey: TrySet<string>?,
+    TrySetValue: TrySet<any>?,
+    KeyWritable: boolean,
+    ValueWritable: boolean,
     DisplayAsWritable: boolean
 }
 type CollapseStateNode = {
@@ -199,9 +201,13 @@ local function CreateCachedCollapsedState(
 end
 
 local function ResolveItem(item: Item): ResolvedItem
+    local trySetKey = item.TrySetKey
     local trySetValue = item.TrySetValue
-    local writable =
-        item.Writable ~= false and
+    local keyWritable =
+        item.KeyWritable ~= false and
+        trySetKey ~= nil
+    local valueWritable =
+        item.ValueWritable ~= false and
         trySetValue ~= nil
 
     return {
@@ -210,10 +216,12 @@ local function ResolveItem(item: Item): ResolvedItem
         RootValue = item.Value,
         ResolvedValue = item.Value,
         ValueAccessor = nil,
-        TrySetValue = if writable then trySetValue else nil,
-        Writable = writable,
+        TrySetKey = if keyWritable then trySetKey else nil,
+        TrySetValue = if valueWritable then trySetValue else nil,
+        KeyWritable = keyWritable,
+        ValueWritable = valueWritable,
         DisplayAsWritable =
-            writable or item.DisplayAsWritable == true
+            keyWritable or valueWritable or item.DisplayAsWritable == true
     }
 end
 
@@ -221,15 +229,15 @@ local function ResolveIntrinsicItem(
     item: IntrinsicItem,
     rootItem: Item,
     rootValue: any,
-    parentWritable: boolean,
+    parentValueWritable: boolean,
     parentDisplayAsWritable: boolean
 ): ResolvedItem
     local valueAccessor = item.Value
     local writeValue = valueAccessor.Write
     local trySetRootValue = rootItem.TrySetValue
-    local trySetValue: TrySetValue<any>? = nil
+    local trySetValue: TrySet<any>? = nil
 
-    if parentWritable and trySetRootValue then
+    if parentValueWritable and trySetRootValue then
         trySetValue = function(value: any): (boolean, string?, any?)
             local nextRootValue = writeValue(
                 rootItem.Value,
@@ -253,8 +261,10 @@ local function ResolveIntrinsicItem(
         RootValue = rootValue,
         ResolvedValue = valueAccessor.Read(rootValue),
         ValueAccessor = valueAccessor,
+        TrySetKey = nil,
         TrySetValue = trySetValue,
-        Writable = parentWritable,
+        KeyWritable = false,
+        ValueWritable = parentValueWritable,
         DisplayAsWritable = parentDisplayAsWritable
     }
 end
@@ -271,7 +281,7 @@ local function GetChildItems(item: ResolvedItem): { ResolvedItem }
                 childItem,
                 item.RootItem,
                 item.RootValue,
-                item.Writable,
+                item.ValueWritable,
                 item.DisplayAsWritable
             )
         end
@@ -292,7 +302,7 @@ local function GetChildItems(item: ResolvedItem): { ResolvedItem }
             childItem,
             item.RootItem,
             item.RootValue,
-            item.Writable,
+            item.ValueWritable,
             item.DisplayAsWritable
         )
     end
@@ -395,15 +405,21 @@ local function CreateItemLayout(
     local animatedHeight = Computed(scope, function(use: Fusion.Use): number
         return rowHeight + use<<number>>(animatedChildrenHeight)
     end)
+    local keyFocusState = Value<<boolean>>(scope, false)
+    local keyFocusElevationState = Value<<boolean>>(scope, false)
     local valueFocusState = Value<<boolean>>(scope, false)
     local valueFocusElevationState = Value<<boolean>>(scope, false)
 
     return {
         Item = item,
         ResolvedValue = resolvedItem.ResolvedValue,
+        TrySetKey = resolvedItem.TrySetKey,
         TrySetValue = resolvedItem.TrySetValue,
-        Writable = resolvedItem.Writable,
+        KeyWritable = resolvedItem.KeyWritable,
+        ValueWritable = resolvedItem.ValueWritable,
         DisplayAsWritable = resolvedItem.DisplayAsWritable,
+        KeyFocusState = keyFocusState,
+        KeyFocusElevationState = keyFocusElevationState,
         ValueFocusState = valueFocusState,
         ValueFocusElevationState = valueFocusElevationState,
         Depth = depth,
@@ -423,6 +439,8 @@ local function UseItemTreeFocus(
     use: Fusion.Use,
     layout: ItemLayout
 ): boolean
+    if use<<boolean>>(layout.KeyFocusState) then return true end
+    if use<<boolean>>(layout.KeyFocusElevationState) then return true end
     if use<<boolean>>(layout.ValueFocusState) then return true end
     if use<<boolean>>(layout.ValueFocusElevationState) then return true end
 
@@ -626,7 +644,9 @@ local function CreateMapLayout(
 
             for itemLayout, rowIdx in usedMetadata.RowIndices do
                 if rowIdx == lastRowIdx then
-                    return use<<boolean>>(itemLayout.ValueFocusState)
+                    return
+                        use<<boolean>>(itemLayout.KeyFocusState)
+                        or use<<boolean>>(itemLayout.ValueFocusState)
                 end
             end
 

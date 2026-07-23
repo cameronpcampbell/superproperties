@@ -161,7 +161,7 @@ return function(
     end
 
     local function makeAttributeWritable(item: Item, attributeName: string)
-        item.Writable = true
+        item.ValueWritable = true
         item.ValueChildren = {
             IconButton(scope, {
                 Image = Assets.Cross,

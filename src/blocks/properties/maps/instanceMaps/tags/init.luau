@@ -84,7 +84,6 @@ local function CreateTagItem(
 ): Item
     return {
         Key = tag,
-        Writable = false,
         DisplayAsWritable = true,
         KeyChildren = {
             IconButton(scope, {
