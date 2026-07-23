@@ -259,9 +259,9 @@ return function(
         instance.AttributeChanged:Connect(refreshAttribute)
     )
 
-    local nameState = Value(scope, "")
+    local nameState = Value<<string?>>(scope, "")
     local createAttributeDisabled = Computed(scope, function(use): boolean
-        return Trim(use<<string>>(nameState)) == ""
+        return Trim(use<<string?>>(nameState) or "") == ""
     end)
     local selectedTypeIdxState = Value<<number?>>(scope, 1)
     local attributeMenu: GuiObject
@@ -274,7 +274,7 @@ return function(
     })
 
     local function createAttribute()
-        local attributeName = Trim(Peek<<string>>(nameState))
+        local attributeName = Trim(Peek<<string?>>(nameState) or "")
         if attributeName == "" then
             warn("SuperProperties: Attribute name cannot be empty.")
             return

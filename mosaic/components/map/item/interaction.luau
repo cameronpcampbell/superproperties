@@ -54,10 +54,10 @@ local function CreateMapItemInteraction(
 
     if props.HoverState then
         local hoverState = props.HoverState
-        interactionProps = {
-            [OnEvent "MouseEnter"] = function() hoverState:set(true) end,
-            [OnEvent "MouseLeave"] = function() hoverState:set(false) end
-        }
+        interactionProps[OnEvent "MouseEnter"] =
+            function() hoverState:set(true) end
+        interactionProps[OnEvent "MouseLeave"] =
+            function() hoverState:set(false) end
     end
 
     if not props.Writable then
