@@ -1,7 +1,7 @@
 --!strict
 
 local CreateItemFilter =
-    require("../src/blocks/properties/maps/category/filterItems")
+    require("./filterItems")
 
 type Item = { Key: string, Value: any }
 type ItemFilter = (query: string?) -> { Item }

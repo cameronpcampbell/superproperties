@@ -1,7 +1,7 @@
 --!strict
 
 local VirtualizationMath =
-    require("../mosaic/components/map/virtualization/math")
+    require("./math")
 
 local function AssertEqual(actual: number, expected: number, label: string)
     assert(

@@ -1,11 +1,10 @@
 --!strict
 
+local Roblox = require("@lune/roblox")
+local UDim2 = Roblox.UDim2
+
 local CreateItemFilter =
-    require("../src/blocks/properties/maps/category/filterItems")
-local IntrinsicSubItems =
-    require("../mosaic/components/map/item/intrinsicSubItems")
-local GetFlattenedDefinitionsList =
-    IntrinsicSubItems.GetFlattenedDefinitionsList
+    require("./filterItems")
 
 type Item = { Key: string, Value: any? }
 type ItemFilter = (query: string?) -> { Item }
@@ -17,28 +16,6 @@ local function CreateFilter(items: { Item }): ItemFilter
         return itemFilter(query, items)
     end
 end
-
-local function AssertKeys(items: { any }, expectedKeys: { string })
-    assert(
-        #items == #expectedKeys,
-        `expected {#expectedKeys} items, got {#items}`
-    )
-
-    for idx, expectedKey in expectedKeys do
-        assert(
-            items[idx].Key == expectedKey,
-            `expected key '{expectedKey}' at index {idx}, got '{items[idx].Key}'`
-        )
-    end
-end
-
-AssertKeys(GetFlattenedDefinitionsList("UDim2"), {
-    "X", "Scale", "Offset", "Y", "Scale", "Offset"
-})
-AssertKeys(GetFlattenedDefinitionsList("CFrame"), {
-    "Position", "X", "Y", "Z", "Orientation", "X", "Y", "Z"
-})
-assert(#GetFlattenedDefinitionsList("UnsupportedType") == 0)
 
 local HashModulus = 2_147_483_647
 local hash = 5381

@@ -17,6 +17,7 @@ local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
 local Root = require(Utils.root)
+local CursorPredictor = require(Utils.cursorPredictor)
 
 local Components = script.Parent
 local Background = require(Components.background)
@@ -80,6 +81,7 @@ return Component<<WidgetProps>>(function(scope, props)
         [Children] = content,
     } :: Frame
     Root.AddRoot(scope, root)
+    CursorPredictor.RegisterRoot(scope, root)
 
     local debugGuiName = `CAMERONPCAMPBELL:MOSAIC_DEBUG[{id}]`
     local found = StarterGui:FindFirstChild(debugGuiName)

@@ -1,7 +1,7 @@
 --!strict
 --!nolint LocalShadow
 
--- Measures the warm metadata-processing path with deterministic synthetic
+-- Benchmarks the warm metadata-processing path with deterministic synthetic
 -- reflection data. It does not include ReflectionService engine-call or UI
 -- construction costs.
 

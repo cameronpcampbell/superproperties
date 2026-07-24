@@ -93,7 +93,7 @@ return Component<<CheckboxProps>>(function(scope, props)
     return CoreButton(scope, HighlightSupercorner, {
         Button = true,
         Enabled = gradientEnabled,
-        GradientTransparency = 0.78,
+        GradientTransparency = 0.82,
         BackgroundColor3 = Oktween(
             scope, accentColor,
             TweenInfo.new(
