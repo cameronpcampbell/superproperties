@@ -29,12 +29,30 @@ local Virtualization = require(Components.map.virtualization)
 local CreateMapLayout, CreateMapSizeTween =
     Virtualization.CreateMapLayout,
     Virtualization.CreateMapSizeTween
+local VirtualizationMath = require(Components.map.virtualization.math)
+
+local VirtualMapScrollableMath = require(script.math)
+local ShouldRefreshVirtualWindow, FindVisibleMapRange =
+    VirtualMapScrollableMath.ShouldRefreshVirtualWindow,
+    VirtualMapScrollableMath.FindVisibleMapRange
 
 type MapProps = Map.MapProps
+type MapLayout = Virtualization.MapLayout
 
 type LayoutOrdered = {
     LayoutOrder: number?
 }
+
+type MapRecord = {
+    Top: Fusion.UsedAs<number>,
+    Bottom: Fusion.UsedAs<number>,
+    Layout: MapLayout,
+    ShowOnTop: Fusion.UsedAs<boolean>,
+    Occluded: Fusion.Value<boolean>,
+    VisibleRootRange: Fusion.Value<Vector2>
+}
+
+type MapIndexSet = { [number]: boolean }
 
 type VirtualMapScrollableProps = {
     Maps: Fusion.UsedAs<{ MapProps }>,
@@ -75,8 +93,6 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
         Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
     local viewportCanvasPositionState =
         Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
-    local virtualViewportCanvasPositionState =
-        Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
     local canvasHeightState = Fusion.Value<<number>>(scope, 0)
 
     local paddingState: Fusion.UsedAs<number> = padding
@@ -103,47 +119,13 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
     local overdrawState: Fusion.UsedAs<number> =
         overdraw or defaultOverdraw
 
-    -- CanvasPosition can change many times while the rendered window remains
-    -- valid. Keep that hot engine output separate from the state consumed by
-    -- every map and only move the virtual window by roughly one row at a time.
-    local function publishVirtualCanvasPosition(force: boolean?)
-        local current = Peek<<Vector2>>(viewportCanvasPositionState)
-        local published = Peek<<Vector2>>(
-            virtualViewportCanvasPositionState
-        )
-        local usedOverdraw = math.max(Peek<<number>>(overdrawState), 0)
-        local usedRowHeight = math.max(Peek<<number>>(rowHeight), 0)
-        local threshold = math.min(
-            usedOverdraw / 2,
-            usedRowHeight * VirtualizationStepRows
-        )
-
-        if not force
-            and current.X == published.X
-            and math.abs(current.Y - published.Y) < threshold
-        then
-            return
-        end
-
-        virtualViewportCanvasPositionState:set(current)
-    end
-
-    Observer(scope, viewportCanvasPositionState):onBind(function()
-        publishVirtualCanvasPosition()
-    end)
-    Observer(scope, overdrawState):onChange(function()
-        publishVirtualCanvasPosition(true)
-    end)
-    Observer(scope, rowHeight):onChange(function()
-        publishVirtualCanvasPosition(true)
-    end)
-
     local computeMapInstances = Computed(scope, function(
         use: Fusion.Use,
         scope: Fusion.Scope
     ): { Fusion.Child }
         local usedMapsProps = use<<{ MapProps }>>(computeSortedMapsProps)
         local mapChildren = table.create(#usedMapsProps) :: { Fusion.Child }
+        local mapRecords = table.create(#usedMapsProps) :: { MapRecord }
 
         -- Layout records live in this persistent scope, rather than inside the
         -- mounted Map scopes. An off-screen map can therefore keep animating
@@ -200,48 +182,25 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                 return use<<number>>(mapTop) + usedMapSize.Height.Offset
             end)
 
-            local mapOccluded = Computed(scope, function(use: Fusion.Use): boolean
-                if use<<boolean>>(showOnTop) then return false end
+            local mapOccludedState =
+                Fusion.Value<<boolean>>(scope, true)
+            local visibleRootRangeState =
+                Fusion.Value<<Vector2>>(scope, Vector2.new(1, 0))
 
-                local focusedRootRange =
-                    use<<Vector2>>(layout.FocusedRootRange)
-
-                if focusedRootRange.X <= focusedRootRange.Y then
-                    return false
-                end
-
-                local usedViewportSize =
-                    use<<Vector2>>(viewportAbsoluteSizeState)
-
-                -- There is no trustworthy viewport on the first evaluation.
-                -- Keep maps unmounted until the ScrollingFrame reports one.
-                if usedViewportSize.X <= 0 or usedViewportSize.Y <= 0 then
-                    return true
-                end
-
-                local usedCanvasPosition =
-                    use<<Vector2>>(virtualViewportCanvasPositionState)
-                local usedOverdraw =
-                    math.max(use<<number>>(overdrawState), 0)
-                local usedMapTop = use<<number>>(mapTop)
-                local usedMapBottom = use<<number>>(mapBottom)
-
-                local viewportTop = usedCanvasPosition.Y - usedOverdraw
-                local viewportBottom = usedCanvasPosition.Y
-                    + usedViewportSize.Y
-                    + usedOverdraw
-
-                -- Partially intersecting maps remain mounted. Only maps whose
-                -- complete bounds are outside the overdraw window are culled.
-                return usedMapBottom <= viewportTop
-                    or usedMapTop >= viewportBottom
-            end)
+            mapRecords[idx] = {
+                Top = mapTop,
+                Bottom = mapBottom,
+                Layout = layout,
+                ShowOnTop = showOnTop,
+                Occluded = mapOccludedState,
+                VisibleRootRange = visibleRootRangeState
+            }
 
             mapChildren[idx] = Computed(scope, function(
                 use: Fusion.Use,
                 mapScope: Fusion.Scope
             ): Fusion.Child
-                if use<<boolean>>(mapOccluded) then return {} end
+                if use<<boolean>>(mapOccludedState) then return {} end
 
                 local geometryReadyState =
                     Fusion.Value<<boolean>>(mapScope, false)
@@ -267,11 +226,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                         AnimatedMapSize = animatedMapSize,
                         MapReveal = mapReveal,
                         GeometryReady = geometryReadyState,
-                        ViewportCanvasPosition =
-                            virtualViewportCanvasPositionState,
-                        ViewportAbsoluteSize = viewportAbsoluteSizeState,
-                        MapCanvasTop = mapTop,
-                        Overdraw = overdrawState
+                        VisibleRootRange = visibleRootRangeState
                     }
                 }
 
@@ -329,6 +284,173 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
             lastRowFocused = layout.LastRowFocused
             lastMapCollapsed = collapsedState
         end
+
+        local emptyRootRange = Vector2.new(1, 0)
+        local activeMapIndices = {} :: MapIndexSet
+        local retainedMapIndices = {} :: MapIndexSet
+        local lastVirtualizationY: number? = nil
+
+        local function getMapTop(mapIdx: number): number
+            return Peek<<number>>(mapRecords[mapIdx].Top)
+        end
+
+        local function getMapBottom(mapIdx: number): number
+            return Peek<<number>>(mapRecords[mapIdx].Bottom)
+        end
+
+        local function setOccluded(record: MapRecord, occluded: boolean)
+            if Peek<<boolean>>(record.Occluded) == occluded then return end
+            record.Occluded:set(occluded)
+        end
+
+        local function setVisibleRootRange(
+            record: MapRecord,
+            visibleRootRange: Vector2
+        )
+            if Peek<<Vector2>>(record.VisibleRootRange)
+                == visibleRootRange
+            then
+                return
+            end
+
+            record.VisibleRootRange:set(visibleRootRange)
+        end
+
+        -- Scroll changes enter through this single imperative boundary. A
+        -- refresh locates intersecting maps once, then only publishes discrete
+        -- row ranges whose values actually changed.
+        local function refreshVirtualWindow(force: boolean?)
+            local currentCanvasY =
+                Peek<<Vector2>>(viewportCanvasPositionState).Y
+            local usedOverdraw =
+                math.max(Peek<<number>>(overdrawState), 0)
+            local usedRowHeight =
+                math.max(Peek<<number>>(rowHeight), 0)
+            local threshold = math.min(
+                usedOverdraw / 2,
+                usedRowHeight * VirtualizationStepRows
+            )
+
+            if not force
+                and not ShouldRefreshVirtualWindow(
+                    lastVirtualizationY,
+                    currentCanvasY,
+                    threshold
+                )
+            then
+                return
+            end
+
+            lastVirtualizationY = currentCanvasY
+
+            if force then
+                table.clear(retainedMapIndices)
+
+                for mapIdx, record in mapRecords do
+                    local focusedRootRange = Peek<<Vector2>>(
+                        record.Layout.FocusedRootRange
+                    )
+                    local hasFocusedRow =
+                        focusedRootRange.X <= focusedRootRange.Y
+
+                    if Peek<<boolean>>(record.ShowOnTop)
+                        or hasFocusedRow
+                    then
+                        retainedMapIndices[mapIdx] = true
+                    end
+                end
+            end
+
+            local viewportSize =
+                Peek<<Vector2>>(viewportAbsoluteSizeState)
+            local viewportReady =
+                viewportSize.X > 0 and viewportSize.Y > 0
+            local viewportTop = currentCanvasY - usedOverdraw
+            local viewportBottom = currentCanvasY
+                + viewportSize.Y
+                + usedOverdraw
+            local firstVisibleMap, lastVisibleMap = 1, 0
+
+            if viewportReady then
+                firstVisibleMap, lastVisibleMap = FindVisibleMapRange(
+                    #mapRecords,
+                    getMapTop,
+                    getMapBottom,
+                    viewportTop,
+                    viewportBottom
+                )
+            end
+
+            local nextActiveMapIndices = {} :: MapIndexSet
+
+            for mapIdx = firstVisibleMap, lastVisibleMap do
+                nextActiveMapIndices[mapIdx] = true
+            end
+
+            for mapIdx in retainedMapIndices do
+                nextActiveMapIndices[mapIdx] = true
+            end
+
+            for mapIdx in activeMapIndices do
+                if nextActiveMapIndices[mapIdx] then continue end
+                setOccluded(mapRecords[mapIdx], true)
+            end
+
+            for mapIdx in nextActiveMapIndices do
+                local record = mapRecords[mapIdx]
+                local visibleRootRange = emptyRootRange
+
+                if mapIdx >= firstVisibleMap
+                    and mapIdx <= lastVisibleMap
+                then
+                    local mapTop = getMapTop(mapIdx)
+                    local rootGeometry = Peek(record.Layout.RootGeometry)
+                    local firstRow, lastRow =
+                        VirtualizationMath.FindVisibleRange(
+                            rootGeometry,
+                            viewportTop - mapTop,
+                            viewportBottom - mapTop
+                        )
+
+                    visibleRootRange = Vector2.new(firstRow, lastRow)
+                end
+
+                -- Publish the range before mounting a newly visible map so its
+                -- geometry gate opens onto the correct rows.
+                setVisibleRootRange(record, visibleRootRange)
+                setOccluded(record, false)
+            end
+
+            activeMapIndices = nextActiveMapIndices
+        end
+
+        -- Geometry and retention changes are correctness invalidations rather
+        -- than scroll traffic, so they bypass the movement threshold.
+        local computeVirtualizationInputs = Computed(
+            scope,
+            function(use: Fusion.Use): {}
+                use<<Vector2>>(viewportAbsoluteSizeState)
+                use<<number>>(overdrawState)
+                use<<number>>(rowHeight)
+
+                for _, record in mapRecords do
+                    use<<number>>(record.Top)
+                    use<<number>>(record.Bottom)
+                    use(record.Layout.RootGeometry)
+                    use<<Vector2>>(record.Layout.FocusedRootRange)
+                    use<<boolean>>(record.ShowOnTop)
+                end
+
+                return {}
+            end
+        )
+
+        Observer(scope, computeVirtualizationInputs):onBind(function()
+            refreshVirtualWindow(true)
+        end)
+        Observer(scope, viewportCanvasPositionState):onChange(function()
+            refreshVirtualWindow()
+        end)
 
         local finalBottom = previousBottom
         local finalLastRowFocused = lastRowFocused

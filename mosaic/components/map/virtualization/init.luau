@@ -82,10 +82,7 @@ export type VirtualListData = {
     AnimatedMapSize: Fusion.UsedAs<UDim2>?,
     MapReveal: Fusion.UsedAs<number>?,
     GeometryReady: Fusion.UsedAs<boolean>,
-    ViewportCanvasPosition: Fusion.UsedAs<Vector2>,
-    ViewportAbsoluteSize: Fusion.UsedAs<Vector2>,
-    MapCanvasTop: Fusion.UsedAs<number>,
-    Overdraw: Fusion.UsedAs<number>
+    VisibleRootRange: Fusion.UsedAs<Vector2>
 }
 
 export type VirtualRowsConfig = {
@@ -864,31 +861,8 @@ local function ComputeVirtualListVisibleRootRange(
             return focusedRootRange
         end
 
-        local rootGeometry =
-            use<<RootRowGeometry>>(layout.RootGeometry)
-        if #rootGeometry.Tops == 0 then return focusedRootRange end
-
-        local mapCanvasTop = use<<number>>(virtualListData.MapCanvasTop)
-        local canvasPosition =
-            use<<Vector2>>(virtualListData.ViewportCanvasPosition)
-        local viewportSize =
-            use<<Vector2>>(virtualListData.ViewportAbsoluteSize)
-        local overdraw = math.max(
-            use<<number>>(virtualListData.Overdraw),
-            0
-        )
-
-        local viewportTop = canvasPosition.Y - overdraw - mapCanvasTop
-        local viewportBottom = canvasPosition.Y
-            + viewportSize.Y
-            + overdraw
-            - mapCanvasTop
-        local firstRow, lastRow = VirtualizationMath.FindVisibleRange(
-            rootGeometry,
-            viewportTop,
-            viewportBottom
-        )
-        local visibleRootRange = Vector2.new(firstRow, lastRow)
+        local visibleRootRange =
+            use<<Vector2>>(virtualListData.VisibleRootRange)
 
         return UnionRootRanges(visibleRootRange, focusedRootRange)
     end)
