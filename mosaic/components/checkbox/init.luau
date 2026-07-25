@@ -26,6 +26,7 @@ local TableExtract = TableUtils.Extract
 
 local Components = script.Parent
 local HighlightSupercorner = require(Components.highlightSupercorner)
+local GetNextChecked = require(script.getNextChecked)
 
 local CoreComponents = script.Parent.Parent.coreComponents
 local TransparencyGated = require(CoreComponents.transparencyGated)
@@ -160,7 +161,9 @@ return Component<<CheckboxProps>>(function(scope, props)
         [OnEvent "MouseButton1Click"] = function()
             if Peek<<boolean>>(disabled) then return end
 
-            local nextChecked = Peek<<Checked>>(checkedState) ~= true
+            local nextChecked = GetNextChecked(
+                Peek<<Checked>>(checkedState)
+            )
             if onChanged then
                 onChanged(nextChecked)
                 return

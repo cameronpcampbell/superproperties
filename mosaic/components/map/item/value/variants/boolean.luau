@@ -12,6 +12,7 @@ local CreateSidePadding = require(script.Parent.utils.createSidePadding)
 
 local Components = script.Parent.Parent.Parent.Parent.Parent
 local Checkbox = require(Components.checkbox)
+local GetNextChecked = require(Components.checkbox.getNextChecked)
 
 return function(
     scope: Fusion.Scope,
@@ -65,7 +66,9 @@ return function(
 
                 [OnEvent "MouseButton1Click"] = function()
                     trySetChecked(
-                        Peek<<Checkbox.Checked>>(checkedState) ~= true
+                        GetNextChecked(
+                            Peek<<Checkbox.Checked>>(checkedState)
+                        )
                     )
                 end,
 
