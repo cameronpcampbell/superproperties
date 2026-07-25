@@ -185,7 +185,7 @@ return Component<<CheckboxProps>>(function(scope, props)
                 BackgroundTransparency = 1,
                 ImageTransparency = checkedTransparency,
 
-                Name = "Check"
+                Name = "CheckboxTrue"
             },
 
             New(scope, "ImageLabel") {
@@ -195,7 +195,7 @@ return Component<<CheckboxProps>>(function(scope, props)
                 BackgroundTransparency = 1,
                 ImageTransparency = mixedTransparency,
 
-                Name = "Check"
+                Name = "CheckboxMixed"
             },
         },
 
