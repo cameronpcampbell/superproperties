@@ -8,6 +8,7 @@ local Packages = script.Parent.Parent.Parent.Parent.packages
 
 local Map = require(Packages.mosaic.components.map)
 
+local IsPropertyVisible = require(script.isPropertyVisible)
 local Patches = require(script.patches)
 local Types = require(script.types)
 
@@ -22,6 +23,7 @@ export type PropertyPlan = {
 	Write: ((Instance, any) -> ())?,
 	Writable: boolean,
 	Poll: boolean,
+	Visibility: Types.PropertyVisibility?,
 }
 
 type CategoryPlan = {
@@ -148,6 +150,9 @@ local function BuildClassPlan(className: string): ClassPlan
 		if itemDisplay.DeprecationMessage then
 			continue
 		end
+		if item.CustomVisibility == false then
+			continue
+		end
 
 		local category = CreateOrGetCategoryPlan(classPlan.Categories, categoriesByName, itemDisplay.Category)
 
@@ -162,6 +167,7 @@ local function BuildClassPlan(className: string): ClassPlan
 			Write = if customReadWrite then customReadWrite.Write else nil,
 			Writable = customReadWrite ~= nil or item.Permits.Write ~= nil,
 			Poll = customReadWrite ~= nil and customReadWrite.Poll == true,
+			Visibility = item.CustomVisibility,
 		}
 
 		table.insert(category.Properties, propertyPlan)
@@ -242,6 +248,13 @@ local function GetProperties(instance: Instance): Snapshot
 			local name = propertyPlan.Name
 			local readSuccess, value = ReadPlannedProperty(instance, propertyPlan)
 			if not readSuccess then
+				continue
+			end
+			if not IsPropertyVisible(
+				propertyPlan.Visibility,
+				instance,
+				value
+			) then
 				continue
 			end
 

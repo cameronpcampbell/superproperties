@@ -9,13 +9,17 @@ export type ReflectedProperties =
 
 export type ReflectionPropertiesItem = index<ReflectedProperties, number>
 
+export type PropertyVisibility =
+    boolean | ((instance: any, value: any) -> boolean)
+
 export type PatchedReflectionPropertiesItem = Typeforge.Flatten<
     ReflectionPropertiesItem & {
         CustomReadWrite: {
             Read: (instance: any) -> any,
             Write: (instance: any, value: any) -> (),
             Poll: boolean?
-        }?
+        }?,
+        CustomVisibility: PropertyVisibility?
     }
 >
 

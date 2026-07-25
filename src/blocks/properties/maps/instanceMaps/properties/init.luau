@@ -26,14 +26,11 @@ type PropertyTarget = {
     ValueState: Fusion.Value<any?>
 }
 
-type PropertyGroup = {
-    Id: string,
-    Name: string,
-    CategoryName: string,
-    ValueType: string,
-    Targets: { PropertyTarget },
-    AllWritable: boolean
-}
+local GroupPropertyTargets = require(script.groupPropertyTargets)
+type PropertyCandidate =
+    GroupPropertyTargets.Candidate<PropertyTarget>
+type PropertyGroup =
+    GroupPropertyTargets.Group<PropertyTarget>
 
 local PollOptions: LongPollOptions = {
     MinInterval = 0.1,
@@ -165,10 +162,7 @@ return function(
     local targetsByInstance: {
         [Instance]: { [string]: PropertyTarget }
     } = {}
-    local groupsById: { [string]: PropertyGroup } = {}
-    local groups = {} :: { PropertyGroup }
-    local categoryNames = {} :: { string }
-    local seenCategoryNames: { [string]: boolean } = {}
+    local propertyCandidates = {} :: { PropertyCandidate }
 
     for _, instance in instances do
         local snapshot = GetProperties.Read(instance)
@@ -181,38 +175,27 @@ return function(
                 snapshot.Categories[location.CategoryIndex]
             local item = categorySnapshot.Items[location.ItemIndex]
             local plan = location.Plan
-            local group = groupsById[plan.Id]
-
-            if not group then
-                group = {
-                    Id = plan.Id,
-                    Name = plan.Name,
-                    CategoryName = categorySnapshot.Name,
-                    ValueType = item.ValueType or typeof(item.Value),
-                    Targets = {},
-                    AllWritable = true
-                }
-                groupsById[plan.Id] = group
-                table.insert(groups, group)
-
-                if not seenCategoryNames[group.CategoryName] then
-                    seenCategoryNames[group.CategoryName] = true
-                    table.insert(categoryNames, group.CategoryName)
-                end
-            end
 
             local target: PropertyTarget = {
                 Instance = instance,
                 Plan = plan,
                 ValueState = Value<<any?>>(scope, item.Value)
             }
-            table.insert(group.Targets, target)
             instanceTargets[propertyName] = target
 
-            if not item.ValueWritable then group.AllWritable = false end
+            table.insert(propertyCandidates, {
+                Id = plan.Id,
+                Name = plan.Name,
+                CategoryName = categorySnapshot.Name,
+                ValueType = item.ValueType or typeof(item.Value),
+                Target = target,
+                Writable = item.ValueWritable == true
+            })
         end
     end
 
+    local groups, categoryNames =
+        GroupPropertyTargets(propertyCandidates)
     local itemsByCategory: { [string]: { Item } } = {}
     for _, categoryName in categoryNames do
         itemsByCategory[categoryName] = {}

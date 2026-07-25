@@ -39,9 +39,7 @@ end
 
 local function CreateHiddenPatch(): PropertyPatch
     return {
-        Display = {
-            DeprecationMessage = "Hidden from the properties explorer."
-        }
+        CustomVisibility = false
     }
 end
 
