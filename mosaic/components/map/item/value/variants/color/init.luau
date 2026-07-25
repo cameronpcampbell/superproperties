@@ -43,26 +43,15 @@ local ColorTextVariant = CreateTextVariant<<Color3>>({
 
 local function Color(
     scope: Fusion.Scope,
-    color: Fusion.UsedAs<Color3 | BrickColor>
+    color: Fusion.UsedAs<Color3>
 )
-    local backgroundColor = Computed(
-        scope,
-        function(use: Fusion.Use): Color3
-            local usedColor = use<<Color3 | BrickColor>>(color)
-            return
-                if typeof(usedColor) == "BrickColor"
-                then usedColor.Color
-                else usedColor :: Color3
-        end
-    )
-
     local theme = GetThemeForScope(scope)
     local height = theme:GetHeight(scope, "Sm")
     local cornerRadius = theme:GetCornerRadius(scope, "Sm")
 
     return HighlightSupercorner(scope, {
         GradientTransparency = 0.78,
-        BackgroundColor3 = backgroundColor,
+        BackgroundColor3 = color,
         StrokeThickness = 1,
         Size = ComputeUDim2FromOffset(scope, height, height),
         CornerRadius = Peek<<number>>(cornerRadius),
@@ -79,19 +68,22 @@ return function(
 ): Fusion.Child
     local value = props.Value
     local currentValue = Peek<<Color3 | BrickColor>>(value)
+    local colorValue = Computed(
+        scope,
+        function(use: Fusion.Use): Color3
+            local usedValue = use<<Color3 | BrickColor>>(value)
+            return
+                if typeof(usedValue) == "BrickColor"
+                then usedValue.Color
+                else usedValue :: Color3
+        end
+    )
 
     if
         typeof(currentValue) == "Color3" and
         props.Writable and
         props.TrySetValue ~= nil
     then
-        local colorValue = Computed(
-            scope,
-            function(use: Fusion.Use): Color3
-                return use<<Color3 | BrickColor>>(value) :: Color3
-            end
-        )
-
         return {
             ColorTextVariant(scope, {
                 Value = colorValue,
@@ -128,7 +120,7 @@ return function(
                 FlexMode = Enum.UIFlexMode.Shrink
             }
         }),
-        Color(scope, value),
+        Color(scope, colorValue),
 
         CreateSidePadding(scope)
     } :: Fusion.Child

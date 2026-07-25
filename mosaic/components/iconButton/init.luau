@@ -34,7 +34,7 @@ type IconButtonProps = {
     Interactable: Fusion.UsedAs<boolean>?,
     ZIndex: Fusion.UsedAs<number>?,
     LayoutOrder: number?,
-    [Fusion.SpecialKey]: any
+    [Fusion.SpecialKey | string]: any
 }
 
 local function NewImageButton(

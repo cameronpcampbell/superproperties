@@ -34,13 +34,7 @@ export type InputRegistration = {
     Destroy: () -> (),
 }
 
-type TargetHandlers = {
-    Enter: (position: Vector2) -> (),
-    Move: (position: Vector2) -> (),
-    Leave: () -> (),
-    RootLeave: (() -> ())?,
-    ManagedChanged: (isManaged: boolean) -> (),
-}
+type TargetHandlers = Handlers
 
 type TargetRecord = {
     Target: GuiObject,
@@ -75,6 +69,8 @@ type RootRecord = {
 local roots: { [GuiObject]: RootRecord } = {}
 local pendingTargets: { [TargetRecord]: true } = {}
 local nextRegistrationOrder = 0
+
+local function Noop() end
 
 local PREDICTION_CONFIG: PredictionMath.Config =
     PredictionMath.DefaultConfig
@@ -574,8 +570,8 @@ end
 local function ResetRoot(rootRecord: RootRecord)
     ClearButtonHover(rootRecord)
 
-    local pressedRecords = {}
-    local hoveredFrames = {}
+    local pressedRecords: { TargetRecord } = {}
+    local hoveredFrames: { TargetRecord } = {}
     for _, record in rootRecord.Targets do
         if record.Hovered and not record.Destroyed then
             record.Hovered = false
@@ -594,9 +590,8 @@ local function ResetRoot(rootRecord: RootRecord)
     end
 
     for _, record in pressedRecords do
-        local rootLeave = record.Handlers.RootLeave
-        if not record.Destroyed and rootLeave ~= nil then
-            (rootLeave :: () -> ())()
+        if not record.Destroyed then
+            record.Handlers.RootLeave()
         end
     end
 end
@@ -822,13 +817,7 @@ local function RegisterButton(
     button: GuiButton,
     handlers: Handlers
 ): Registration
-    return RegisterTarget(scope, button, true, {
-        Enter = handlers.Enter,
-        Move = handlers.Move,
-        Leave = handlers.Leave,
-        RootLeave = handlers.RootLeave,
-        ManagedChanged = handlers.ManagedChanged,
-    })
+    return RegisterTarget(scope, button, true, handlers)
 end
 
 local function RegisterFrame(
@@ -840,7 +829,7 @@ local function RegisterFrame(
         Enter = handlers.Enter,
         Move = handlers.Move,
         Leave = handlers.Leave,
-        RootLeave = nil,
+        RootLeave = Noop,
         ManagedChanged = handlers.ManagedChanged,
     })
 end
@@ -854,7 +843,7 @@ local function RegisterInput(
         Enter = handlers.Enter,
         Move = handlers.Move,
         Leave = handlers.Leave,
-        RootLeave = nil,
+        RootLeave = Noop,
         ManagedChanged = handlers.ManagedChanged,
     })
 end

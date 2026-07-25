@@ -6,7 +6,7 @@ local Vector2 = Roblox.Vector2
 local CursorPredictionMath =
     require("./math")
 
-local TestConfig: CursorPredictionMath.Config = {
+local TestConfig = {
     HistoryWindow = 0.08,
     MaxSamples = 8,
     MaxHorizon = 0.05,

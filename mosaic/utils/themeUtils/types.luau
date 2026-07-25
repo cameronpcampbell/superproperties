@@ -221,8 +221,8 @@ export type Theme = {
         theme: Theme,
         scope: Fusion.Scope,
         variant: Fusion.UsedAs<FontVariant>,
-        weight: Fusion.UsedAs<Enum.FontWeight?>,
-        style: Fusion.UsedAs<Enum.FontStyle?>
+        weight: Fusion.UsedAs<Enum.FontWeight>?,
+        style: Fusion.UsedAs<Enum.FontStyle>?
     ) -> Fusion.UsedAs<Font>,
 
     GetFontSize: (

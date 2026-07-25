@@ -1,16 +1,16 @@
 --!strict
 
 export type Config = {
-    HistoryWindow: number,
-    MaxSamples: number,
-    MaxHorizon: number,
-    MaxLead: number,
-    MaxSampleGap: number,
-    MinSpeed: number,
-    FullConfidenceSpeed: number,
-    MaxFitError: number,
-    MinConfidence: number,
-    DirectionResetDot: number,
+    read HistoryWindow: number,
+    read MaxSamples: number,
+    read MaxHorizon: number,
+    read MaxLead: number,
+    read MaxSampleGap: number,
+    read MinSpeed: number,
+    read FullConfidenceSpeed: number,
+    read MaxFitError: number,
+    read MinConfidence: number,
+    read DirectionResetDot: number,
 }
 
 export type Sample = {
