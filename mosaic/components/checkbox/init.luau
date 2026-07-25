@@ -24,9 +24,6 @@ local GetThemeForScope, CalcColorModifier =
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
-local CoreComponents = script.Parent.Parent.coreComponents
-local CoreButton = require(CoreComponents.button)
-
 local Components = script.Parent
 local HighlightSupercorner = require(Components.highlightSupercorner)
 
@@ -90,7 +87,7 @@ return Component<<CheckboxProps>>(function(scope, props)
         return not use<<boolean>>(disabled)
     end)
 
-    return CoreButton(scope, HighlightSupercorner, {
+    return HighlightSupercorner(scope, {
         Button = true,
         Enabled = gradientEnabled,
         GradientTransparency = 0.82,

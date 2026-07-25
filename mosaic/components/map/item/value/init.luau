@@ -20,6 +20,9 @@ local ComputeAdd = ComputeMath.Add
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
 
+local Components = script.Parent.Parent.Parent
+local CoreFrame = require(Components.Parent.coreComponents.frame)
+
 local Types = require(script.Parent.Parent.types)
 
 local CalculateRowCornerRadii = require(script.Parent.Parent.cornerRadii)
@@ -74,8 +77,9 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
 		FocusRingAlphaState = props.FocusRingAlphaState,
 	})
 
-	return Supercorner.new(
+	return CoreFrame(
 		scope,
+		Supercorner.new :: any,
 		CombineProps({
 			BackgroundColor3 = bgColor,
 			Size = ComputeUDim2(scope, UDim.new(1, 0), ComputeUDim(scope, 0, rowHeight)),

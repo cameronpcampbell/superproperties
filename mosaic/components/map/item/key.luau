@@ -25,6 +25,7 @@ local GetThemeForScope = ThemeUtils.GetThemeForScope
 
 local Components = script.Parent.Parent.Parent
 local Text = require(Components.text)
+local CoreFrame = require(Components.Parent.coreComponents.frame)
 local CoreInput = require(Components.Parent.coreComponents.input)
 
 local Assets = require(script.Parent.Parent.Parent.Parent.assets)
@@ -190,7 +191,7 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
         })
     end
 
-    return Supercorner.new(scope, CombineProps({
+    return CoreFrame(scope, Supercorner.new :: any, CombineProps({
         BackgroundColor3 = bgColor,
         Size = ComputeUDim2(scope, UDim.new(1, 0), ComputeUDim(scope, 0, rowHeight)),
         TopLeftRadius = topLeftRadius,

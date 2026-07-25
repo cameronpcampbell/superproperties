@@ -14,8 +14,8 @@ export type State = {
 }
 
 local DEFAULT_CONFIG: Config = table.freeze({
-    Horizon = 1 / 60,
-    MaxLead = 18,
+    Horizon = 2,
+    MaxLead = 800,
     MaxSampleGap = 0.1,
     SmoothingTime = 0.025,
 })

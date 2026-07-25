@@ -27,6 +27,7 @@ local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
 local CoreComponents = script.Parent.Parent.coreComponents
+local CoreFrame = require(CoreComponents.frame)
 local CoreInput = require(CoreComponents.input)
 local PopoverFocus = require(CoreComponents.popoverFocus)
 
@@ -144,7 +145,7 @@ return Component<<InputProps>>(function(scope, props)
         }
     }) :: TextBox
 
-    return Supercorner.new(scope :: any, CombineProps({
+    return CoreFrame(scope, Supercorner.new :: any, CombineProps({
         BackgroundColor3 = bgColor,
         StrokeColor = tweenComputeStrokeColor,
         StrokeThickness = 1,

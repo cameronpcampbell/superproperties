@@ -6,6 +6,13 @@ local Fusion = require(Packages.fusion)
 local PredictionMath = require(script.math)
 local RobloxInput = require(script.robloxInput)
 
+export type HoverHandlers = {
+    Enter: (position: Vector2) -> (),
+    Move: (position: Vector2) -> (),
+    Leave: () -> (),
+    ManagedChanged: (isManaged: boolean) -> (),
+}
+
 export type Handlers = {
     Enter: (position: Vector2) -> (),
     Move: (position: Vector2) -> (),
@@ -19,13 +26,28 @@ export type Registration = {
     Destroy: () -> (),
 }
 
-type ButtonRecord = {
-    Button: GuiButton,
-    Handlers: Handlers,
+export type FrameRegistration = {
+    Destroy: () -> (),
+}
+
+type TargetHandlers = {
+    Enter: (position: Vector2) -> (),
+    Move: (position: Vector2) -> (),
+    Leave: () -> (),
+    RootLeave: (() -> ())?,
+    ManagedChanged: (isManaged: boolean) -> (),
+}
+
+type TargetRecord = {
+    Target: GuiObject,
+    Handlers: TargetHandlers,
     Root: RootRecord?,
     RootIndex: number?,
     RegistrationOrder: number,
+    IsButton: boolean,
     Pressed: boolean,
+    Hovered: boolean,
+    HoveredByPrediction: boolean,
     Managed: boolean,
     Destroying: boolean,
     Destroyed: boolean,
@@ -33,16 +55,19 @@ type ButtonRecord = {
 
 type RootRecord = {
     Root: GuiObject,
-    Buttons: { ButtonRecord },
-    Hovered: ButtonRecord?,
+    Targets: { TargetRecord },
+    HoveredButton: TargetRecord?,
+    HoveredButtonByPrediction: boolean,
     InputCleanup: (() -> ())?,
     Managed: boolean,
     Destroyed: boolean,
 }
 
 local roots: { [GuiObject]: RootRecord } = {}
-local pendingButtons: { [ButtonRecord]: true } = {}
+local pendingTargets: { [TargetRecord]: true } = {}
 local nextRegistrationOrder = 0
+
+local PREDICTED_HOVER_RELEASE_PADDING = 10
 
 local predictionState = PredictionMath.NewState()
 local hasSource = false
@@ -51,7 +76,7 @@ local predictionActive = false
 local lastPublishedPosition: Vector2? = nil
 
 local function CallManagedChanged(
-    record: ButtonRecord,
+    record: TargetRecord,
     isManaged: boolean
 )
     if record.Destroyed then return end
@@ -61,38 +86,44 @@ local function CallManagedChanged(
     record.Handlers.ManagedChanged(isManaged)
 end
 
-local function LeaveRecord(record: ButtonRecord)
+local function LeaveRecord(record: TargetRecord)
     if record.Destroyed then return end
     record.Handlers.Leave()
 end
 
-local function ClearHover(rootRecord: RootRecord)
-    local hovered = rootRecord.Hovered
+local function ClearButtonHover(rootRecord: RootRecord)
+    local hovered = rootRecord.HoveredButton
     if not hovered then return end
 
-    rootRecord.Hovered = nil
+    rootRecord.HoveredButton = nil
+    rootRecord.HoveredButtonByPrediction = false
     LeaveRecord(hovered)
 end
 
 local function RemoveFromRoot(
-    record: ButtonRecord,
+    record: TargetRecord,
     shouldRemainPending: boolean
 )
     local rootRecord = record.Root
     local rootIndex = record.RootIndex
     if not rootRecord or not rootIndex then return end
 
-    if rootRecord.Hovered == record then
-        rootRecord.Hovered = nil
+    if rootRecord.HoveredButton == record then
+        rootRecord.HoveredButton = nil
+        rootRecord.HoveredButtonByPrediction = false
+        LeaveRecord(record)
+    elseif record.Hovered then
+        record.Hovered = false
+        record.HoveredByPrediction = false
         LeaveRecord(record)
     end
 
-    local buttons = rootRecord.Buttons
-    local lastIndex = #buttons
-    local lastRecord = buttons[lastIndex]
+    local targets = rootRecord.Targets
+    local lastIndex = #targets
+    local lastRecord = targets[lastIndex]
 
-    buttons[rootIndex] = lastRecord
-    buttons[lastIndex] = nil
+    targets[rootIndex] = lastRecord
+    targets[lastIndex] = nil
     if lastRecord ~= record then
         lastRecord.RootIndex = rootIndex
     end
@@ -101,14 +132,14 @@ local function RemoveFromRoot(
     record.RootIndex = nil
 
     if shouldRemainPending and not record.Destroyed then
-        pendingButtons[record] = true
+        pendingTargets[record] = true
     end
 
     CallManagedChanged(record, false)
 end
 
 local function AddToRoot(
-    record: ButtonRecord,
+    record: TargetRecord,
     rootRecord: RootRecord
 )
     if record.Destroyed or rootRecord.Destroyed then return end
@@ -116,46 +147,55 @@ local function AddToRoot(
 
     if record.Root then RemoveFromRoot(record, false) end
 
-    pendingButtons[record] = nil
+    pendingTargets[record] = nil
     record.Root = rootRecord
-    local rootIndex = #rootRecord.Buttons + 1
+    local rootIndex = #rootRecord.Targets + 1
     record.RootIndex = rootIndex
-    rootRecord.Buttons[rootIndex] = record
+    rootRecord.Targets[rootIndex] = record
     CallManagedChanged(record, rootRecord.Managed)
 end
 
-local function ResolvePendingButtons(rootRecord: RootRecord)
-    for record in pendingButtons do
+local function ResolvePendingTargets(rootRecord: RootRecord)
+    for record in pendingTargets do
         if record.Destroyed then
-            pendingButtons[record] = nil
-        elseif record.Button:IsDescendantOf(rootRecord.Root) then
+            pendingTargets[record] = nil
+        elseif record.Target:IsDescendantOf(rootRecord.Root) then
             AddToRoot(record, rootRecord)
         end
     end
 end
 
 local function IsCandidate(
-    record: ButtonRecord,
+    record: TargetRecord,
     rootRecord: RootRecord,
-    position: Vector2
+    position: Vector2,
+    padding: number?
 ): boolean
-    local button = record.Button
-    if not button.Parent
-        or not button.Visible
-        or not button.Interactable
+    local target = record.Target
+    if not target.Parent
+        or not target.Visible
+        or not target.Interactable
     then
         return false
     end
 
+    local absoluteSize = target.AbsoluteSize
+    if absoluteSize.X <= 0 or absoluteSize.Y <= 0 then
+        return false
+    end
+
+    local resolvedPadding = math.max(padding or 0, 0)
+    local paddingVector =
+        Vector2.new(resolvedPadding, resolvedPadding)
     if not PredictionMath.IsPointInRect(
         position,
-        button.AbsolutePosition,
-        button.AbsoluteSize
+        target.AbsolutePosition - paddingVector,
+        absoluteSize + paddingVector * 2
     ) then
         return false
     end
 
-    local ancestor: Instance? = button.Parent
+    local ancestor: Instance? = target.Parent
     while ancestor and ancestor ~= rootRecord.Root do
         if ancestor:IsA("GuiObject") then
             if not ancestor.Visible then return false end
@@ -177,13 +217,13 @@ local function IsCandidate(
 end
 
 local function IsAbove(
-    candidate: ButtonRecord,
-    current: ButtonRecord?
+    candidate: TargetRecord,
+    current: TargetRecord?
 ): boolean
     if not current then return true end
 
-    local candidateZIndex = candidate.Button.ZIndex
-    local currentZIndex = current.Button.ZIndex
+    local candidateZIndex = candidate.Target.ZIndex
+    local currentZIndex = current.Target.ZIndex
     return
         candidateZIndex > currentZIndex
         or (
@@ -194,68 +234,179 @@ end
 
 local function Publish(
     rootRecord: RootRecord,
-    position: Vector2
+    actualPosition: Vector2,
+    predictedPosition: Vector2
 )
     if rootRecord.Destroyed then return end
 
-    ResolvePendingButtons(rootRecord)
+    ResolvePendingTargets(rootRecord)
 
-    local winner: ButtonRecord? = nil
-    local buttonIndex = 1
-    while buttonIndex <= #rootRecord.Buttons do
-        local record = rootRecord.Buttons[buttonIndex]
+    local predictedWinner: TargetRecord? = nil
+    local actualWinner: TargetRecord? = nil
+    local frameRecords: { TargetRecord } = {}
+    local frameCandidatePositions: { [TargetRecord]: Vector2 } = {}
+    local predictedFrameCandidates: { [TargetRecord]: true } = {}
+    local targetIndex = 1
+    while targetIndex <= #rootRecord.Targets do
+        local record = rootRecord.Targets[targetIndex]
 
         if record.Destroyed then
             RemoveFromRoot(record, false)
-        elseif not record.Button:IsDescendantOf(rootRecord.Root) then
+        elseif not record.Target:IsDescendantOf(rootRecord.Root) then
             RemoveFromRoot(record, true)
         else
-            if IsCandidate(record, rootRecord, position)
-                and IsAbove(record, winner)
-            then
-                winner = record
+            local isPredictedCandidate =
+                IsCandidate(record, rootRecord, predictedPosition)
+            local isActualCandidate =
+                if actualPosition == predictedPosition then
+                    isPredictedCandidate
+                else
+                    IsCandidate(record, rootRecord, actualPosition)
+
+            if record.IsButton then
+                if isPredictedCandidate
+                    and IsAbove(record, predictedWinner)
+                then
+                    predictedWinner = record
+                end
+                if isActualCandidate and IsAbove(record, actualWinner) then
+                    actualWinner = record
+                end
+            else
+                -- Enclosing frames remain hovered while descendant buttons
+                -- participate in the topmost-button selection.
+                table.insert(frameRecords, record)
+                if isPredictedCandidate then
+                    frameCandidatePositions[record] = predictedPosition
+                    predictedFrameCandidates[record] = true
+                elseif isActualCandidate then
+                    frameCandidatePositions[record] = actualPosition
+                end
             end
 
-            buttonIndex += 1
+            targetIndex += 1
         end
     end
 
-    local previous = rootRecord.Hovered
+    local previous = rootRecord.HoveredButton
+    local winner = predictedWinner
+    local winnerPosition = predictedPosition
+    local winnerByPrediction = winner ~= nil
+
+    -- Exact prediction wins first, followed by an exact physical hit.
+    -- The padded bounds only retain an existing predicted hover.
+    if not winner then
+        winner = actualWinner
+        winnerPosition = actualPosition
+        winnerByPrediction = false
+    end
+
+    if not winner
+        and previous
+        and rootRecord.HoveredButtonByPrediction
+        and not previous.Destroyed
+        and previous.Root == rootRecord
+        and IsCandidate(
+            previous,
+            rootRecord,
+            predictedPosition,
+            PREDICTED_HOVER_RELEASE_PADDING
+        )
+    then
+        winner = previous
+        winnerPosition = predictedPosition
+        winnerByPrediction = true
+    end
+
     if previous == winner then
         if winner and not winner.Destroyed then
-            winner.Handlers.Move(position)
+            rootRecord.HoveredButtonByPrediction =
+                winnerByPrediction
+            winner.Handlers.Move(winnerPosition)
         end
-        return
+    else
+        if previous then
+            rootRecord.HoveredButton = nil
+            rootRecord.HoveredButtonByPrediction = false
+            LeaveRecord(previous)
+        end
+
+        if winner
+            and not winner.Destroyed
+            and winner.Root == rootRecord
+        then
+            rootRecord.HoveredButton = winner
+            rootRecord.HoveredButtonByPrediction =
+                winnerByPrediction
+            winner.Handlers.Enter(winnerPosition)
+        end
     end
 
-    if previous then
-        rootRecord.Hovered = nil
-        LeaveRecord(previous)
-    end
+    for _, record in frameRecords do
+        if record.Destroyed or record.Root ~= rootRecord then
+            continue
+        end
 
-    if winner
-        and not winner.Destroyed
-        and winner.Root == rootRecord
-    then
-        rootRecord.Hovered = winner
-        winner.Handlers.Enter(position)
+        local candidatePosition = frameCandidatePositions[record]
+        local candidateByPrediction =
+            predictedFrameCandidates[record] == true
+        if not candidatePosition
+            and record.Hovered
+            and record.HoveredByPrediction
+            and IsCandidate(
+                record,
+                rootRecord,
+                predictedPosition,
+                PREDICTED_HOVER_RELEASE_PADDING
+            )
+        then
+            candidatePosition = predictedPosition
+            candidateByPrediction = true
+        end
+
+        if candidatePosition then
+            record.HoveredByPrediction =
+                candidateByPrediction
+            if record.Hovered then
+                record.Handlers.Move(candidatePosition)
+            else
+                record.Hovered = true
+                record.Handlers.Enter(candidatePosition)
+            end
+        elseif record.Hovered then
+            record.Hovered = false
+            record.HoveredByPrediction = false
+            LeaveRecord(record)
+        end
     end
 end
 
 local function ResetRoot(rootRecord: RootRecord)
-    ClearHover(rootRecord)
+    ClearButtonHover(rootRecord)
 
     local pressedRecords = {}
-    for _, record in rootRecord.Buttons do
+    local hoveredFrames = {}
+    for _, record in rootRecord.Targets do
+        if record.Hovered and not record.Destroyed then
+            record.Hovered = false
+            record.HoveredByPrediction = false
+            table.insert(hoveredFrames, record)
+        end
+
         if record.Pressed and not record.Destroyed then
             record.Pressed = false
             table.insert(pressedRecords, record)
         end
     end
 
+    for _, record in hoveredFrames do
+        LeaveRecord(record)
+    end
+
     for _, record in pressedRecords do
-        if not record.Destroyed then
-            record.Handlers.RootLeave()
+        local rootLeave = record.Handlers.RootLeave
+        if not record.Destroyed and rootLeave then
+            rootLeave()
         end
     end
 end
@@ -267,7 +418,7 @@ local function SetRootManaged(
     if rootRecord.Managed == isManaged then return end
     rootRecord.Managed = isManaged
 
-    for _, record in rootRecord.Buttons do
+    for _, record in rootRecord.Targets do
         CallManagedChanged(record, isManaged)
     end
 end
@@ -330,7 +481,7 @@ local function OnSample(
 
     predictionActive = true
     lastPublishedPosition = predictedPosition
-    Publish(rootRecord, predictedPosition)
+    Publish(rootRecord, actualPosition, predictedPosition)
 end
 
 local function OnStep(now: number)
@@ -350,11 +501,13 @@ local function OnStep(now: number)
 
     local predictedPosition =
         PredictionMath.Predict(predictionState, now)
-    if predictedPosition
+    local actualPosition = predictionState.Actual
+    if actualPosition
+        and predictedPosition
         and predictedPosition ~= lastPublishedPosition
     then
         lastPublishedPosition = predictedPosition
-        Publish(rootRecord, predictedPosition)
+        Publish(rootRecord, actualPosition, predictedPosition)
     end
 
     if PredictionMath.IsSettled(predictionState, now) then
@@ -372,15 +525,16 @@ local function RegisterRoot(
 
     local rootRecord: RootRecord = {
         Root = root,
-        Buttons = {},
-        Hovered = nil,
+        Targets = {},
+        HoveredButton = nil,
+        HoveredButtonByPrediction = false,
         InputCleanup = nil,
         Managed = false,
         Destroyed = false,
     }
     roots[root] = rootRecord
 
-    ResolvePendingButtons(rootRecord)
+    ResolvePendingTargets(rootRecord)
     rootRecord.InputCleanup = InputAdapter.RegisterRoot(root)
 
     local function Destroy()
@@ -391,8 +545,8 @@ local function RegisterRoot(
         SetRootManaged(rootRecord, false)
         roots[root] = nil
 
-        while #rootRecord.Buttons > 0 do
-            RemoveFromRoot(rootRecord.Buttons[#rootRecord.Buttons], true)
+        while #rootRecord.Targets > 0 do
+            RemoveFromRoot(rootRecord.Targets[#rootRecord.Targets], true)
         end
 
         local inputCleanup = rootRecord.InputCleanup
@@ -403,28 +557,32 @@ local function RegisterRoot(
     table.insert(scope, Destroy)
 end
 
-local function RegisterButton(
+local function RegisterTarget(
     scope: Fusion.Scope,
-    button: GuiButton,
-    handlers: Handlers
+    target: GuiObject,
+    isButton: boolean,
+    handlers: TargetHandlers
 ): Registration
     nextRegistrationOrder += 1
 
-    local record: ButtonRecord = {
-        Button = button,
+    local record: TargetRecord = {
+        Target = target,
         Handlers = handlers,
         Root = nil,
         RootIndex = nil,
         RegistrationOrder = nextRegistrationOrder,
+        IsButton = isButton,
         Pressed = false,
+        Hovered = false,
+        HoveredByPrediction = false,
         Managed = false,
         Destroying = false,
         Destroyed = false,
     }
-    pendingButtons[record] = true
+    pendingTargets[record] = true
 
     for _, rootRecord in roots do
-        if button:IsDescendantOf(rootRecord.Root) then
+        if target:IsDescendantOf(rootRecord.Root) then
             AddToRoot(record, rootRecord)
             break
         end
@@ -439,7 +597,7 @@ local function RegisterButton(
         if record.Destroying or record.Destroyed then return end
         record.Destroying = true
         record.Pressed = false
-        pendingButtons[record] = nil
+        pendingTargets[record] = nil
 
         if record.Root then RemoveFromRoot(record, false) end
 
@@ -455,7 +613,30 @@ local function RegisterButton(
     }
 end
 
+local function RegisterButton(
+    scope: Fusion.Scope,
+    button: GuiButton,
+    handlers: Handlers
+): Registration
+    return RegisterTarget(scope, button, true, handlers)
+end
+
+local function RegisterFrame(
+    scope: Fusion.Scope,
+    frame: Frame,
+    handlers: HoverHandlers
+): FrameRegistration
+    return RegisterTarget(scope, frame, false, {
+        Enter = handlers.Enter,
+        Move = handlers.Move,
+        Leave = handlers.Leave,
+        RootLeave = nil,
+        ManagedChanged = handlers.ManagedChanged,
+    })
+end
+
 return {
     RegisterRoot = RegisterRoot,
     RegisterButton = RegisterButton,
+    RegisterFrame = RegisterFrame,
 }

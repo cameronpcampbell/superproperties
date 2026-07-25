@@ -20,6 +20,10 @@ local GetThemeForScope = ThemeUtils.GetThemeForScope
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
+local CoreComponents = script.Parent.Parent.coreComponents
+local CoreButton = require(CoreComponents.button)
+local CoreFrame = require(CoreComponents.frame)
+
 type HighlightGradientProps = {
     Enabled: Fusion.UsedAs<boolean>?,
     GradientTransparency: Fusion.UsedAs<number>?,
@@ -221,7 +225,7 @@ return Component<<HighlightGradientProps>>(function(scope, props)
         ResetRotation()
     end)
 
-    local createdRoot = Supercorner.new(scope :: any, CombineProps(props, {
+    local rootProps = CombineProps(props, {
         StrokeGradient = highlightGradient,
 
         [OnEvent "MouseEnter"] = function(x: number, y: number)
@@ -238,7 +242,13 @@ return Component<<HighlightGradientProps>>(function(scope, props)
             ResetRotation()
             if onMouseLeave then onMouseLeave(x, y) end
         end,
-    })) :: GuiObject
+    })
+    local createdRoot = (
+        if props.Button == true then
+            CoreButton(scope, Supercorner.new :: any, rootProps)
+        else
+            CoreFrame(scope, Supercorner.new :: any, rootProps)
+    ) :: GuiObject
     root = createdRoot
 
     ApplyRotation(Peek<<number>>(animatedRotation))
