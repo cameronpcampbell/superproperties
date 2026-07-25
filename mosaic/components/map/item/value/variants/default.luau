@@ -4,7 +4,8 @@
 local Packages =
     script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.packages
 local Fusion = require(Packages.fusion)
-local New, Children = Fusion.New, Fusion.Children
+local Computed, New, Children =
+    Fusion.Computed, Fusion.New, Fusion.Children
 
 local Types = require(script.Parent.types)
 local CreateSidePadding = require(script.Parent.utils.createSidePadding)
@@ -17,10 +18,13 @@ return function(
     props: Types.ValueVariantProps<any>
 ): Fusion.Child
     local value = props.Value
+    local text = Computed(scope, function(use: Fusion.Use): string
+        return tostring(use<<any>>(value))
+    end)
 
     return {
         Text(scope, {
-            Text = tostring(value),
+            Text = text,
             Variant =
                 if props.DisplayAsWritable then "Primary"
                 else "Secondary",

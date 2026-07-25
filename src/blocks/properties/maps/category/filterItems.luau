@@ -2,6 +2,9 @@
 
 local Packages = script.Parent.Parent.Parent.Parent.Parent.packages
 
+local Fusion = require(Packages.fusion)
+local Peek = Fusion.peek
+
 local Map = require(Packages.mosaic.components.map)
 local IntrinsicSubItems =
     require(Packages.mosaic.components.map.item.intrinsicSubItems)
@@ -17,7 +20,8 @@ type ItemFilterFactory = (items: { Item }) -> ItemFilter
 local IntrinsicSearchTextsByType: { [string]: { string } } = {}
 
 local function GetIntrinsicSearchTexts(item: Item): { string }
-    local typeName = typeof(item.Value)
+    local typeName =
+        item.ValueType or typeof(Peek(item.Value))
     local existingSearchTexts = IntrinsicSearchTextsByType[typeName]
     if existingSearchTexts then return existingSearchTexts end
 

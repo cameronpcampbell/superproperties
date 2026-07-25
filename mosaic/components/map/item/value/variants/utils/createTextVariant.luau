@@ -3,9 +3,9 @@
 local Packages =
     script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.packages
 local Fusion = require(Packages.fusion)
-local New, Children, Value, Peek, Out, OnEvent =
-    Fusion.New, Fusion.Children, Fusion.Value, Fusion.peek,
-    Fusion.Out, Fusion.OnEvent
+local Computed, New, Children, Observer, Value, Peek, Out, OnEvent =
+    Fusion.Computed, Fusion.New, Fusion.Children, Fusion.Observer,
+    Fusion.Value, Fusion.peek, Fusion.Out, Fusion.OnEvent
 
 local Utils = script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.utils
 local ThemeUtils = require(Utils.themeUtils)
@@ -34,10 +34,13 @@ local function CreateTextVariant<T>(
     ): Fusion.Child
         local value = props.Value
         local trySetValue = props.TrySetValue
-        local displayedValue = config.Format(value)
         local formatFocused = config.FormatFocused
-        local focusedValue =
-            if formatFocused ~= nil then formatFocused(value) else displayedValue
+        local displayedValue = Computed(
+            scope,
+            function(use: Fusion.Use): string
+                return config.Format(use<<T>>(value))
+            end
+        )
 
         if not props.Writable or trySetValue == nil then
             return {
@@ -57,7 +60,20 @@ local function CreateTextVariant<T>(
             } :: Fusion.Child
         end
 
-        local textState = Value<<string>>(scope, displayedValue)
+        local textState = Value<<string>>(
+            scope,
+            Peek<<string>>(displayedValue)
+        )
+        local editing = false
+        local focusedValue = ""
+
+        local function syncDisplayedValue()
+            if editing then return end
+            textState:set(Peek<<string>>(displayedValue))
+        end
+
+        Observer(scope, displayedValue):onChange(syncDisplayedValue)
+
         local theme = GetThemeForScope(scope)
         local textColor = theme:GetFg(scope, "Primary")
         local font = theme:GetFont(scope, "Main", Enum.FontWeight.Regular)
@@ -78,6 +94,12 @@ local function CreateTextVariant<T>(
             Name = config.InputName,
 
             [OnEvent "Focused"] = function()
+                editing = true
+                local currentValue = Peek<<T>>(value)
+                focusedValue =
+                    if formatFocused ~= nil
+                    then formatFocused(currentValue)
+                    else config.Format(currentValue)
                 textState:set(focusedValue)
                 textBox.CursorPosition = #focusedValue + 1
                 textBox.SelectionStart = 1
@@ -90,18 +112,21 @@ local function CreateTextVariant<T>(
 
                 local nextText = Peek<<string>>(textState)
                 if nextText == focusedValue then
-                    textState:set(displayedValue)
+                    editing = false
+                    syncDisplayedValue()
                     return
                 end
 
                 local nextValue, parseError = config.Parse(nextText)
                 if nextValue == nil then
-                    textState:set(displayedValue)
+                    editing = false
+                    syncDisplayedValue()
                     warn(`SuperProperties: {parseError or "Invalid value."}`)
                     return
                 end
 
                 local success, err, savedValue = trySetValue(nextValue)
+                editing = false
                 if success then
                     local valueToDisplay =
                         if savedValue ~= nil then savedValue else nextValue
@@ -110,7 +135,7 @@ local function CreateTextVariant<T>(
                     return
                 end
 
-                textState:set(displayedValue)
+                syncDisplayedValue()
                 warn(`SuperProperties: {err or "Could not set value."}`)
             end,
 

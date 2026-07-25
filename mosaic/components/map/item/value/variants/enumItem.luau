@@ -4,8 +4,8 @@
 local Packages =
     script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.packages
 local Fusion = require(Packages.fusion)
-local New, Children, Observer, OnEvent, Peek, Value =
-    Fusion.New, Fusion.Children, Fusion.Observer,
+local Computed, New, Children, Observer, OnEvent, Peek, Value =
+    Fusion.Computed, Fusion.New, Fusion.Children, Fusion.Observer,
     Fusion.OnEvent, Fusion.peek, Fusion.Value
 
 local Types = require(script.Parent.types)
@@ -35,11 +35,25 @@ return function(
 ): Fusion.Child
     local value = props.Value
     local trySetValue = props.TrySetValue
+    local observedValue = Computed(
+        scope,
+        function(use: Fusion.Use): EnumItem
+            return use<<EnumItem>>(value)
+        end
+    )
+    local currentValue = Peek<<EnumItem>>(observedValue)
 
     if not props.Writable or trySetValue == nil then
+        local displayedValue = Computed(
+            scope,
+            function(use: Fusion.Use): string
+                return use<<EnumItem>>(observedValue).Name
+            end
+        )
+
         return {
             Text(scope, {
-                Text = value.Name,
+                Text = displayedValue,
                 Variant =
                     if props.DisplayAsWritable then "Primary"
                     else "Secondary",
@@ -54,15 +68,15 @@ return function(
         } :: Fusion.Child
     end
 
-    local enumItems = value.EnumType:GetEnumItems()
+    local enumItems = currentValue.EnumType:GetEnumItems()
     local itemNames = table.create(#enumItems) :: { string }
     for idx, enumItem in enumItems do
         itemNames[idx] = enumItem.Name
     end
 
-    local currentIdx = table.find(enumItems, value)
+    local currentIdx = table.find(enumItems, currentValue)
     local selectedIdxState = Value<<number?>>(scope, currentIdx)
-    local displayedValueState = Value(scope, value.Name)
+    local displayedValueState = Value(scope, currentValue.Name)
     local selectedIdxStateAlive = true
 
     table.insert(scope, function()
@@ -126,6 +140,18 @@ return function(
     local function closeMenu()
         popoverFocus.Release()
     end
+
+    Observer(scope, observedValue):onChange(function()
+        local nextValue = Peek<<EnumItem>>(observedValue)
+        local nextIdx = table.find(enumItems, nextValue)
+
+        currentIdx = nextIdx
+        displayedValueState:set(nextValue.Name)
+
+        if Peek<<number?>>(selectedIdxState) ~= nextIdx then
+            selectedIdxState:set(nextIdx)
+        end
+    end)
 
     Observer(scope, selectedIdxState):onChange(function()
         local nextIdx = Peek<<number?>>(selectedIdxState)

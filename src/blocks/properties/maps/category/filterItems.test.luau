@@ -6,7 +6,11 @@ local UDim2 = Roblox.UDim2
 local CreateItemFilter =
     require("./filterItems")
 
-type Item = { Key: string, Value: any? }
+type Item = {
+    Key: string,
+    Value: any?,
+    ValueType: string?
+}
 type ItemFilter = (query: string?) -> { Item }
 
 local function CreateFilter(items: { Item }): ItemFilter
@@ -116,6 +120,20 @@ local intrinsicFilter = CreateFilter(intrinsicItems)
 local scaleResults = intrinsicFilter("scale")
 assert(#scaleResults == 1, `expected one scale result, got {#scaleResults}`)
 assert(scaleResults[1] == intrinsicItems[1])
+
+-- Reactive values are state tables at runtime. ValueType must remain the
+-- source of structural filtering metadata instead of typeof(Value).
+local reactiveIntrinsicItem = {
+    Key = "ReactiveBounds",
+    Value = { type = "State" },
+    ValueType = "UDim2"
+}
+local reactiveIntrinsicResults =
+    CreateFilter({ reactiveIntrinsicItem })("scale")
+assert(
+    #reactiveIntrinsicResults == 1
+        and reactiveIntrinsicResults[1] == reactiveIntrinsicItem
+)
 
 local mutableIntrinsicItems = {
     { Key = "Bounds", Value = 0 }

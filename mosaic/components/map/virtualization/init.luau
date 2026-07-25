@@ -43,8 +43,8 @@ type HeaderContentCache = {
 type ResolvedItem = {
     Item: ItemDefinition,
     RootItem: Item,
-    RootValue: any,
-    ResolvedValue: any,
+    RootValue: Fusion.UsedAs<any?>,
+    ResolvedValue: Fusion.UsedAs<any?>,
     ValueType: string?,
     ValueAccessor: IntrinsicAccessor?,
     TrySetKey: TrySet<string>?,
@@ -206,6 +206,9 @@ local function ResolveItem(item: Item): ResolvedItem
     local trySetKey = item.TrySetKey
     local trySetValue = item.TrySetValue
     local valueType = item.ValueType
+    -- Value changes are leaf updates. Peek deliberately avoids making the
+    -- structural layout Computed depend on them.
+    local currentValue = Peek<<any?>>(item.Value)
     local keyWritable =
         item.KeyWritable ~= false and
         trySetKey ~= nil
@@ -213,8 +216,8 @@ local function ResolveItem(item: Item): ResolvedItem
         item.ValueWritable ~= false and
         trySetValue ~= nil
 
-    if valueType == nil and item.Value ~= nil then
-        valueType = typeof(item.Value)
+    if valueType == nil and currentValue ~= nil then
+        valueType = typeof(currentValue)
     end
 
     return {
@@ -234,22 +237,26 @@ local function ResolveItem(item: Item): ResolvedItem
 end
 
 local function ResolveIntrinsicItem(
+    scope: Fusion.Scope,
     item: IntrinsicItem,
     rootItem: Item,
-    rootValue: any,
+    rootValue: Fusion.UsedAs<any?>,
     parentValueWritable: boolean,
     parentDisplayAsWritable: boolean
 ): ResolvedItem
     local valueAccessor = item.Value
     local writeValue = valueAccessor.Write
-    local resolvedValue = valueAccessor.Read(rootValue)
+    local resolvedValue = Computed(scope, function(use: Fusion.Use): any
+        return valueAccessor.Read(use<<any>>(rootValue))
+    end)
+    local currentResolvedValue = Peek<<any>>(resolvedValue)
     local trySetRootValue = rootItem.TrySetValue
     local trySetValue: TrySet<any>? = nil
 
     if parentValueWritable and trySetRootValue then
         trySetValue = function(value: any): (boolean, string?, any?)
             local nextRootValue = writeValue(
-                rootItem.Value,
+                Peek<<any>>(rootValue),
                 value
             )
 
@@ -269,7 +276,7 @@ local function ResolveIntrinsicItem(
         RootItem = rootItem,
         RootValue = rootValue,
         ResolvedValue = resolvedValue,
-        ValueType = typeof(resolvedValue),
+        ValueType = typeof(currentResolvedValue),
         ValueAccessor = valueAccessor,
         TrySetKey = nil,
         TrySetValue = trySetValue,
@@ -279,7 +286,10 @@ local function ResolveIntrinsicItem(
     }
 end
 
-local function GetChildItems(item: ResolvedItem): { ResolvedItem }
+local function GetChildItems(
+    scope: Fusion.Scope,
+    item: ResolvedItem
+): { ResolvedItem }
     if item.ValueAccessor then
         local intrinsicParent = item.Item :: IntrinsicItem
         local intrinsicItems: IntrinsicItems =
@@ -288,6 +298,7 @@ local function GetChildItems(item: ResolvedItem): { ResolvedItem }
 
         for childIdx, childItem in intrinsicItems do
             childItems[childIdx] = ResolveIntrinsicItem(
+                scope,
                 childItem,
                 item.RootItem,
                 item.RootValue,
@@ -300,7 +311,9 @@ local function GetChildItems(item: ResolvedItem): { ResolvedItem }
     end
 
     local intrinsicItems: IntrinsicItems =
-        IntrinsicSubItemDefinitions[typeof(item.ResolvedValue)] or {}
+        IntrinsicSubItemDefinitions[
+            typeof(Peek<<any?>>(item.ResolvedValue))
+        ] or {}
     local suppliedParent = item.Item :: Item
     local suppliedMapItems: Items = suppliedParent.SubItems or {}
     local childItems = table.create(
@@ -309,6 +322,7 @@ local function GetChildItems(item: ResolvedItem): { ResolvedItem }
 
     for childIdx, childItem in intrinsicItems do
         childItems[childIdx] = ResolveIntrinsicItem(
+            scope,
             childItem,
             item.RootItem,
             item.RootValue,
@@ -333,7 +347,7 @@ local function CreateItemLayout(
     canBecomeMapBottom: boolean
 ): ItemLayout
     local item = resolvedItem.Item
-    local childItems = GetChildItems(resolvedItem)
+    local childItems = GetChildItems(scope, resolvedItem)
     local children = table.create(#childItems) :: { ItemLayout }
 
     for childIdx, childItem in childItems do

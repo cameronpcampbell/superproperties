@@ -3,8 +3,9 @@
 local Packages =
     script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.packages
 local Fusion = require(Packages.fusion)
-local New, Children, Value, Peek, OnEvent =
-    Fusion.New, Fusion.Children, Fusion.Value, Fusion.peek, Fusion.OnEvent
+local Computed, New, Children, Observer, Value, Peek, OnEvent =
+    Fusion.Computed, Fusion.New, Fusion.Children, Fusion.Observer,
+    Fusion.Value, Fusion.peek, Fusion.OnEvent
 
 local Types = require(script.Parent.types)
 local CreateSidePadding = require(script.Parent.utils.createSidePadding)
@@ -17,8 +18,18 @@ return function(
     props: Types.ValueVariantProps<boolean>
 ): Fusion.Child
     local trySetValue = props.TrySetValue
-    local checkedState = Value(scope, props.Value)
+    local observedValue = Computed(
+        scope,
+        function(use: Fusion.Use): boolean
+            return use<<boolean>>(props.Value)
+        end
+    )
+    local checkedState = Value(scope, Peek<<boolean>>(observedValue))
     local disabled = not props.Writable or trySetValue == nil
+
+    Observer(scope, observedValue):onChange(function()
+        checkedState:set(Peek<<boolean>>(observedValue))
+    end)
 
     local function trySetChecked(value: boolean)
         if disabled then return end

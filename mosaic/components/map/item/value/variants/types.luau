@@ -5,7 +5,7 @@ local Packages =
 local Fusion = require(Packages.fusion)
 
 export type ValueVariantProps<T> = {
-    Value: T,
+    Value: Fusion.UsedAs<T>,
     Writable: boolean,
     DisplayAsWritable: boolean,
     TrySetValue: ((value: T) -> (boolean, string?, T?))?,

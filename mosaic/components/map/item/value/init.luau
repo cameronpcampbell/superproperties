@@ -6,7 +6,7 @@ local Supercorner = require(Packages.supercorner)
 local Typeforge = require(Packages.typeforge)
 
 local Fusion = require(Packages.fusion)
-local New, Children = Fusion.New, Fusion.Children
+local New, Children, Peek = Fusion.New, Fusion.Children, Fusion.peek
 
 local Utils = script.Parent.Parent.Parent.Parent.utils
 
@@ -31,7 +31,7 @@ local CreateMapItemInteraction = require(script.Parent.interaction)
 local ValueVariants = require(script.variants)
 local DefaultValueVariant = ValueVariants.Default
 type MapItemValueProps = Typeforge.Flatten<Types.BaseMapProps & {
-	Value: any,
+	Value: Fusion.UsedAs<any>,
 	ValueType: string,
 	Writable: boolean,
 	DisplayAsWritable: boolean,
@@ -48,9 +48,10 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
 	local rowCount, rowIdx = props.RowCount, props.RowIdx
 	local variant = props.Variant
 	local value = props.Value
+	local currentValue = Peek<<any>>(value)
 
 	local valueVariant: ValueVariants.ValueVariantFn<any> =
-		if value == nil and props.ValueType ~= "Instance"
+		if currentValue == nil and props.ValueType ~= "Instance"
 		then DefaultValueVariant
 		else (ValueVariants :: any)[props.ValueType] or DefaultValueVariant
 

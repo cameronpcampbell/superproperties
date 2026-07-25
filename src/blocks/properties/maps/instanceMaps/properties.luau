@@ -3,7 +3,7 @@
 local Packages = script.Parent.Parent.Parent.Parent.Parent.packages
 
 local Fusion = require(Packages.fusion)
-local Value = Fusion.Value
+local Peek, Value = Fusion.peek, Fusion.Value
 
 local Map = require(Packages.mosaic.components.map)
 type Item = Map.Item
@@ -101,16 +101,19 @@ return function(
 	instance: Instance
 ): { CategoryState }
 	local snapshot = GetProperties.Read(instance)
-	local categoryItems: { { Item } } = {}
-	local categoryItemStates: { Fusion.Value<{ Item }> } = {}
+	local propertyValueStates: { [string]: Fusion.Value<any?> } = {}
 	local categoryStates = table.create(#snapshot.Categories) :: { CategoryState }
 
-	for categoryIndex, categorySnapshot in snapshot.Categories do
-		local items = categorySnapshot.Items
-		local itemsState = Value(scope, items)
+	-- The item collection is fixed for the lifetime of this instance. Publish
+	-- property changes through leaf states so existing rows keep interaction
+	-- state and open overlays.
+	for _, categorySnapshot in snapshot.Categories do
+		for _, item in categorySnapshot.Items do
+			local valueState = Value<<any?>>(scope, item.Value)
 
-		categoryItems[categoryIndex] = items
-		categoryItemStates[categoryIndex] = itemsState
+			item.Value = valueState
+			propertyValueStates[item.Key] = valueState
+		end
 	end
 
 	local function refreshProperty(propertyName: string): (boolean, any?)
@@ -124,27 +127,31 @@ return function(
 			return false, nil
 		end
 
-		local items = categoryItems[location.CategoryIndex]
-		local item = items[location.ItemIndex]
-		if item.Value == value then
+		local valueState = propertyValueStates[propertyName]
+		if not valueState then
+			return false, nil
+		end
+		if Peek<<any?>>(valueState) == value then
 			return false, value
 		end
 
-		item.Value = value
-		categoryItemStates[location.CategoryIndex]:set(items)
+		valueState:set(value)
 		return true, value
 	end
 
 	for propertyName, location in snapshot.LocationsByName do
-		local items = categoryItems[location.CategoryIndex]
-		local item = items[location.ItemIndex]
+		local categorySnapshot =
+			snapshot.Categories[location.CategoryIndex]
+		local item = categorySnapshot.Items[location.ItemIndex]
 		if not item.ValueWritable then
 			continue
 		end
+		local valueState = propertyValueStates[propertyName]
 
 		item.TrySetValue = function(value: any): (boolean, string?, any?)
-			if item.Value == value then
-				return true, nil, item.Value
+			local currentValue = Peek<<any?>>(valueState)
+			if currentValue == value then
+				return true, nil, currentValue
 			end
 
 			local success, err = CommitProperty(instance, location.Plan, value)
@@ -157,7 +164,7 @@ return function(
 	for categoryIndex, categorySnapshot in snapshot.Categories do
 		categoryStates[categoryIndex] = Category(scope, outerScope, collapsedStateScope, {
 			Name = categorySnapshot.Name,
-			Items = categoryItemStates[categoryIndex],
+			Items = categorySnapshot.Items,
 			Presorted = true,
 			StableKeys = true,
 		})

@@ -19,7 +19,7 @@ export type Item = {
 	KeyChildren: { Fusion.Child }?,
 	KeyWritable: boolean?,
 	TrySetKey: TrySet<string>?,
-	Value: any?,
+	Value: Fusion.UsedAs<any?>,
 	ValueType: string?,
 	ValueChildren: { Fusion.Child }?,
 	ValueWritable: boolean?,
@@ -49,7 +49,7 @@ export type IntrinsicItems = { IntrinsicItem }
 
 export type ItemLayout = {
 	Item: Item | IntrinsicItem,
-	ResolvedValue: any,
+	ResolvedValue: Fusion.UsedAs<any?>,
 	ValueType: string?,
 	TrySetKey: TrySet<string>?,
 	TrySetValue: TrySet<any>?,

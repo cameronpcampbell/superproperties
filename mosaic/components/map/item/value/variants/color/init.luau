@@ -4,7 +4,8 @@ local Packages =
     script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.packages
 
 local Fusion = require(Packages.fusion)
-local New, Children, Peek = Fusion.New, Fusion.Children, Fusion.peek
+local Computed, New, Children, Peek =
+    Fusion.Computed, Fusion.New, Fusion.Children, Fusion.peek
 
 local Utils = script.Parent.Parent.Parent.Parent.Parent.Parent.utils
 
@@ -40,10 +41,20 @@ local ColorTextVariant = CreateTextVariant<<Color3>>({
     Parse = ParseColor
 })
 
-local function Color(scope: Fusion.Scope, color: Color3 | BrickColor)
-    if typeof(color) == "BrickColor" then
-        color = color.Color
-    end
+local function Color(
+    scope: Fusion.Scope,
+    color: Fusion.UsedAs<Color3 | BrickColor>
+)
+    local backgroundColor = Computed(
+        scope,
+        function(use: Fusion.Use): Color3
+            local usedColor = use<<Color3 | BrickColor>>(color)
+            return
+                if typeof(usedColor) == "BrickColor"
+                then usedColor.Color
+                else usedColor :: Color3
+        end
+    )
 
     local theme = GetThemeForScope(scope)
     local height = theme:GetHeight(scope, "Sm")
@@ -51,7 +62,7 @@ local function Color(scope: Fusion.Scope, color: Color3 | BrickColor)
 
     return HighlightSupercorner(scope, {
         GradientTransparency = 0.78,
-        BackgroundColor3 = color :: Color3,
+        BackgroundColor3 = backgroundColor,
         StrokeThickness = 1,
         Size = ComputeUDim2FromOffset(scope, height, height),
         CornerRadius = Peek<<number>>(cornerRadius),
@@ -67,29 +78,47 @@ return function(
     props: Types.ValueVariantProps<Color3 | BrickColor>
 ): Fusion.Child
     local value = props.Value
+    local currentValue = Peek<<Color3 | BrickColor>>(value)
 
     if
-        typeof(value) == "Color3" and
+        typeof(currentValue) == "Color3" and
         props.Writable and
         props.TrySetValue ~= nil
     then
+        local colorValue = Computed(
+            scope,
+            function(use: Fusion.Use): Color3
+                return use<<Color3 | BrickColor>>(value) :: Color3
+            end
+        )
+
         return {
             ColorTextVariant(scope, {
-                Value = value,
+                Value = colorValue,
                 Writable = props.Writable,
                 DisplayAsWritable = props.DisplayAsWritable,
                 TrySetValue = props.TrySetValue :: any,
                 OnFocusChanged = props.OnFocusChanged
             }),
 
-            Color(scope, value)
+            Color(scope, colorValue)
         } :: Fusion.Child
     end
 
+    local displayText = Computed(
+        scope,
+        function(use: Fusion.Use): string
+            local usedValue = use<<Color3 | BrickColor>>(value)
+            return
+                if typeof(usedValue) == "Color3"
+                then FormatColor(usedValue)
+                else usedValue.Name
+        end
+    )
+
     return {
         Text(scope, {
-            Text =
-                if typeof(value) == "Color3" then FormatColor(value) else value.Name,
+            Text = displayText,
             Variant =
                 if props.DisplayAsWritable then "Primary"
                 else "Secondary",

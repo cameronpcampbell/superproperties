@@ -6,9 +6,9 @@ local Packages =
     script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.packages
 
 local Fusion = require(Packages.fusion)
-local Computed, New, Children, OnEvent, Tween =
+local Computed, New, Children, OnEvent, Peek, Tween =
     Fusion.Computed, Fusion.New, Fusion.Children, Fusion.OnEvent,
-    Fusion.Tween
+    Fusion.peek, Fusion.Tween
 
 local Components = script.Parent.Parent.Parent.Parent.Parent
 local Text = require(Components.text)
@@ -54,22 +54,28 @@ return function(
     scope: Fusion.Scope,
     props: Types.ValueVariantProps<InstanceValue>
 ): Fusion.Child
-    local storedValue = props.Value
-    local storedValueType = typeof(storedValue) :: string
+    local initialStoredValue = Peek<<InstanceValue>>(props.Value)
+    local storedValueType = typeof(initialStoredValue) :: string
     local usesInstanceHandle = storedValueType == "InstanceHandle"
-    local value: Instance? =
-        if usesInstanceHandle
-        then (storedValue :: InstanceHandle):Get()
-        else storedValue :: Instance?
-    if value and InstanceHandle.IsEmptyTarget(value) then
-        value = nil
-    end
+    local value = Computed(
+        scope,
+        function(use: Fusion.Use): Instance?
+            local storedValue = use<<InstanceValue>>(props.Value)
+            local usedValue: Instance? =
+                if usesInstanceHandle
+                then (storedValue :: InstanceHandle):Get()
+                else storedValue :: Instance?
+
+            if usedValue and InstanceHandle.IsEmptyTarget(usedValue) then
+                return nil
+            end
+
+            return usedValue
+        end
+    )
 
     local trySetValue = props.TrySetValue
     local writable = props.Writable and trySetValue ~= nil
-
-    local classIcon =
-        if value then StudioService:GetClassIcon(value.ClassName) else nil
 
     local function TryCommitValue(nextValue: Instance?)
         local setValue = trySetValue
@@ -224,85 +230,130 @@ return function(
         table.insert(interactionChildren, hitArea)
     end
 
-    local indicator: Fusion.Child = {}
     local hoverState = props.HoverState
-
-    if value and writable and hoverState then
-        local clearTransparency =
-            CreateClearTransparency(scope, hoverState)
-        local instanceIconTransparency = Computed(
+    local clearTransparency =
+        if writable and hoverState
+        then CreateClearTransparency(scope, hoverState)
+        else nil
+    local instanceIconTransparency =
+        if clearTransparency
+        then Computed(
             scope,
             function(use: Fusion.Use): number
                 return 1 - use<<number>>(clearTransparency)
             end
         )
-        local clearInteractable = Computed(
+        else nil
+    local clearInteractable =
+        if hoverState
+        then Computed(
             scope,
             function(use: Fusion.Use): boolean
                 return use<<boolean>>(hoverState)
             end
         )
+        else nil
 
-        indicator = New(scope, "Frame") {
-            Size = UDim2.fromOffset(InstanceIconSize, InstanceIconSize),
-            BackgroundTransparency = 1,
-            LayoutOrder = 1,
+    local indicator = Computed(scope, function(
+        use: Fusion.Use,
+        indicatorScope: Fusion.Scope
+    ): Fusion.Child
+        local usedValue = use<<Instance?>>(value)
+        if not usedValue then return {} end
 
-            Name = "InstanceValueIndicator",
+        local classIcon = StudioService:GetClassIcon(usedValue.ClassName)
 
-            [Children] = {
-                if classIcon then
-                    Icon(scope, {
-                        Image = classIcon.Image,
-                        Size = UDim2.fromScale(1, 1),
-                        ImageRectOffset = classIcon.ImageRectOffset,
-                        ImageRectSize = classIcon.ImageRectSize,
-                        ImageTransparency = instanceIconTransparency
-                    })
-                    else {},
+        if writable
+            and hoverState
+            and clearTransparency
+            and instanceIconTransparency
+            and clearInteractable
+        then
+            return New(indicatorScope, "Frame") {
+                Size = UDim2.fromOffset(
+                    InstanceIconSize,
+                    InstanceIconSize
+                ),
+                BackgroundTransparency = 1,
+                LayoutOrder = 1,
 
-                Icon(scope, {
-                    Image = Assets.Cross,
-                    Position = UDim2.fromScale(.5, .5),
-                    AnchorPoint = Vector2.new(.5, .5),
-                    ImageTransparency = clearTransparency,
-                    ZIndex = 3,
+                Name = "InstanceValueIndicator",
 
-                    Name = "InstanceValueClearIcon"
-                }),
+                [Children] = {
+                    if classIcon then
+                        Icon(indicatorScope, {
+                            Image = classIcon.Image,
+                            Size = UDim2.fromScale(1, 1),
+                            ImageRectOffset = classIcon.ImageRectOffset,
+                            ImageRectSize = classIcon.ImageRectSize,
+                            ImageTransparency = instanceIconTransparency
+                        })
+                        else {},
 
-                New(scope, "TextButton") {
-                    Size = UDim2.fromOffset(21, 21),
-                    Position = UDim2.fromScale(.5, .5),
-                    AnchorPoint = Vector2.new(.5, .5),
-                    BackgroundTransparency = 1,
-                    Text = "",
-                    AutoButtonColor = false,
-                    Selectable = false,
-                    Interactable = clearInteractable,
-                    ZIndex = 4,
+                    Icon(indicatorScope, {
+                        Image = Assets.Cross,
+                        Position = UDim2.fromScale(.5, .5),
+                        AnchorPoint = Vector2.new(.5, .5),
+                        ImageTransparency = clearTransparency,
+                        ZIndex = 3,
 
-                    Name = "InstanceValueClearButton",
+                        Name = "InstanceValueClearIcon"
+                    }),
 
-                    [OnEvent "Activated"] = function()
-                        local callback = clearValue
-                        if callback then callback() end
-                    end
+                    New(indicatorScope, "TextButton") {
+                        Size = UDim2.fromOffset(21, 21),
+                        Position = UDim2.fromScale(.5, .5),
+                        AnchorPoint = Vector2.new(.5, .5),
+                        BackgroundTransparency = 1,
+                        Text = "",
+                        AutoButtonColor = false,
+                        Selectable = false,
+                        Interactable = clearInteractable,
+                        ZIndex = 4,
+
+                        Name = "InstanceValueClearButton",
+
+                        [OnEvent "Activated"] = function()
+                            local callback = clearValue
+                            if callback then callback() end
+                        end
+                    }
                 }
             }
-        }
-    elseif classIcon then
-        indicator = Icon(scope, {
-            Image = classIcon.Image,
-            Size = UDim2.fromOffset(
-                InstanceIconSize,
-                InstanceIconSize
-            ),
-            ImageRectOffset = classIcon.ImageRectOffset,
-            ImageRectSize = classIcon.ImageRectSize,
-            LayoutOrder = 1
-        })
-    end
+        end
+
+        if classIcon then
+            return Icon(indicatorScope, {
+                Image = classIcon.Image,
+                Size = UDim2.fromOffset(
+                    InstanceIconSize,
+                    InstanceIconSize
+                ),
+                ImageRectOffset = classIcon.ImageRectOffset,
+                ImageRectSize = classIcon.ImageRectSize,
+                LayoutOrder = 1
+            })
+        end
+
+        return {}
+    end)
+
+    local displayText = Computed(
+        scope,
+        function(use: Fusion.Use): string
+            local usedValue = use<<Instance?>>(value)
+            return if usedValue then usedValue.Name else "Empty"
+        end
+    )
+    local fontStyle = Computed(
+        scope,
+        function(use: Fusion.Use): Enum.FontStyle
+            return
+                if use<<Instance?>>(value)
+                then Enum.FontStyle.Normal
+                else Enum.FontStyle.Italic
+        end
+    )
 
     local content = New(scope, "Frame") {
         Size = UDim2.fromScale(1, 1),
@@ -313,13 +364,11 @@ return function(
 
         [Children] = {
             Text(scope, {
-                Text = if value then value.Name else "Empty",
+                Text = displayText,
                 Variant =
                     if props.DisplayAsWritable then "Primary"
                     else "Secondary",
-                FontStyle =
-                    if value then Enum.FontStyle.Normal
-                    else Enum.FontStyle.Italic,
+                FontStyle = fontStyle,
                 Size = UDim2.fromScale(1, 0),
                 LayoutOrder = 0,
 

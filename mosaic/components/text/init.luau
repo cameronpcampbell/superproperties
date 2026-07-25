@@ -24,7 +24,7 @@ type TextProps = {
     UseAccentFg: boolean?,
 	Font: ThemeUtils.FontVariant?,
 	FontWeight: Enum.FontWeight?,
-	FontStyle: Enum.FontStyle?,
+	FontStyle: Fusion.UsedAs<Enum.FontStyle>?,
 	FontSize: ThemeUtils.FontSizeVariant?,
 }
 
