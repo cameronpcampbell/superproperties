@@ -40,6 +40,7 @@ return {
     -- Core components.
     Placement = require(CoreComponents.placement),
     PopoverFocus = require(CoreComponents.popoverFocus),
+    TransparencyGated = require(CoreComponents.transparencyGated),
 
     -- Utils.
     GetTheme = ThemeUtils.GetThemeForScope,
