@@ -3,11 +3,11 @@
 local GroupPropertyTargets =
     require("./groupPropertyTargets")
 
-local workspaceTarget = {}
-local textBoxTextTarget = {}
-local textBoxNameTarget = { Value = "TextBox" }
-local workspaceNameTarget = { Value = "Workspace" }
-local unrelatedNameTarget = {}
+local workspaceTarget: { Value: string? } = {}
+local textBoxTextTarget: { Value: string? } = {}
+local textBoxNameTarget: { Value: string? } = { Value = "TextBox" }
+local workspaceNameTarget: { Value: string? } = { Value = "Workspace" }
+local unrelatedNameTarget: { Value: string? } = {}
 
 local groups, categoryNames = GroupPropertyTargets({
     {

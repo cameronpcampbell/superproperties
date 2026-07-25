@@ -1,7 +1,7 @@
 --!strict
 
 export type Rule<T> =
-    boolean | ((instance: T, value: any) -> boolean)
+    true | false | ((instance: T, value: any) -> boolean)
 
 return function<T>(
     rule: Rule<T>?,

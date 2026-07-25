@@ -5,7 +5,7 @@ A custom properties explorer for roblox.
 <img src="assets/readme/example.png" alt="Superproperties example" width="400">
 
 > [!WARNING]
-> Superproperties is a work in progress. Not all properties currently support being written to.
+> Superproperties is a work in progress.
 
 ## TODOs
 
@@ -13,7 +13,9 @@ A custom properties explorer for roblox.
 - Implement `ColorSequence` and `NumberSequence` property values.
 - Implement `BrickColor` property values.
 - Implement `PhysicalProperties` property values.
-- Implement multi-instance select.
+
+### Fixes
+- Address minor performance issues with the virtual list.
 
 ### Bonus Features
 - Tabs to filter between the selected instances.

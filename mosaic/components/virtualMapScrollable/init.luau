@@ -38,6 +38,7 @@ local ShouldRefreshVirtualWindow, FindVisibleMapRange =
 
 type MapProps = Map.MapProps
 type MapLayout = Virtualization.MapLayout
+type RowGeometry = VirtualizationMath.RowGeometry
 
 type LayoutOrdered = {
     LayoutOrder: number?
@@ -404,7 +405,8 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                     and mapIdx <= lastVisibleMap
                 then
                     local mapTop = getMapTop(mapIdx)
-                    local rootGeometry = Peek(record.Layout.RootGeometry)
+                    local rootGeometry =
+                        Peek<<RowGeometry>>(record.Layout.RootGeometry)
                     local firstRow, lastRow =
                         VirtualizationMath.FindVisibleRange(
                             rootGeometry,
@@ -436,7 +438,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                 for _, record in mapRecords do
                     use<<number>>(record.Top)
                     use<<number>>(record.Bottom)
-                    use(record.Layout.RootGeometry)
+                    use<<RowGeometry>>(record.Layout.RootGeometry)
                     use<<Vector2>>(record.Layout.FocusedRootRange)
                     use<<boolean>>(record.ShowOnTop)
                 end
