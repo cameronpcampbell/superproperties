@@ -358,7 +358,7 @@ return function(
             Input(scope, {
                 Variant = "Quaternary",
                 Text = nameState,
-                PlaceholderText = "Enter a name...",
+                PlaceholderText = "Name",
                 ParentPopoverFocus = popoverFocus,
                 Interactable = popoverFocus.State,
                 LayoutOrder = 1
