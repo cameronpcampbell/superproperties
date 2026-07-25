@@ -27,6 +27,9 @@ local TableExtract = TableUtils.Extract
 local Components = script.Parent
 local HighlightSupercorner = require(Components.highlightSupercorner)
 
+local CoreComponents = script.Parent.Parent.coreComponents
+local TransparencyGated = require(CoreComponents.transparencyGated)
+
 local Assets = require(script.Parent.Parent.assets)
 
 export type Checked = boolean | "Mixed"
@@ -43,6 +46,13 @@ local TransparencyTweenInfo = TweenInfo.new(
     Enum.EasingStyle.Exponential,
     Enum.EasingDirection.InOut
 )
+
+local function NewImageLabel(
+    scope: Fusion.Scope,
+    props: { [any]: any }
+): Fusion.Child
+    return New(scope, "ImageLabel")(props)
+end
 
 return Component<<CheckboxProps>>(function(scope, props)
     local props, checked = TableExtract(props, "Checked", true)
@@ -160,7 +170,8 @@ return Component<<CheckboxProps>>(function(scope, props)
         end,
 
         RootChildren = {
-            Supercorner.new(scope, {
+            TransparencyGated(scope, Supercorner.new :: any, {
+                GatedTransparencyProperty = "StrokeTransparency",
                 Size = UDim2.fromScale(1, 1),
                 StrokeThickness = 1,
                 BackgroundTransparency = 1,
@@ -178,7 +189,8 @@ return Component<<CheckboxProps>>(function(scope, props)
         },
 
         [Children] = {
-            New(scope, "ImageLabel") {
+            TransparencyGated(scope, NewImageLabel, {
+                GatedTransparencyProperty = "ImageTransparency",
                 Image = Assets.CheckboxTrue,
                 ImageColor3 = accentFgColor,
                 Size = UDim2.fromScale(1, 1),
@@ -186,9 +198,10 @@ return Component<<CheckboxProps>>(function(scope, props)
                 ImageTransparency = checkedTransparency,
 
                 Name = "CheckboxTrue"
-            },
+            }),
 
-            New(scope, "ImageLabel") {
+            TransparencyGated(scope, NewImageLabel, {
+                GatedTransparencyProperty = "ImageTransparency",
                 Image = Assets.CheckboxMixed,
                 ImageColor3 = accentFgColor,
                 Size = UDim2.fromScale(1, 1),
@@ -196,7 +209,7 @@ return Component<<CheckboxProps>>(function(scope, props)
                 ImageTransparency = mixedTransparency,
 
                 Name = "CheckboxMixed"
-            },
+            }),
         },
 
         Name = "Button"
