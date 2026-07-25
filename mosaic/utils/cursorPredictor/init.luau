@@ -30,6 +30,10 @@ export type FrameRegistration = {
     Destroy: () -> (),
 }
 
+export type InputRegistration = {
+    Destroy: () -> (),
+}
+
 type TargetHandlers = {
     Enter: (position: Vector2) -> (),
     Move: (position: Vector2) -> (),
@@ -44,7 +48,7 @@ type TargetRecord = {
     Root: RootRecord?,
     RootIndex: number?,
     RegistrationOrder: number,
-    IsButton: boolean,
+    IsExclusiveTarget: boolean,
     Pressed: boolean,
     Hovered: boolean,
     HoveredByPrediction: boolean,
@@ -412,7 +416,7 @@ local function Publish(
                 else
                     nil
 
-            if record.IsButton then
+            if record.IsExclusiveTarget then
                 if predictedHit
                     and (
                         not predictedWinnerHit
@@ -591,8 +595,8 @@ local function ResetRoot(rootRecord: RootRecord)
 
     for _, record in pressedRecords do
         local rootLeave = record.Handlers.RootLeave
-        if not record.Destroyed and rootLeave then
-            rootLeave()
+        if not record.Destroyed and rootLeave ~= nil then
+            (rootLeave :: () -> ())()
         end
     end
 end
@@ -757,7 +761,7 @@ end
 local function RegisterTarget(
     scope: Fusion.Scope,
     target: GuiObject,
-    isButton: boolean,
+    isExclusiveTarget: boolean,
     handlers: TargetHandlers
 ): Registration
     nextRegistrationOrder += 1
@@ -768,7 +772,7 @@ local function RegisterTarget(
         Root = nil,
         RootIndex = nil,
         RegistrationOrder = nextRegistrationOrder,
-        IsButton = isButton,
+        IsExclusiveTarget = isExclusiveTarget,
         Pressed = false,
         Hovered = false,
         HoveredByPrediction = false,
@@ -815,7 +819,13 @@ local function RegisterButton(
     button: GuiButton,
     handlers: Handlers
 ): Registration
-    return RegisterTarget(scope, button, true, handlers)
+    return RegisterTarget(scope, button, true, {
+        Enter = handlers.Enter,
+        Move = handlers.Move,
+        Leave = handlers.Leave,
+        RootLeave = handlers.RootLeave,
+        ManagedChanged = handlers.ManagedChanged,
+    })
 end
 
 local function RegisterFrame(
@@ -832,8 +842,23 @@ local function RegisterFrame(
     })
 end
 
+local function RegisterInput(
+    scope: Fusion.Scope,
+    input: TextBox,
+    handlers: HoverHandlers
+): InputRegistration
+    return RegisterTarget(scope, input, true, {
+        Enter = handlers.Enter,
+        Move = handlers.Move,
+        Leave = handlers.Leave,
+        RootLeave = nil,
+        ManagedChanged = handlers.ManagedChanged,
+    })
+end
+
 return {
     RegisterRoot = RegisterRoot,
     RegisterButton = RegisterButton,
     RegisterFrame = RegisterFrame,
+    RegisterInput = RegisterInput,
 }
