@@ -2,7 +2,7 @@
 
 local ChangeHistoryService = game:GetService("ChangeHistoryService")
 
-local GetProperties = require(script.Parent.Parent.getProperties)
+local GetProperties = require(script.Parent.Parent.Parent.getProperties)
 type PropertyPlan = GetProperties.PropertyPlan
 
 return function(

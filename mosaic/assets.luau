@@ -16,7 +16,7 @@ return {
 
     CheckboxTrue = "rbxassetid://94815918343412",
     CheckboxFalse = "rbxassetid://94880891664339",
-    CheckboxNil = "rbxassetid://93039358278963",
+    CheckboxMixed = "rbxassetid://93039358278963",
 
     Cross = "rbxassetid://90093302261099"
 }

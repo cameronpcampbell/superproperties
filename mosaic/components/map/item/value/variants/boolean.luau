@@ -15,20 +15,20 @@ local Checkbox = require(Components.checkbox)
 
 return function(
     scope: Fusion.Scope,
-    props: Types.ValueVariantProps<boolean>
+    props: Types.ValueVariantProps<Checkbox.Checked>
 ): Fusion.Child
     local trySetValue = props.TrySetValue
     local observedValue = Computed(
         scope,
-        function(use: Fusion.Use): boolean
-            return use<<boolean>>(props.Value)
+        function(use: Fusion.Use): Checkbox.Checked
+            return use<<Checkbox.Checked>>(props.Value)
         end
     )
-    local checkedState = Value(scope, Peek<<boolean>>(observedValue))
+    local checkedState = Value(scope, Peek<<Checkbox.Checked>>(observedValue))
     local disabled = not props.Writable or trySetValue == nil
 
     Observer(scope, observedValue):onChange(function()
-        checkedState:set(Peek<<boolean>>(observedValue))
+        checkedState:set(Peek<<Checkbox.Checked>>(observedValue))
     end)
 
     local function trySetChecked(value: boolean)
@@ -63,7 +63,7 @@ return function(
                 ZIndex = 1,
 
                 [OnEvent "MouseButton1Click"] = function()
-                    trySetChecked(not Peek<<boolean>>(checkedState))
+                    trySetChecked(not Peek<<Checkbox.Checked>>(checkedState))
                 end,
 
                 Name = "HitArea"

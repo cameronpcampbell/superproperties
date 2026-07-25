@@ -29,8 +29,10 @@ local HighlightSupercorner = require(Components.highlightSupercorner)
 
 local Assets = require(script.Parent.Parent.assets)
 
+export type Checked = boolean | "Mixed"
+
 type CheckboxProps = {
-    Checked: Fusion.UsedAs<boolean>?,
+    Checked: Fusion.UsedAs<Checked>?,
     Disabled: Fusion.UsedAs<boolean>?,
     OnChanged: ((checked: boolean) -> ())?
 }
@@ -47,7 +49,7 @@ return Component<<CheckboxProps>>(function(scope, props)
     local props, disabled = TableExtract(props, "Disabled", true)
     local props, onChanged = TableExtract(props, "OnChanged")
 
-    local checkedState = CoerceToValue<<boolean>>(scope, checked)
+    local checkedState = CoerceToValue<<Checked>>(scope, checked)
 
     local isHoverState, isFocusState = Value(scope, false), Value(scope, false)
     local themeColorModifier = CalcColorModifier(scope, isHoverState, isFocusState)
@@ -55,22 +57,43 @@ return Component<<CheckboxProps>>(function(scope, props)
     local checkedTransparency = Tween<<number>>(
         scope,
         Computed(scope, function(use, scope)
-            if not use<<boolean>>(checkedState) then return 1 end
+            local usedCheckedState = use<<Checked>>(checkedState)
+            local usedDisabled = use<<boolean>>(disabled)
+
+            if usedCheckedState ~= true then return 1 end
 
             return
-                if use<<boolean>>(disabled) then DisabledTransparency
+                if usedDisabled then DisabledTransparency
                 else 0
         end),
         TransparencyTweenInfo
     )
 
-    local uncheckedTransparency = Tween<<number>>(
+    local strokeTransparency = Tween<<number>>(
         scope,
         Computed(scope, function(use, scope)
-            if use<<boolean>>(checkedState) then return 1 end
+            local usedCheckedState = use<<Checked>>(checkedState)
+            local usedDisabled = use<<boolean>>(disabled)
+
+            if usedCheckedState == true then return 1 end
 
             return
-                if use<<boolean>>(disabled) then DisabledTransparency
+                if usedDisabled then DisabledTransparency
+                else 0
+        end),
+        TransparencyTweenInfo
+    )
+
+    local mixedTransparency = Tween<<number>>(
+        scope,
+        Computed(scope, function(use, scope)
+            local usedCheckedState = use<<Checked>>(checkedState)
+            local usedDisabled = use<<boolean>>(disabled)
+
+            if usedCheckedState ~= "Mixed" then return 1 end
+
+            return
+                if usedDisabled then DisabledTransparency
                 else 0
         end),
         TransparencyTweenInfo
@@ -127,7 +150,7 @@ return Component<<CheckboxProps>>(function(scope, props)
         [OnEvent "MouseButton1Click"] = function()
             if Peek<<boolean>>(disabled) then return end
 
-            local nextChecked = not Peek<<boolean>>(checkedState)
+            local nextChecked = not Peek<<Checked>>(checkedState)
             if onChanged then
                 onChanged(nextChecked)
                 return
@@ -148,7 +171,7 @@ return Component<<CheckboxProps>>(function(scope, props)
                     )
                 ),
                 CornerRadius = Peek<<number>>(cornerRadius),
-                StrokeTransparency = uncheckedTransparency
+                StrokeTransparency = strokeTransparency
             }),
 
             New(scope, "UIFlexItem") {},
@@ -160,7 +183,19 @@ return Component<<CheckboxProps>>(function(scope, props)
                 ImageColor3 = accentFgColor,
                 Size = UDim2.fromScale(1, 1),
                 BackgroundTransparency = 1,
-                ImageTransparency = checkedTransparency
+                ImageTransparency = checkedTransparency,
+
+                Name = "Check"
+            },
+
+            New(scope, "ImageLabel") {
+                Image = Assets.CheckboxMixed,
+                ImageColor3 = accentFgColor,
+                Size = UDim2.fromScale(1, 1),
+                BackgroundTransparency = 1,
+                ImageTransparency = mixedTransparency,
+
+                Name = "Check"
             },
         },
 
