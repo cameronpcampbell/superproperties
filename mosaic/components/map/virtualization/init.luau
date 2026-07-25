@@ -419,19 +419,27 @@ local function CreateItemLayout(
         )
     end
 
-    local childrenContentHeight = Computed(scope, function(use: Fusion.Use): number
-        local height = 0
+    local hasChildren = #children > 0
+    local childrenContentHeight: Fusion.UsedAs<number> = 0
 
-        for childIdx, child in children do
-            if childIdx > 1 then height += RowGap end
-            height += use<<number>>(child.AnimatedHeight)
-        end
+    if hasChildren then
+        childrenContentHeight = Computed(
+            scope,
+            function(use: Fusion.Use): number
+                local height = 0
 
-        return height
-    end)
+                for childIdx, child in children do
+                    if childIdx > 1 then height += RowGap end
+                    height += use<<number>>(child.AnimatedHeight)
+                end
+
+                return height
+            end
+        )
+    end
 
     local collapsedState: Fusion.Value<boolean>? = nil
-    if #children > 0 then
+    if hasChildren then
         collapsedState = item.Collapsed
             or CreateCachedCollapsedState(scope, collapseStateNode)
     end
@@ -464,12 +472,18 @@ local function CreateItemLayout(
         then CreateCollapseRevealTween(scope, collapsedState)
         else nil
 
-    local animatedChildrenHeight = Computed(scope, function(use: Fusion.Use): number
-        if not reveal then return 0 end
+    local animatedChildrenHeight: Fusion.UsedAs<number> = 0
 
-        return use<<number>>(reveal)
-            * (RowGap + use<<number>>(childrenContentHeight))
-    end)
+    if reveal then
+        local animatedReveal = reveal
+        animatedChildrenHeight = Computed(
+            scope,
+            function(use: Fusion.Use): number
+                return use<<number>>(animatedReveal)
+                    * (RowGap + use<<number>>(childrenContentHeight))
+            end
+        )
+    end
 
     local cornersCollapsed: Fusion.Computed<boolean>? = nil
     if reveal then
@@ -479,13 +493,32 @@ local function CreateItemLayout(
         end)
     end
 
-    local animatedHeight = Computed(scope, function(use: Fusion.Use): number
-        return rowHeight + use<<number>>(animatedChildrenHeight)
-    end)
-    local keyFocusState = Value<<boolean>>(scope, false)
-    local keyFocusElevationState = Value<<boolean>>(scope, false)
-    local valueFocusState = Value<<boolean>>(scope, false)
-    local valueFocusElevationState = Value<<boolean>>(scope, false)
+    local animatedHeight: Fusion.UsedAs<number> = rowHeight
+
+    if reveal then
+        animatedHeight = Computed(scope, function(use: Fusion.Use): number
+            return rowHeight + use<<number>>(animatedChildrenHeight)
+        end)
+    end
+
+    local keyFocusState: Fusion.Value<boolean>? =
+        if resolvedItem.KeyWritable
+        then Value<<boolean>>(scope, false)
+        else nil
+    local keyFocusElevationState: Fusion.Value<boolean>? =
+        if resolvedItem.KeyWritable
+        then Value<<boolean>>(scope, false)
+        else nil
+    local valueFocusable =
+        resolvedItem.ValueType ~= nil and resolvedItem.ValueWritable
+    local valueFocusState: Fusion.Value<boolean>? =
+        if valueFocusable
+        then Value<<boolean>>(scope, false)
+        else nil
+    local valueFocusElevationState: Fusion.Value<boolean>? =
+        if valueFocusable
+        then Value<<boolean>>(scope, false)
+        else nil
 
     return {
         Item = item,
@@ -518,10 +551,25 @@ local function UseItemTreeFocus(
     use: Fusion.Use,
     layout: ItemLayout
 ): boolean
-    if use<<boolean>>(layout.KeyFocusState) then return true end
-    if use<<boolean>>(layout.KeyFocusElevationState) then return true end
-    if use<<boolean>>(layout.ValueFocusState) then return true end
-    if use<<boolean>>(layout.ValueFocusElevationState) then return true end
+    local keyFocusState = layout.KeyFocusState
+    if keyFocusState and use<<boolean>>(keyFocusState) then return true end
+
+    local keyFocusElevationState = layout.KeyFocusElevationState
+    if keyFocusElevationState
+        and use<<boolean>>(keyFocusElevationState)
+    then
+        return true
+    end
+
+    local valueFocusState = layout.ValueFocusState
+    if valueFocusState and use<<boolean>>(valueFocusState) then return true end
+
+    local valueFocusElevationState = layout.ValueFocusElevationState
+    if valueFocusElevationState
+        and use<<boolean>>(valueFocusElevationState)
+    then
+        return true
+    end
 
     for _, child in layout.Children do
         if UseItemTreeFocus(use, child) then return true end
@@ -723,9 +771,18 @@ local function CreateMapLayout(
 
             for itemLayout, rowIdx in usedMetadata.RowIndices do
                 if rowIdx == lastRowIdx then
+                    local keyFocusState = itemLayout.KeyFocusState
+                    local valueFocusState = itemLayout.ValueFocusState
+
                     return
-                        use<<boolean>>(itemLayout.KeyFocusState)
-                        or use<<boolean>>(itemLayout.ValueFocusState)
+                        (
+                            keyFocusState ~= nil
+                            and use<<boolean>>(keyFocusState)
+                        )
+                        or (
+                            valueFocusState ~= nil
+                            and use<<boolean>>(valueFocusState)
+                        )
                 end
             end
 

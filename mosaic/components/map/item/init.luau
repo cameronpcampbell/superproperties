@@ -129,14 +129,26 @@ local function CreateMapItem(
     local rowZIndex: Fusion.UsedAs<number> = ZIndices.Default
 
     if hasInteractiveKey then
-        keyFocusState = layout.KeyFocusState
-        keyFocusElevationState = layout.KeyFocusElevationState
+        keyFocusState = assert(
+            layout.KeyFocusState,
+            "Writable map keys require focus state."
+        )
+        keyFocusElevationState = assert(
+            layout.KeyFocusElevationState,
+            "Writable map keys require focus elevation state."
+        )
         keyFocusRingAlphaState = Value(scope, 0)
     end
 
     if hasInteractiveValue then
-        valueFocusState = layout.ValueFocusState
-        valueFocusElevationState = layout.ValueFocusElevationState
+        valueFocusState = assert(
+            layout.ValueFocusState,
+            "Writable map values require focus state."
+        )
+        valueFocusElevationState = assert(
+            layout.ValueFocusElevationState,
+            "Writable map values require focus elevation state."
+        )
         valueFocusRingAlphaState = Value(scope, 0)
     end
 
