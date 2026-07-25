@@ -61,6 +61,8 @@ return function(
     local value = Computed(
         scope,
         function(use: Fusion.Use): Instance?
+            if use<<boolean>>(props.Mixed) then return nil end
+
             local storedValue = use<<InstanceValue>>(props.Value)
             local usedValue: Instance? =
                 if usesInstanceHandle
@@ -329,6 +331,7 @@ return function(
     local displayText = Computed(
         scope,
         function(use: Fusion.Use): string
+            if use<<boolean>>(props.Mixed) then return "" end
             local usedValue = use<<Instance?>>(value)
             return if usedValue then usedValue.Name else "Empty"
         end
@@ -336,6 +339,9 @@ return function(
     local fontStyle = Computed(
         scope,
         function(use: Fusion.Use): Enum.FontStyle
+            if use<<boolean>>(props.Mixed) then
+                return Enum.FontStyle.Normal
+            end
             return
                 if use<<Instance?>>(value)
                 then Enum.FontStyle.Normal

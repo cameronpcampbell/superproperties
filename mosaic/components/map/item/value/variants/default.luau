@@ -19,6 +19,7 @@ return function(
 ): Fusion.Child
     local value = props.Value
     local text = Computed(scope, function(use: Fusion.Use): string
+        if use<<boolean>>(props.Mixed) then return "" end
         return tostring(use<<any>>(value))
     end)
 

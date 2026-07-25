@@ -14,6 +14,7 @@ local Button, Container, IconButton, Input, Placement, PopoverFocus, Select =
 
 local Map = require(Packages.mosaic.components.map)
 type Item = Map.Item
+type TransformValue = Map.TransformValue
 
 local InstanceHandle = require(
     Packages.mosaic.components.map.item.value.variants["instanceHandle.types"]
@@ -34,6 +35,18 @@ type AttributesMapProps = {
 type AttributeTypeOption = {
     Label: string,
     DefaultValue: any
+}
+
+type AttributeTarget = {
+    Instance: Instance,
+    Value: any
+}
+
+type AttributeGroup = {
+    Name: string,
+    ValueType: string,
+    CompatibleTypes: boolean,
+    Targets: { AttributeTarget }
 }
 
 local RBX_ATTRIBUTE_PREFIX = "RBX_"
@@ -82,159 +95,69 @@ local function ShouldOmitAttribute(
             == RBX_ATTRIBUTE_PREFIX
 end
 
-local function GetAttributeItems(
-    instance: Instance,
-    omitRbxAttributes: boolean
-): { Item }
-    local attributes = instance:GetAttributes()
-    local attributeItems = {} :: { Item }
-
-    local attributeIdx = 1
-    for attributeName, attributeValue in attributes do
-        if ShouldOmitAttribute(attributeName, omitRbxAttributes) then
-            continue
-        end
-
-        attributeItems[attributeIdx] = {
-            Key = attributeName,
-            Value = attributeValue,
-            ValueType = typeof(attributeValue)
-        }
-
-        attributeIdx += 1
-    end
-
-    return attributeItems
-end
-
 return function(
     scope: Fusion.Scope,
     outerScope: Fusion.Scope,
     collapsedStateScope: Fusion.Scope,
-    instance: Instance,
+    instances: { Instance },
     props: AttributesMapProps
 ): CategoryState
-    local attributeItems = GetAttributeItems(
-        instance,
-        props.OmitRbxAttributes
-    )
-    local attributeItemIndices: { [string]: number } = {}
-    local attributeItemsState = Value(scope, attributeItems)
+    local attributeItemsState = Value<<{ Item }>>(scope, {})
+    local groupsByName: { [string]: AttributeGroup } = {}
+    local itemChildrenScope = Fusion.innerScope(scope)
+    local refreshItems: () -> ()
 
-    for itemIdx, item in attributeItems do
-        attributeItemIndices[item.Key] = itemIdx
+    local function getTargetInstances(
+        group: AttributeGroup
+    ): { Instance }
+        local targetInstances =
+            table.create(#group.Targets) :: { Instance }
+        for targetIdx, target in group.Targets do
+            targetInstances[targetIdx] = target.Instance
+        end
+        return targetInstances
     end
 
-    local refreshAttribute: (attributeName: string) -> (boolean, any?)
-    local renameAttribute: (
-        attributeName: string,
-        requestedName: string
-    ) -> (boolean, string?, string?)
-
-    local function removeAttribute(attributeName: string)
+    local function commitGroupTransform(
+        group: AttributeGroup,
+        transformValue: TransformValue
+    ): (boolean, string?, any?)
         local success, err = CommitAttribute(
-            instance,
-            attributeName,
-            nil
+            getTargetInstances(group),
+            group.Name,
+            transformValue
         )
+        refreshItems()
+
+        local savedValue = group.Targets[1].Instance:GetAttribute(group.Name)
+        return success, err, if success then savedValue else nil
+    end
+
+    local function removeAttribute(group: AttributeGroup)
+        local success, err = CommitAttribute(
+            getTargetInstances(group),
+            group.Name,
+            function(): any? return nil end
+        )
+        refreshItems()
+
         if not success then
-            warn(`Could not remove attribute {attributeName}: {err}`)
-            return
-        end
-
-        refreshAttribute(attributeName)
-    end
-
-    local function makeAttributeWritable(item: Item, attributeName: string)
-        item.KeyWritable = true
-        item.TrySetKey = function(
-            requestedName: string
-        ): (boolean, string?, string?)
-            return renameAttribute(attributeName, requestedName)
-        end
-        item.KeyChildren = {
-            IconButton(scope, {
-                Image = Assets.Cross,
-
-                [OnEvent "MouseButton1Click"] = function()
-                    removeAttribute(attributeName)
-                end
-            })
-        }
-        item.ValueWritable = true
-        item.TrySetValue = function(value: any): (boolean, string?, any?)
-            if item.Value == value then return true, nil, item.Value end
-
-            local success, err = CommitAttribute(
-                instance,
-                attributeName,
-                value
-            )
-
-            local _, savedValue = refreshAttribute(attributeName)
-            return success, err, if success then savedValue else nil
+            warn(`Could not remove attribute {group.Name}: {err}`)
         end
     end
 
-    refreshAttribute = function(attributeName: string): (boolean, any?)
-        if ShouldOmitAttribute(
-            attributeName,
-            props.OmitRbxAttributes
-        ) then
-            return false, nil
-        end
-
-        local itemIdx = attributeItemIndices[attributeName]
-        local value = instance:GetAttribute(attributeName)
-
-        if value == nil then
-            if not itemIdx then return false, nil end
-
-            table.remove(attributeItems, itemIdx)
-            attributeItemIndices[attributeName] = nil
-
-            for shiftedIdx = itemIdx, #attributeItems do
-                local shiftedItem = attributeItems[shiftedIdx]
-                attributeItemIndices[shiftedItem.Key] = shiftedIdx
-            end
-        elseif itemIdx then
-            local item = attributeItems[itemIdx]
-            local valueType = typeof(value)
-            if item.Value == value and item.ValueType == valueType then
-                return false, value
-            end
-
-            item.Value = value
-            item.ValueType = valueType
-        else
-            local item: Item = {
-                Key = attributeName,
-                Value = value,
-                ValueType = typeof(value)
-            }
-            makeAttributeWritable(item, attributeName)
-            table.insert(attributeItems, item)
-            attributeItemIndices[attributeName] = #attributeItems
-        end
-
-        attributeItemsState:set(attributeItems)
-        return true, value
-    end
-
-    renameAttribute = function(
-        attributeName: string,
+    local function renameAttribute(
+        group: AttributeGroup,
         requestedName: string
     ): (boolean, string?, string?)
         local newAttributeName = Trim(requestedName)
 
-        if newAttributeName == attributeName then
-            return true, nil, attributeName
+        if newAttributeName == group.Name then
+            return true, nil, group.Name
         end
-
         if newAttributeName == "" then
             return false, "Attribute name cannot be empty.", nil
         end
-
         if ShouldOmitAttribute(
             newAttributeName,
             props.OmitRbxAttributes
@@ -243,35 +166,136 @@ return function(
                 `Attribute names beginning with {RBX_ATTRIBUTE_PREFIX} are hidden.`,
                 nil
         end
-
-        if attributeItemIndices[newAttributeName] ~= nil then
+        if groupsByName[newAttributeName] ~= nil then
             return false,
                 `Attribute {newAttributeName} already exists.`,
                 nil
         end
 
         local success, err = CommitRenameAttribute(
-            instance,
-            attributeName,
+            getTargetInstances(group),
+            group.Name,
             newAttributeName
         )
-
-        if success then
-            refreshAttribute(attributeName)
-            refreshAttribute(newAttributeName)
-        end
+        refreshItems()
 
         return success, err, if success then newAttributeName else nil
     end
 
-    for _, item in attributeItems do
-        makeAttributeWritable(item, item.Key)
+    refreshItems = function()
+        Fusion.doCleanup(itemChildrenScope)
+        itemChildrenScope = Fusion.innerScope(scope)
+
+        local nextGroupsByName: { [string]: AttributeGroup } = {}
+        for _, instance in instances do
+            for attributeName, attributeValue in instance:GetAttributes() do
+                if ShouldOmitAttribute(
+                    attributeName,
+                    props.OmitRbxAttributes
+                ) then
+                    continue
+                end
+
+                local group = nextGroupsByName[attributeName]
+                if not group then
+                    group = {
+                        Name = attributeName,
+                        ValueType = typeof(attributeValue),
+                        CompatibleTypes = true,
+                        Targets = {}
+                    }
+                    nextGroupsByName[attributeName] = group
+                elseif typeof(attributeValue) ~= group.ValueType then
+                    group.CompatibleTypes = false
+                end
+
+                table.insert(group.Targets, {
+                    Instance = instance,
+                    Value = attributeValue
+                })
+            end
+        end
+
+        groupsByName = nextGroupsByName
+        local attributeItems = {} :: { Item }
+
+        for _, group in groupsByName do
+            local comparisonValues =
+                table.create(#group.Targets) :: { Fusion.UsedAs<any?> }
+            for targetIdx, target in group.Targets do
+                comparisonValues[targetIdx] = target.Value
+            end
+
+            local item: Item = {
+                Key = group.Name,
+                KeyWritable = true,
+                TrySetKey = function(
+                    requestedName: string
+                ): (boolean, string?, string?)
+                    return renameAttribute(group, requestedName)
+                end,
+                Value = group.Targets[1].Value,
+                ComparisonValues = comparisonValues,
+                ValueType =
+                    if group.CompatibleTypes then group.ValueType
+                    else "MixedAttributeTypes",
+                ValueWritable = group.CompatibleTypes
+            }
+            if group.CompatibleTypes then
+                item.TrySetValue = function(
+                    value: any
+                ): (boolean, string?, any?)
+                    return commitGroupTransform(
+                        group,
+                        function(): any return value end
+                    )
+                end
+                item.TryTransformValue = function(
+                    transformValue: TransformValue
+                ): (boolean, string?, any?)
+                    return commitGroupTransform(group, transformValue)
+                end
+            end
+            item.KeyChildren = {
+                IconButton(itemChildrenScope, {
+                    Image = Assets.Cross,
+
+                    [OnEvent "MouseButton1Click"] = function()
+                        removeAttribute(group)
+                    end
+                })
+            }
+            table.insert(attributeItems, item)
+        end
+
+        attributeItemsState:set(attributeItems)
     end
 
-    table.insert(
-        scope,
-        instance.AttributeChanged:Connect(refreshAttribute)
-    )
+    refreshItems()
+
+    local refreshPending = false
+    local alive = true
+    local function queueRefresh()
+        if refreshPending then return end
+        refreshPending = true
+
+        task.defer(function()
+            refreshPending = false
+            if alive then refreshItems() end
+        end)
+    end
+
+    table.insert(scope, function() alive = false end)
+    for _, instance in instances do
+        table.insert(
+            scope,
+            instance.AttributeChanged:Connect(function(
+                _attributeName: string
+            )
+                queueRefresh()
+            end)
+        )
+    end
 
     local nameState = Value<<string?>>(scope, "")
     local selectedTypeIdxState = Value<<number?>>(scope, 1)
@@ -301,23 +325,18 @@ return function(
             warn("SuperProperties: Attribute name cannot be empty.")
             return
         end
-
         if ShouldOmitAttribute(attributeName, props.OmitRbxAttributes) then
             warn(
                 `SuperProperties: Attribute names beginning with {RBX_ATTRIBUTE_PREFIX} are hidden.`
             )
             return
         end
-
-        if instance:GetAttribute(attributeName) ~= nil then
-            warn(
-                `SuperProperties: Attribute {attributeName} already exists.`
-            )
+        if groupsByName[attributeName] ~= nil then
+            warn(`SuperProperties: Attribute {attributeName} already exists.`)
             return
         end
 
-        local selectedTypeIdx =
-            Peek<<number?>>(selectedTypeIdxState)
+        local selectedTypeIdx = Peek<<number?>>(selectedTypeIdxState)
         local attributeType =
             if selectedTypeIdx == nil then nil
             else AttributeTypes[selectedTypeIdx]
@@ -327,16 +346,16 @@ return function(
         end
 
         local success, err = CommitAttribute(
-            instance,
+            instances,
             attributeName,
-            attributeType.DefaultValue
+            function(): any return attributeType.DefaultValue end
         )
+        refreshItems()
         if not success then
             warn(`Could not create attribute {attributeName}: {err}`)
             return
         end
 
-        refreshAttribute(attributeName)
         resetCreateAttributeForm()
         popoverFocus.Release()
     end

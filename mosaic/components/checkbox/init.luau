@@ -160,7 +160,7 @@ return Component<<CheckboxProps>>(function(scope, props)
         [OnEvent "MouseButton1Click"] = function()
             if Peek<<boolean>>(disabled) then return end
 
-            local nextChecked = not Peek<<Checked>>(checkedState)
+            local nextChecked = Peek<<Checked>>(checkedState) ~= true
             if onChanged then
                 onChanged(nextChecked)
                 return

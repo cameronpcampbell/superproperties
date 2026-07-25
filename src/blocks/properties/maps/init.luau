@@ -14,7 +14,7 @@ type CategoryState = Category.State
 type MapProps = Category.MapProps
 
 type PropertiesMapsProps = {
-    SelectedInstanceValue: Fusion.Value<Instance?>,
+    SelectedInstancesValue: Fusion.Value<{ Instance }>,
     OmitRbxAttributes: boolean?
 }
 
@@ -44,7 +44,7 @@ local function GetCategoryStates(
     scope: Fusion.Scope,
     outerScope: Fusion.Scope,
     collapsedStateScope: Fusion.Scope,
-    instance: Instance,
+    instances: { Instance },
     omitRbxAttributes: boolean
 ): { CategoryState }
     local categories: { CategoryState } = {}
@@ -53,33 +53,40 @@ local function GetCategoryStates(
         scope,
         outerScope,
         collapsedStateScope,
-        instance
+        instances
     ))
 
     table.insert(categories, InstanceMaps.Tags(
         scope,
         outerScope,
         collapsedStateScope,
-        instance
+        instances
     ))
 
     table.insert(categories, InstanceMaps.Attributes(
         scope,
         outerScope,
         collapsedStateScope,
-        instance,
+        instances,
         {
             OmitRbxAttributes = omitRbxAttributes
         }
     ))
 
-    local extraCategories = ExtraCategories[instance.ClassName]
-    if not extraCategories then return categories end
+    local visitedClasses: { [string]: boolean } = {}
+    for _, instance in instances do
+        local className = instance.ClassName
+        if visitedClasses[className] then continue end
+        visitedClasses[className] = true
 
-    TableBulkInsert(
-        categories,
-        extraCategories(scope, outerScope, collapsedStateScope)
-    )
+        local extraCategories = ExtraCategories[className]
+        if not extraCategories then continue end
+
+        TableBulkInsert(
+            categories,
+            extraCategories(scope, outerScope, collapsedStateScope)
+        )
+    end
 
     return categories
 end
@@ -88,7 +95,7 @@ return function(
     scope: Fusion.Scope,
     props: PropertiesMapsProps
 )
-    local selectedInstanceValue = props.SelectedInstanceValue
+    local selectedInstancesValue = props.SelectedInstancesValue
     local omitRbxAttributes = props.OmitRbxAttributes ~= false
     local outerScope = scope
     local collapsedStateScope = Fusion.innerScope(outerScope)
@@ -99,14 +106,14 @@ return function(
         use,
         scope: Fusion.Scope
     ): { CategoryState }
-        local instance = use<<Instance?>>(selectedInstanceValue)
-        if not instance then return {} end
+        local instances = use<<{ Instance }>>(selectedInstancesValue)
+        if #instances == 0 then return {} end
 
         return GetCategoryStates(
             scope,
             outerScope,
             collapsedStateScope,
-            instance,
+            instances,
             omitRbxAttributes
         )
     end)
@@ -132,8 +139,8 @@ return function(
         use,
         scope: Fusion.Scope
     ): Fusion.Child?
-        if not use<<Instance?>>(selectedInstanceValue) then
-            return CreateEmptyMessage(scope, "No Instance selected.")
+        if #use<<{ Instance }>>(selectedInstancesValue) == 0 then
+            return CreateEmptyMessage(scope, "No instances selected.")
         end
 
         local filter = use<<string?>>(filterState)

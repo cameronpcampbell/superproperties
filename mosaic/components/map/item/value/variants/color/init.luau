@@ -43,7 +43,8 @@ local ColorTextVariant = CreateTextVariant<<Color3>>({
 
 local function Color(
     scope: Fusion.Scope,
-    color: Fusion.UsedAs<Color3>
+    color: Fusion.UsedAs<Color3>,
+    visible: Fusion.UsedAs<boolean>
 )
     local theme = GetThemeForScope(scope)
     local height = theme:GetHeight(scope, "Sm")
@@ -52,6 +53,7 @@ local function Color(
     return HighlightSupercorner(scope, {
         GradientTransparency = 0.78,
         BackgroundColor3 = color,
+        Visible = visible,
         StrokeThickness = 1,
         Size = ComputeUDim2FromOffset(scope, height, height),
         CornerRadius = Peek<<number>>(cornerRadius),
@@ -78,6 +80,12 @@ return function(
                 else usedValue :: Color3
         end
     )
+    local colorVisible = Computed(
+        scope,
+        function(use: Fusion.Use): boolean
+            return not use<<boolean>>(props.Mixed)
+        end
+    )
 
     if
         typeof(currentValue) == "Color3" and
@@ -87,19 +95,21 @@ return function(
         return {
             ColorTextVariant(scope, {
                 Value = colorValue,
+                Mixed = props.Mixed,
                 Writable = props.Writable,
                 DisplayAsWritable = props.DisplayAsWritable,
                 TrySetValue = props.TrySetValue :: any,
                 OnFocusChanged = props.OnFocusChanged
             }),
 
-            Color(scope, colorValue)
+            Color(scope, colorValue, colorVisible)
         } :: Fusion.Child
     end
 
     local displayText = Computed(
         scope,
         function(use: Fusion.Use): string
+            if use<<boolean>>(props.Mixed) then return "" end
             local usedValue = use<<Color3 | BrickColor>>(value)
             return
                 if typeof(usedValue) == "Color3"
@@ -120,7 +130,7 @@ return function(
                 FlexMode = Enum.UIFlexMode.Shrink
             }
         }),
-        Color(scope, colorValue),
+        Color(scope, colorValue, colorVisible),
 
         CreateSidePadding(scope)
     } :: Fusion.Child

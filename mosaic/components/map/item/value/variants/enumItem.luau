@@ -41,12 +41,19 @@ return function(
             return use<<EnumItem>>(value)
         end
     )
+    local observedMixed = Computed(
+        scope,
+        function(use: Fusion.Use): boolean
+            return use<<boolean>>(props.Mixed)
+        end
+    )
     local currentValue = Peek<<EnumItem>>(observedValue)
 
     if not props.Writable or trySetValue == nil then
         local displayedValue = Computed(
             scope,
             function(use: Fusion.Use): string
+                if use<<boolean>>(observedMixed) then return "" end
                 return use<<EnumItem>>(observedValue).Name
             end
         )
@@ -74,9 +81,15 @@ return function(
         itemNames[idx] = enumItem.Name
     end
 
-    local currentIdx = table.find(enumItems, currentValue)
+    local currentIdx =
+        if Peek<<boolean>>(observedMixed)
+        then nil
+        else table.find(enumItems, currentValue)
     local selectedIdxState = Value<<number?>>(scope, currentIdx)
-    local displayedValueState = Value(scope, currentValue.Name)
+    local displayedValueState = Value(
+        scope,
+        if currentIdx == nil then "" else currentValue.Name
+    )
     local selectedIdxStateAlive = true
 
     table.insert(scope, function()
@@ -141,17 +154,25 @@ return function(
         popoverFocus.Release()
     end
 
-    Observer(scope, observedValue):onChange(function()
+    local function syncObservedValue()
         local nextValue = Peek<<EnumItem>>(observedValue)
-        local nextIdx = table.find(enumItems, nextValue)
+        local nextIdx =
+            if Peek<<boolean>>(observedMixed)
+            then nil
+            else table.find(enumItems, nextValue)
 
         currentIdx = nextIdx
-        displayedValueState:set(nextValue.Name)
+        displayedValueState:set(
+            if nextIdx == nil then "" else nextValue.Name
+        )
 
         if Peek<<number?>>(selectedIdxState) ~= nextIdx then
             selectedIdxState:set(nextIdx)
         end
-    end)
+    end
+
+    Observer(scope, observedValue):onChange(syncObservedValue)
+    Observer(scope, observedMixed):onChange(syncObservedValue)
 
     Observer(scope, selectedIdxState):onChange(function()
         local nextIdx = Peek<<number?>>(selectedIdxState)

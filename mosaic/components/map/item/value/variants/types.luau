@@ -6,6 +6,7 @@ local Fusion = require(Packages.fusion)
 
 export type ValueVariantProps<T> = {
     Value: Fusion.UsedAs<T>,
+    Mixed: Fusion.UsedAs<boolean>,
     Writable: boolean,
     DisplayAsWritable: boolean,
     TrySetValue: ((value: T) -> (boolean, string?, T?))?,

@@ -13,6 +13,9 @@ export type BaseMapProps = {
 }
 
 export type TrySet<T> = (value: T) -> (boolean, string?, T?)
+export type TransformValue = (value: any) -> any
+export type TryTransformValue =
+	(transform: TransformValue) -> (boolean, string?, any?)
 
 export type Item = {
 	Key: string,
@@ -20,10 +23,12 @@ export type Item = {
 	KeyWritable: boolean?,
 	TrySetKey: TrySet<string>?,
 	Value: Fusion.UsedAs<any?>,
+	ComparisonValues: { Fusion.UsedAs<any?> }?,
 	ValueType: string?,
 	ValueChildren: { Fusion.Child }?,
 	ValueWritable: boolean?,
 	TrySetValue: TrySet<any>?,
+	TryTransformValue: TryTransformValue?,
 	DisplayAsWritable: boolean?,
 	SubItems: { Item }?,
 	Collapsed: Fusion.Value<boolean>?,
@@ -51,6 +56,7 @@ export type ItemLayout = {
 	Item: Item | IntrinsicItem,
 	ResolvedValue: Fusion.UsedAs<any?>,
 	ValueType: string?,
+	Mixed: Fusion.UsedAs<boolean>,
 	TrySetKey: TrySet<string>?,
 	TrySetValue: TrySet<any>?,
 	KeyWritable: boolean,

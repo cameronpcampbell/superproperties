@@ -25,6 +25,7 @@ local MapContentPadding = 1
 type Item = Types.Item
 type Items = Types.Items
 type TrySet<T> = Types.TrySet<T>
+type TryTransformValue = Types.TryTransformValue
 type IntrinsicAccessor = Types.IntrinsicAccessor
 type IntrinsicItem = Types.IntrinsicItem
 type IntrinsicItems = Types.IntrinsicItems
@@ -44,11 +45,14 @@ type ResolvedItem = {
     Item: ItemDefinition,
     RootItem: Item,
     RootValue: Fusion.UsedAs<any?>,
+    RootValues: { Fusion.UsedAs<any?> },
     ResolvedValue: Fusion.UsedAs<any?>,
     ValueType: string?,
+    Mixed: Fusion.UsedAs<boolean>,
     ValueAccessor: IntrinsicAccessor?,
     TrySetKey: TrySet<string>?,
     TrySetValue: TrySet<any>?,
+    TryTransformValue: TryTransformValue?,
     KeyWritable: boolean,
     ValueWritable: boolean,
     DisplayAsWritable: boolean
@@ -202,9 +206,34 @@ local function CreateCachedCollapsedState(
     return collapsedState
 end
 
-local function ResolveItem(item: Item): ResolvedItem
+local function ComputeMixed(
+    scope: Fusion.Scope,
+    values: { Fusion.UsedAs<any?> },
+    readValue: ((any) -> any)?
+): Fusion.UsedAs<boolean>
+    if #values <= 1 then return false end
+
+    return Computed(scope, function(use: Fusion.Use): boolean
+        local firstValue = use<<any?>>(values[1])
+        if readValue then firstValue = readValue(firstValue) end
+
+        for valueIdx = 2, #values do
+            local value = use<<any?>>(values[valueIdx])
+            if readValue then value = readValue(value) end
+            if value ~= firstValue then return true end
+        end
+
+        return false
+    end)
+end
+
+local function ResolveItem(
+    scope: Fusion.Scope,
+    item: Item
+): ResolvedItem
     local trySetKey = item.TrySetKey
     local trySetValue = item.TrySetValue
+    local tryTransformValue = item.TryTransformValue
     local valueType = item.ValueType
     -- Value changes are leaf updates. Peek deliberately avoids making the
     -- structural layout Computed depend on them.
@@ -219,16 +248,21 @@ local function ResolveItem(item: Item): ResolvedItem
     if valueType == nil and currentValue ~= nil then
         valueType = typeof(currentValue)
     end
+    local rootValues = item.ComparisonValues or { item.Value }
 
     return {
         Item = item,
         RootItem = item,
         RootValue = item.Value,
+        RootValues = rootValues,
         ResolvedValue = item.Value,
         ValueType = valueType,
+        Mixed = ComputeMixed(scope, rootValues, nil),
         ValueAccessor = nil,
         TrySetKey = if keyWritable then trySetKey else nil,
         TrySetValue = if valueWritable then trySetValue else nil,
+        TryTransformValue =
+            if valueWritable then tryTransformValue else nil,
         KeyWritable = keyWritable,
         ValueWritable = valueWritable,
         DisplayAsWritable =
@@ -241,6 +275,7 @@ local function ResolveIntrinsicItem(
     item: IntrinsicItem,
     rootItem: Item,
     rootValue: Fusion.UsedAs<any?>,
+    rootValues: { Fusion.UsedAs<any?> },
     parentValueWritable: boolean,
     parentDisplayAsWritable: boolean
 ): ResolvedItem
@@ -251,17 +286,28 @@ local function ResolveIntrinsicItem(
     end)
     local currentResolvedValue = Peek<<any>>(resolvedValue)
     local trySetRootValue = rootItem.TrySetValue
+    local tryTransformRootValue = rootItem.TryTransformValue
     local trySetValue: TrySet<any>? = nil
 
-    if parentValueWritable and trySetRootValue then
+    if parentValueWritable and (tryTransformRootValue or trySetRootValue) then
         trySetValue = function(value: any): (boolean, string?, any?)
-            local nextRootValue = writeValue(
-                Peek<<any>>(rootValue),
-                value
-            )
+            local success: boolean
+            local err: string?
+            local savedRootValue: any?
 
-            local success, err, savedRootValue =
-                trySetRootValue(nextRootValue)
+            if tryTransformRootValue then
+                success, err, savedRootValue =
+                    tryTransformRootValue(function(currentRoot: any): any
+                        return writeValue(currentRoot, value)
+                    end)
+            else
+                local nextRootValue = writeValue(
+                    Peek<<any>>(rootValue),
+                    value
+                )
+                success, err, savedRootValue =
+                    (trySetRootValue :: TrySet<any>)(nextRootValue)
+            end
 
             if not success or savedRootValue == nil then
                 return success, err, nil
@@ -275,11 +321,14 @@ local function ResolveIntrinsicItem(
         Item = item,
         RootItem = rootItem,
         RootValue = rootValue,
+        RootValues = rootValues,
         ResolvedValue = resolvedValue,
         ValueType = typeof(currentResolvedValue),
+        Mixed = ComputeMixed(scope, rootValues, valueAccessor.Read),
         ValueAccessor = valueAccessor,
         TrySetKey = nil,
         TrySetValue = trySetValue,
+        TryTransformValue = tryTransformRootValue,
         KeyWritable = false,
         ValueWritable = parentValueWritable,
         DisplayAsWritable = parentDisplayAsWritable
@@ -302,6 +351,7 @@ local function GetChildItems(
                 childItem,
                 item.RootItem,
                 item.RootValue,
+                item.RootValues,
                 item.ValueWritable,
                 item.DisplayAsWritable
             )
@@ -312,7 +362,8 @@ local function GetChildItems(
 
     local intrinsicItems: IntrinsicItems =
         IntrinsicSubItemDefinitions[
-            typeof(Peek<<any?>>(item.ResolvedValue))
+            item.ValueType
+                or typeof(Peek<<any?>>(item.ResolvedValue))
         ] or {}
     local suppliedParent = item.Item :: Item
     local suppliedMapItems: Items = suppliedParent.SubItems or {}
@@ -326,13 +377,15 @@ local function GetChildItems(
             childItem,
             item.RootItem,
             item.RootValue,
+            item.RootValues,
             item.ValueWritable,
             item.DisplayAsWritable
         )
     end
 
     for childIdx, childItem in suppliedMapItems do
-        childItems[#intrinsicItems + childIdx] = ResolveItem(childItem)
+        childItems[#intrinsicItems + childIdx] =
+            ResolveItem(scope, childItem)
     end
 
     return childItems
@@ -438,6 +491,7 @@ local function CreateItemLayout(
         Item = item,
         ResolvedValue = resolvedItem.ResolvedValue,
         ValueType = resolvedItem.ValueType,
+        Mixed = resolvedItem.Mixed,
         TrySetKey = resolvedItem.TrySetKey,
         TrySetValue = resolvedItem.TrySetValue,
         KeyWritable = resolvedItem.KeyWritable,
@@ -564,7 +618,7 @@ local function CreateMapLayout(
             layouts[itemIdx] = CreateItemLayout(
                 layoutScope,
                 collapseStateNode,
-                ResolveItem(item),
+                ResolveItem(layoutScope, item),
                 1,
                 usedRowHeight,
                 itemIdx == #usedItems

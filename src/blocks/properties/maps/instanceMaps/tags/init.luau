@@ -25,7 +25,6 @@ local CommitAddTag = require(script.commitAddTag)
 local CommitRemoveTag = require(script.commitRemoveTag)
 local TagChanged = require(script.tagChanged)
 
-type TagRemovedCallback = (tag: string) -> ()
 type TagOption = {
     Tag: string,
     Label: string
@@ -76,94 +75,59 @@ local function CreateTagOptions(
     return options
 end
 
-local function CreateTagItem(
-    scope: Fusion.Scope,
-    instance: Instance,
-    tag: string,
-    onTagRemoved: TagRemovedCallback
-): Item
-    return {
-        Key = tag,
-        DisplayAsWritable = true,
-        KeyChildren = {
-            IconButton(scope, {
-                Image = Assets.Cross,
-
-                [OnEvent "MouseButton1Click"] = function()
-                    local success, err = CommitRemoveTag(instance, tag)
-                    if not success then
-                        warn(`Could not remove tag {tag}: {err}`)
-                        return
-                    end
-
-                    onTagRemoved(tag)
-                end
-            })
-        }
-    }
-end
-
-local function GetTagItems(
-    scope: Fusion.Scope,
-    instance: Instance,
-    onTagRemoved: TagRemovedCallback
-): { Item }
-    local tags = instance:GetTags()
-    local tagItems = table.create(#tags) :: { Item }
-
-    for idx, tag in tags do
-        tagItems[idx] = CreateTagItem(
-            scope,
-            instance,
-            tag,
-            onTagRemoved
-        )
-    end
-
-    return tagItems
-end
-
-local function ApplyTagChange(
-    scope: Fusion.Scope,
-    instance: Instance,
-    tagItems: { Item },
-    onTagRemoved: TagRemovedCallback,
-    tag: string,
-    removed: boolean
-): boolean
-    for idx, tagItem in tagItems do
-        if tagItem.Key ~= tag then continue end
-
-        if not removed then return false end
-
-        table.remove(tagItems, idx)
-        return true
-    end
-
-    if removed then return false end
-
-    table.insert(tagItems, CreateTagItem(
-        scope,
-        instance,
-        tag,
-        onTagRemoved
-    ))
-    return true
-end
-
 return function(
     scope: Fusion.Scope,
     outerScope: Fusion.Scope,
     collapsedStateScope: Fusion.Scope,
-    instance: Instance
+    instances: { Instance }
 ): CategoryState
-    local publishTagChange: (tag: string, removed: boolean) -> ()
-    local function onTagRemoved(tag: string)
-        publishTagChange(tag, true)
+    local tagItemsState = Value<<{ Item }>>(scope, {})
+    local itemChildrenScope = Fusion.innerScope(scope)
+    local refreshTagItems: () -> ()
+
+    refreshTagItems = function()
+        Fusion.doCleanup(itemChildrenScope)
+        itemChildrenScope = Fusion.innerScope(scope)
+
+        local instancesByTag: { [string]: { Instance } } = {}
+        for _, instance in instances do
+            for _, tag in instance:GetTags() do
+                local tagInstances = instancesByTag[tag]
+                if not tagInstances then
+                    tagInstances = {}
+                    instancesByTag[tag] = tagInstances
+                end
+                table.insert(tagInstances, instance)
+            end
+        end
+
+        local tagItems = {} :: { Item }
+        for tag, tagInstances in instancesByTag do
+            table.insert(tagItems, {
+                Key = tag,
+                DisplayAsWritable = true,
+                KeyChildren = {
+                    IconButton(itemChildrenScope, {
+                        Image = Assets.Cross,
+
+                        [OnEvent "MouseButton1Click"] = function()
+                            local success, err =
+                                CommitRemoveTag(tagInstances, tag)
+                            refreshTagItems()
+
+                            if not success then
+                                warn(`Could not remove tag {tag}: {err}`)
+                            end
+                        end
+                    })
+                }
+            })
+        end
+
+        tagItemsState:set(tagItems)
     end
 
-    local tagItems = GetTagItems(scope, instance, onTagRemoved)
-    local tagItemsState = Value(scope, tagItems)
+    refreshTagItems()
     local allTagsState = Value(scope, GetAllTags())
     local menuOpenState = Value(scope, false)
     local menuElevatedState = Value(scope, false)
@@ -186,21 +150,6 @@ return function(
         return labels
     end)
 
-    publishTagChange = function(tag: string, removed: boolean)
-        local changed = ApplyTagChange(
-            scope,
-            instance,
-            tagItems,
-            onTagRemoved,
-            tag,
-            removed
-        )
-        if not changed then return end
-
-        -- Fusion treats mutable tables as dissimilar by design.
-        tagItemsState:set(tagItems)
-    end
-
     local function refreshAllTags()
         allTagsState:set(GetAllTags())
     end
@@ -208,10 +157,17 @@ return function(
     table.insert(scope, CollectionService.TagAdded:Connect(refreshAllTags))
     table.insert(scope, CollectionService.TagRemoved:Connect(refreshAllTags))
 
-    table.insert(
-        scope,
-        TagChanged(instance, publishTagChange)
-    )
+    for _, instance in instances do
+        table.insert(
+            scope,
+            TagChanged(instance, function(
+                _tag: string,
+                _removed: boolean
+            )
+                refreshTagItems()
+            end)
+        )
+    end
 
     local selectMenu: GuiObject
     local addButton: GuiObject
@@ -277,12 +233,18 @@ return function(
     local function addTag(tag: string): boolean
         if tag == "" then return false end
 
-        if instance:HasTag(tag) then
+        local allHaveTag = true
+        for _, instance in instances do
+            if instance:HasTag(tag) then continue end
+            allHaveTag = false
+            break
+        end
+        if allHaveTag then
             closeMenu()
             return true
         end
 
-        local success, err = CommitAddTag(instance, tag)
+        local success, err = CommitAddTag(instances, tag)
         if not success then
             warn(`Could not add tag {tag}: {err}`)
             deferSelectedIdxReset(Peek<<number?>>(selectedIdxState))
@@ -290,7 +252,7 @@ return function(
             return false
         end
 
-        publishTagChange(tag, false)
+        refreshTagItems()
         refreshAllTags()
         closeMenu()
         return true

@@ -33,6 +33,7 @@ local DefaultValueVariant = ValueVariants.Default
 type MapItemValueProps = Typeforge.Flatten<Types.BaseMapProps & {
 	Value: Fusion.UsedAs<any>,
 	ValueType: string,
+	Mixed: Fusion.UsedAs<boolean>,
 	Writable: boolean,
 	DisplayAsWritable: boolean,
 	TrySetValue: Types.TrySet<any>?,
@@ -99,6 +100,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
 			[Children] = {
 				valueVariant(scope, {
 					Value = value,
+					Mixed = props.Mixed,
 					Writable = props.Writable,
 					DisplayAsWritable = props.DisplayAsWritable,
 					TrySetValue = props.TrySetValue,

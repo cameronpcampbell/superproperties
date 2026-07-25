@@ -24,11 +24,11 @@ end
 SyncTheme()
 settings().Studio.ThemeChanged:Connect(SyncTheme)
 
-local function GetSelectedInstanceValue(
+local function GetSelectedInstancesValue(
     scope: Fusion.Scope
-): Fusion.Value<Instance?>
-    local selectedInstanceValue =
-        Value<<Instance?>>(scope, SelectionService:Get()[1])
+): Fusion.Value<{ Instance }>
+    local selectedInstancesValue =
+        Value<<{ Instance }>>(scope, SelectionService:Get())
     local selectionUpdatePending = false
 
     local function QueueSelectionUpdate()
@@ -37,7 +37,7 @@ local function GetSelectedInstanceValue(
 
         task.defer(function()
             selectionUpdatePending = false
-            selectedInstanceValue:set(SelectionService:Get()[1])
+            selectedInstancesValue:set(SelectionService:Get())
         end)
     end
 
@@ -46,18 +46,20 @@ local function GetSelectedInstanceValue(
         SelectionService.SelectionChanged:Connect(QueueSelectionUpdate)
     )
 
-    return selectedInstanceValue
+    return selectedInstancesValue
 end
 
-local SelectedInstanceValue = GetSelectedInstanceValue(Scope)
+local SelectedInstancesValue = GetSelectedInstancesValue(Scope)
 local WidgetEnabled = Value(Scope, true)
 
 local ComputeWidgetTitle = Scope:Computed(function(use, scope)
-    local usedSelectedInstance = use<<Instance?>>(SelectedInstanceValue)
+    local selectedInstances = use<<{ Instance }>>(SelectedInstancesValue)
 
     return
-        if usedSelectedInstance then
-            `SuperProperties - {usedSelectedInstance.Name}`
+        if #selectedInstances == 1 then
+            `SuperProperties - {selectedInstances[1].Name}`
+        else if #selectedInstances > 1 then
+            `SuperProperties - {#selectedInstances} items`
         else `SuperProperties`
 end)
 
@@ -91,7 +93,7 @@ local Widget = Scope:Widget {
                 },
 
                 Properties.Maps(Scope, {
-                    SelectedInstanceValue = SelectedInstanceValue,
+                    SelectedInstancesValue = SelectedInstancesValue,
                     OmitRbxAttributes = true
                 }),
 

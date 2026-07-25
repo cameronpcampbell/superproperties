@@ -21,6 +21,7 @@ return function(
     local observedValue = Computed(
         scope,
         function(use: Fusion.Use): Checkbox.Checked
+            if use<<boolean>>(props.Mixed) then return "Mixed" end
             return use<<Checkbox.Checked>>(props.Value)
         end
     )
@@ -63,7 +64,9 @@ return function(
                 ZIndex = 1,
 
                 [OnEvent "MouseButton1Click"] = function()
-                    trySetChecked(not Peek<<Checkbox.Checked>>(checkedState))
+                    trySetChecked(
+                        Peek<<Checkbox.Checked>>(checkedState) ~= true
+                    )
                 end,
 
                 Name = "HitArea"

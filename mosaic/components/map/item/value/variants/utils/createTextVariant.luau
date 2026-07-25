@@ -38,6 +38,7 @@ local function CreateTextVariant<T>(
         local displayedValue = Computed(
             scope,
             function(use: Fusion.Use): string
+                if use<<boolean>>(props.Mixed) then return "" end
                 return config.Format(use<<T>>(value))
             end
         )
@@ -95,11 +96,15 @@ local function CreateTextVariant<T>(
 
             [OnEvent "Focused"] = function()
                 editing = true
-                local currentValue = Peek<<T>>(value)
-                focusedValue =
-                    if formatFocused ~= nil
-                    then formatFocused(currentValue)
-                    else config.Format(currentValue)
+                if Peek<<boolean>>(props.Mixed) then
+                    focusedValue = ""
+                else
+                    local currentValue = Peek<<T>>(value)
+                    focusedValue =
+                        if formatFocused ~= nil
+                        then formatFocused(currentValue)
+                        else config.Format(currentValue)
+                end
                 textState:set(focusedValue)
                 textBox.CursorPosition = #focusedValue + 1
                 textBox.SelectionStart = 1

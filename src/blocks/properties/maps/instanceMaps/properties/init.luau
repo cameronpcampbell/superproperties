@@ -7,170 +7,260 @@ local Peek, Value = Fusion.peek, Fusion.Value
 
 local Map = require(Packages.mosaic.components.map)
 type Item = Map.Item
+type TransformValue = Map.TransformValue
 
 local Category = require(script.Parent.Parent.category)
 type CategoryState = Category.State
 
 local GetProperties = require(script.Parent.Parent.getProperties)
+type PropertyPlan = GetProperties.PropertyPlan
 type Snapshot = GetProperties.Snapshot
 local CommitProperty = require(script.commitProperty)
+type CommitTarget = CommitProperty.Target
 local LongPoll = require(script.Parent.Parent.longPoll)
 type LongPollOptions = LongPoll.Options
 
+type PropertyTarget = {
+    Instance: Instance,
+    Plan: PropertyPlan,
+    ValueState: Fusion.Value<any?>
+}
+
+type PropertyGroup = {
+    Id: string,
+    Name: string,
+    CategoryName: string,
+    ValueType: string,
+    Targets: { PropertyTarget },
+    AllWritable: boolean
+}
+
 local PollOptions: LongPollOptions = {
-	MinInterval = 0.1,
-	MaxInterval = 0.5,
-	BackoffFactor = 1.5,
+    MinInterval = 0.1,
+    MaxInterval = 0.5,
+    BackoffFactor = 1.5
 }
 
 local function ConnectToPropertyChange(
-	instance: Instance,
-	propertyName: string,
-	callback: () -> ()
+    instance: Instance,
+    propertyName: string,
+    callback: () -> ()
 ): RBXScriptConnection?
-	local connection: RBXScriptConnection? = nil
-	local success = pcall(function()
-		connection = instance:GetPropertyChangedSignal(propertyName):Connect(callback)
-	end)
+    local connection: RBXScriptConnection? = nil
+    local success = pcall(function()
+        connection = instance:GetPropertyChangedSignal(propertyName):Connect(callback)
+    end)
 
-	if not success then
-		return nil
-	end
-	return connection
+    if not success then return nil end
+    return connection
 end
 
 local function ObservePropertyChanges(
-	scope: Fusion.Scope,
-	instance: Instance,
-	snapshot: Snapshot,
-	refreshProperty: (propertyName: string) -> boolean
+    scope: Fusion.Scope,
+    instance: Instance,
+    snapshot: Snapshot,
+    refreshProperty: (propertyName: string) -> boolean
 )
-	local polledPropertyNames = {} :: { string }
-	for propertyName, location in snapshot.LocationsByName do
-		if location.Plan.Poll then
-			table.insert(polledPropertyNames, propertyName)
-		end
-	end
+    local polledPropertyNames = {} :: { string }
+    for propertyName, location in snapshot.LocationsByName do
+        if location.Plan.Poll then
+            table.insert(polledPropertyNames, propertyName)
+        end
+    end
 
-	-- ValueBase.Changed sends the new value instead of a property name.
-	if instance:IsA("ValueBase") then
-		for propertyName, location in snapshot.LocationsByName do
-			if location.Plan.Poll then
-				continue
-			end
+    if instance:IsA("ValueBase") then
+        for propertyName, location in snapshot.LocationsByName do
+            if location.Plan.Poll then continue end
 
-			local connection = ConnectToPropertyChange(instance, propertyName, function()
-				refreshProperty(propertyName)
-			end)
+            local connection = ConnectToPropertyChange(instance, propertyName, function()
+                refreshProperty(propertyName)
+            end)
+            if connection then table.insert(scope, connection) end
+        end
+    else
+        table.insert(
+            scope,
+            instance.Changed:Connect(function(propertyName: string)
+                refreshProperty(propertyName)
+            end)
+        )
+    end
 
-			if connection then
-				table.insert(scope, connection)
-			end
-		end
-	else
-		table.insert(
-			scope,
-			instance.Changed:Connect(function(propertyName: string)
-				refreshProperty(propertyName)
-			end)
-		)
-	end
+    if #polledPropertyNames > 0 then
+        table.insert(
+            scope,
+            LongPoll(PollOptions, function(): boolean
+                local foundChanges = false
+                for _, propertyName in polledPropertyNames do
+                    if refreshProperty(propertyName) then
+                        foundChanges = true
+                    end
+                end
+                return foundChanges
+            end)
+        )
+    end
+end
 
-	if #polledPropertyNames > 0 then
-		table.insert(
-			scope,
-			LongPoll(PollOptions, function(): boolean
-				local foundChanges = false
+local function RefreshTarget(target: PropertyTarget): (boolean, any?)
+    local readSuccess, value =
+        GetProperties.ReadProperty(target.Instance, target.Plan)
+    if not readSuccess then return false, nil end
+    if Peek<<any?>>(target.ValueState) == value then
+        return false, value
+    end
 
-				for _, propertyName in polledPropertyNames do
-					if refreshProperty(propertyName) then
-						foundChanges = true
-					end
-				end
+    target.ValueState:set(value)
+    return true, value
+end
 
-				return foundChanges
-			end)
-		)
-	end
+local function CreatePropertyItem(group: PropertyGroup): Item
+    local comparisonValues =
+        table.create(#group.Targets) :: { Fusion.UsedAs<any?> }
+    local commitTargets =
+        table.create(#group.Targets) :: { CommitTarget }
+
+    for targetIdx, target in group.Targets do
+        comparisonValues[targetIdx] = target.ValueState
+        commitTargets[targetIdx] = {
+            Instance = target.Instance,
+            Plan = target.Plan
+        }
+    end
+
+    local function refreshTargets(): any?
+        for _, target in group.Targets do RefreshTarget(target) end
+        return Peek<<any?>>(group.Targets[1].ValueState)
+    end
+
+    local function tryTransformValue(
+        transformValue: TransformValue
+    ): (boolean, string?, any?)
+        local success, err =
+            CommitProperty(commitTargets, transformValue)
+        local savedValue = refreshTargets()
+        return success, err, if success then savedValue else nil
+    end
+
+    return {
+        Key = group.Name,
+        Value = group.Targets[1].ValueState,
+        ComparisonValues = comparisonValues,
+        ValueType = group.ValueType,
+        ValueWritable = group.AllWritable,
+        TrySetValue = function(value: any): (boolean, string?, any?)
+            return tryTransformValue(function(): any return value end)
+        end,
+        TryTransformValue = tryTransformValue
+    }
 end
 
 return function(
-	scope: Fusion.Scope,
-	outerScope: Fusion.Scope,
-	collapsedStateScope: Fusion.Scope,
-	instance: Instance
+    scope: Fusion.Scope,
+    outerScope: Fusion.Scope,
+    collapsedStateScope: Fusion.Scope,
+    instances: { Instance }
 ): { CategoryState }
-	local snapshot = GetProperties.Read(instance)
-	local propertyValueStates: { [string]: Fusion.Value<any?> } = {}
-	local categoryStates = table.create(#snapshot.Categories) :: { CategoryState }
+    local snapshotsByInstance: { [Instance]: Snapshot } = {}
+    local targetsByInstance: {
+        [Instance]: { [string]: PropertyTarget }
+    } = {}
+    local groupsById: { [string]: PropertyGroup } = {}
+    local groups = {} :: { PropertyGroup }
+    local categoryNames = {} :: { string }
+    local seenCategoryNames: { [string]: boolean } = {}
 
-	-- The item collection is fixed for the lifetime of this instance. Publish
-	-- property changes through leaf states so existing rows keep interaction
-	-- state and open overlays.
-	for _, categorySnapshot in snapshot.Categories do
-		for _, item in categorySnapshot.Items do
-			local valueState = Value<<any?>>(scope, item.Value)
+    for _, instance in instances do
+        local snapshot = GetProperties.Read(instance)
+        local instanceTargets: { [string]: PropertyTarget } = {}
+        snapshotsByInstance[instance] = snapshot
+        targetsByInstance[instance] = instanceTargets
 
-			item.Value = valueState
-			propertyValueStates[item.Key] = valueState
-		end
-	end
+        for propertyName, location in snapshot.LocationsByName do
+            local categorySnapshot =
+                snapshot.Categories[location.CategoryIndex]
+            local item = categorySnapshot.Items[location.ItemIndex]
+            local plan = location.Plan
+            local group = groupsById[plan.Id]
 
-	local function refreshProperty(propertyName: string): (boolean, any?)
-		local location = snapshot.LocationsByName[propertyName]
-		if not location then
-			return false, nil
-		end
+            if not group then
+                group = {
+                    Id = plan.Id,
+                    Name = plan.Name,
+                    CategoryName = categorySnapshot.Name,
+                    ValueType = item.ValueType or typeof(item.Value),
+                    Targets = {},
+                    AllWritable = true
+                }
+                groupsById[plan.Id] = group
+                table.insert(groups, group)
 
-		local readSuccess, value = GetProperties.ReadProperty(instance, location.Plan)
-		if not readSuccess then
-			return false, nil
-		end
+                if not seenCategoryNames[group.CategoryName] then
+                    seenCategoryNames[group.CategoryName] = true
+                    table.insert(categoryNames, group.CategoryName)
+                end
+            end
 
-		local valueState = propertyValueStates[propertyName]
-		if not valueState then
-			return false, nil
-		end
-		if Peek<<any?>>(valueState) == value then
-			return false, value
-		end
+            local target: PropertyTarget = {
+                Instance = instance,
+                Plan = plan,
+                ValueState = Value<<any?>>(scope, item.Value)
+            }
+            table.insert(group.Targets, target)
+            instanceTargets[propertyName] = target
 
-		valueState:set(value)
-		return true, value
-	end
+            if not item.ValueWritable then group.AllWritable = false end
+        end
+    end
 
-	for propertyName, location in snapshot.LocationsByName do
-		local categorySnapshot =
-			snapshot.Categories[location.CategoryIndex]
-		local item = categorySnapshot.Items[location.ItemIndex]
-		if not item.ValueWritable then
-			continue
-		end
-		local valueState = propertyValueStates[propertyName]
+    local itemsByCategory: { [string]: { Item } } = {}
+    for _, categoryName in categoryNames do
+        itemsByCategory[categoryName] = {}
+    end
+    for _, group in groups do
+        table.insert(
+            itemsByCategory[group.CategoryName],
+            CreatePropertyItem(group)
+        )
+    end
 
-		item.TrySetValue = function(value: any): (boolean, string?, any?)
-			local currentValue = Peek<<any?>>(valueState)
-			if currentValue == value then
-				return true, nil, currentValue
-			end
+    local categoryStates = table.create(#categoryNames) :: { CategoryState }
+    for categoryIdx, categoryName in categoryNames do
+        local items = itemsByCategory[categoryName]
+        table.sort(items, function(leftItem: Item, rightItem: Item): boolean
+            return leftItem.Key < rightItem.Key
+        end)
 
-			local success, err = CommitProperty(instance, location.Plan, value)
+        categoryStates[categoryIdx] = Category(
+            scope,
+            outerScope,
+            collapsedStateScope,
+            {
+                Name = categoryName,
+                Items = items,
+                Presorted = true,
+                StableKeys = true
+            }
+        )
+    end
 
-			local _, savedValue = refreshProperty(propertyName)
-			return success, err, if success then savedValue else nil
-		end
-	end
+    for _, instance in instances do
+        local instanceTargets = targetsByInstance[instance]
+        local function refreshProperty(propertyName: string): boolean
+            local target = instanceTargets[propertyName]
+            if not target then return false end
 
-	for categoryIndex, categorySnapshot in snapshot.Categories do
-		categoryStates[categoryIndex] = Category(scope, outerScope, collapsedStateScope, {
-			Name = categorySnapshot.Name,
-			Items = categorySnapshot.Items,
-			Presorted = true,
-			StableKeys = true,
-		})
-	end
+            local changed = RefreshTarget(target)
+            return changed
+        end
 
-	ObservePropertyChanges(scope, instance, snapshot, refreshProperty)
+        ObservePropertyChanges(
+            scope,
+            instance,
+            snapshotsByInstance[instance],
+            refreshProperty
+        )
+    end
 
-	return categoryStates
+    return categoryStates
 end

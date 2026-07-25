@@ -14,6 +14,8 @@ local Types = require(script.types)
 type Item = Map.Item
 
 export type PropertyPlan = {
+	Id: string,
+	Owner: string,
 	Name: string,
 	ValueType: string?,
 	Read: ((Instance) -> any)?,
@@ -150,7 +152,10 @@ local function BuildClassPlan(className: string): ClassPlan
 		local category = CreateOrGetCategoryPlan(classPlan.Categories, categoriesByName, itemDisplay.Category)
 
 		local customReadWrite = item.CustomReadWrite
+		local owner = item.Owner or className
 		local propertyPlan: PropertyPlan = {
+			Id = `{owner}\0{item.Name}`,
+			Owner = owner,
 			Name = item.Name,
 			ValueType = item.Type.ScriptType,
 			Read = if customReadWrite then customReadWrite.Read else nil,
