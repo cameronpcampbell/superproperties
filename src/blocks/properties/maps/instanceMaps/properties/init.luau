@@ -13,7 +13,7 @@ type CategoryState = Category.State
 
 local GetProperties = require(script.Parent.Parent.getProperties)
 type Snapshot = GetProperties.Snapshot
-local CommitProperty = require(script.Parent.commitProperty)
+local CommitProperty = require(script.commitProperty)
 local LongPoll = require(script.Parent.Parent.longPoll)
 type LongPollOptions = LongPoll.Options
 

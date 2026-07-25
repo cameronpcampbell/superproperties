@@ -21,8 +21,8 @@ local Assets = require(script.Parent.Parent.Parent.Parent.Parent.assets)
 local Category = require(script.Parent.Parent.category)
 type CategoryState = Category.State
 
-local CommitAddTag = require(script.Parent.commitAddTag)
-local CommitRemoveTag = require(script.Parent.commitRemoveTag)
+local CommitAddTag = require(script.commitAddTag)
+local CommitRemoveTag = require(script.commitRemoveTag)
 local TagChanged = require(script.tagChanged)
 
 type TagRemovedCallback = (tag: string) -> ()

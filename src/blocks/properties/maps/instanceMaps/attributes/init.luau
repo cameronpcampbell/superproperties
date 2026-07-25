@@ -24,8 +24,8 @@ local Assets = require(script.Parent.Parent.Parent.Parent.Parent.assets)
 local Category = require(script.Parent.Parent.category)
 type CategoryState = Category.State
 
-local CommitAttribute = require(script.Parent.commitAttribute)
-local CommitRenameAttribute = require(script.Parent.commitRenameAttribute)
+local CommitAttribute = require(script.commitAttribute)
+local CommitRenameAttribute = require(script.commitRenameAttribute)
 
 type AttributesMapProps = {
     OmitRbxAttributes: boolean
