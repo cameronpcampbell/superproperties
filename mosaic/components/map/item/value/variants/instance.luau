@@ -13,6 +13,7 @@ local Computed, New, Children, OnEvent, Peek, Tween =
 local Components = script.Parent.Parent.Parent.Parent.Parent
 local Text = require(Components.text)
 local Icon = require(Components.icon)
+local IconButton = require(Components.iconButton)
 local PopoverFocus =
     require(Components.Parent.coreComponents.popoverFocus)
 local Assets = require(Components.Parent.assets)
@@ -290,24 +291,11 @@ return function(
                         })
                         else {},
 
-                    Icon(indicatorScope, {
+                    IconButton(indicatorScope, {
                         Image = Assets.Cross,
                         Position = UDim2.fromScale(.5, .5),
                         AnchorPoint = Vector2.new(.5, .5),
                         ImageTransparency = clearTransparency,
-                        ZIndex = 3,
-
-                        Name = "InstanceValueClearIcon"
-                    }),
-
-                    New(indicatorScope, "TextButton") {
-                        Size = UDim2.fromOffset(21, 21),
-                        Position = UDim2.fromScale(.5, .5),
-                        AnchorPoint = Vector2.new(.5, .5),
-                        BackgroundTransparency = 1,
-                        Text = "",
-                        AutoButtonColor = false,
-                        Selectable = false,
                         Interactable = clearInteractable,
                         ZIndex = 4,
 
@@ -317,7 +305,7 @@ return function(
                             local callback = clearValue
                             if callback then callback() end
                         end
-                    }
+                    })
                 }
             }
         end

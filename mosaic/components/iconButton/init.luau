@@ -30,6 +30,9 @@ type IconButtonProps = {
     Variant: ThemeUtils.FgVariant?,
     Rotation: Fusion.UsedAs<number>?,
     Image: Fusion.UsedAs<string>?,
+    ImageTransparency: Fusion.UsedAs<number>?,
+    Interactable: Fusion.UsedAs<boolean>?,
+    ZIndex: Fusion.UsedAs<number>?,
     LayoutOrder: number?,
     [Fusion.SpecialKey]: any
 }
@@ -45,7 +48,12 @@ return Component<<IconButtonProps>>(function(scope, props)
     local props, variant = TableExtract(props, "Variant", "Primary")
     local props, rotation = TableExtract(props, "Rotation")
     local props, onClickEvent = TableExtract(props, OnEvent "MouseButton1Click")
+    local props, onActivatedEvent = TableExtract(props, OnEvent "Activated")
     local props, image = TableExtract(props, "Image")
+    local props, imageTransparency =
+        TableExtract(props, "ImageTransparency", 0)
+    local props, interactable = TableExtract(props, "Interactable", true)
+    local props, zIndex = TableExtract(props, "ZIndex", 1)
 
     local isHoverState, isFocusState = Value(scope, false), Value(scope, false)
     local themeColorModifier = CalcColorModifier(scope, isHoverState, isFocusState)
@@ -57,19 +65,23 @@ return Component<<IconButtonProps>>(function(scope, props)
     return New(scope, "Frame") (CombineProps({
         Size = UDim2.fromOffset(9, 9),
         BackgroundTransparency = 1,
+        Interactable = interactable,
+        ZIndex = zIndex,
 
         [Children] = {
             New(scope, "ImageLabel") {
                 Image = image,
                 Size = UDim2.fromOffset(9, 9),
                 BackgroundTransparency = 1,
+                ImageTransparency = imageTransparency,
                 ImageColor3 = Oktween(
                     scope, fgColor,
                     TweenInfo.new(
                         .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
                     )
                 ),
-                Rotation = rotation
+                Rotation = rotation,
+                ZIndex = zIndex
             },
 
             CoreButton(scope, NewImageButton, {
@@ -77,6 +89,8 @@ return Component<<IconButtonProps>>(function(scope, props)
                 BackgroundTransparency = 1,
                 Position = UDim2.fromScale(.5, .5),
                 AnchorPoint = Vector2.new(.5, .5),
+                Interactable = interactable,
+                ZIndex = zIndex,
 
                 [OnEvent "MouseEnter"] = function() isHoverState:set(true) end,
                 [OnEvent "MouseLeave"] = function() isHoverState:set(false) end,
@@ -84,6 +98,7 @@ return Component<<IconButtonProps>>(function(scope, props)
                 [OnEvent "MouseButton1Down"] = function() isFocusState:set(true) end,
                 [OnEvent "MouseButton1Up"] = function() isFocusState:set(false) end,
 
+                [OnEvent "Activated"] = onActivatedEvent,
                 [OnEvent "MouseButton1Click"] = onClickEvent
             }) :: Instance
         }
