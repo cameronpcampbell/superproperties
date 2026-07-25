@@ -19,6 +19,9 @@ local GetThemeForScope, GetNextVariant, CalcColorModifier =
 local Components = script.Parent.Parent.Parent
 local FocusRing = require(Components.focusRing)
 
+local CoreComponents = Components.Parent.coreComponents
+local TransparencyGated = require(CoreComponents.transparencyGated)
+
 local FocusTransitionTweenInfo = require(script.Parent.value.focusTransitionTweenInfo)
 local HoverTweenInfo = require(script.Parent.hoverTweenInfo)
 local ZIndices = require(script.Parent.Parent.zIndices)
@@ -126,7 +129,8 @@ local function CreateMapItemInteraction(
         HoverTweenInfo
     )
 
-    local border = Supercorner.new(scope, {
+    local border = TransparencyGated(scope, Supercorner.new :: any, {
+        GatedTransparencyProperty = "StrokeTransparency",
         BackgroundTransparency = 1,
         StrokeColor = tweenStrokeColor,
         StrokeTransparency = tweenStrokeTransparency,
@@ -146,7 +150,6 @@ local function CreateMapItemInteraction(
     local focusRing = FocusRing(scope, {
         IsFocus = isFocusState,
         AlphaOut = focusRingAlphaState,
-        CullWhenHidden = true,
         TransitionTweenInfo = FocusTransitionTweenInfo,
         BaseSize = UDim2.new(1, 2, 1, 2),
         TopLeftRadius = props.TopLeftRadius,

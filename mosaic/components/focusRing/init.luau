@@ -20,6 +20,9 @@ local GetThemeForScope = ThemeUtils.GetThemeForScope
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
+local CoreComponents = script.Parent.Parent.coreComponents
+local TransparencyGated = require(CoreComponents.transparencyGated)
+
 type FocusRingProps = {
     BaseSize: Fusion.UsedAs<UDim2>?,
     CornerRadius: Fusion.UsedAs<number>?,
@@ -30,7 +33,6 @@ type FocusRingProps = {
 	MaxCornerRadius: Fusion.UsedAs<number>?,
 	Redrawable: boolean?,
 	IsFocus: Fusion.UsedAs<boolean>,
-	CullWhenHidden: boolean?,
 	TransitionTweenInfo: Fusion.UsedAs<TweenInfo>?,
 	AlphaOut: Fusion.Value<number>?
 }
@@ -52,7 +54,6 @@ return Component<<FocusRingProps>>(function(scope, props)
     local props, maxCornerRadius = TableExtract(props, "MaxCornerRadius")
     local props, redrawable = TableExtract(props, "Redrawable", false)
     local props, isFocus = TableExtract(props, "IsFocus")
-    local props, cullWhenHidden = TableExtract(props, "CullWhenHidden", false)
     local props, alphaOut = TableExtract(props, "AlphaOut")
     local props, transitionTweenInfo =
         TableExtract(
@@ -116,38 +117,24 @@ return Component<<FocusRingProps>>(function(scope, props)
     local theme = GetThemeForScope(scope)
     local accentColor = theme:GetAccent(scope, "Primary")
 
-    local function createRing(ringScope: Fusion.Scope): Fusion.Child
-        return Supercorner.new(ringScope, CombineProps({
-            Size = computeSize,
-            Position = UDim2.fromScale(.5, .5),
-            AnchorPoint = Vector2.new(.5, .5),
-            StrokeThickness = ringThickness + ringInset,
-            StrokeTransparency = computeTransparency,
-            StrokeColor = accentColor,
-            BackgroundTransparency = 1,
-            ForceSupercorner = true,
-            CornerRadius = ringCornerRadius,
-            TopLeftRadius = ringTopLeftRadius,
-            TopRightRadius = ringTopRightRadius,
-            BottomRightRadius = ringBottomRightRadius,
-            BottomLeftRadius = ringBottomLeftRadius,
-            MaxCornerRadius = ringMaxCornerRadius,
-            Redrawable = redrawable,
-            CornerSmoothing = 1,
-            ZIndex = 0,
-        }, props :: any))
-    end
-
-    if not cullWhenHidden then return createRing(scope) end
-
-    local shouldShow = Computed(scope, function(use, scope): boolean
-        return
-            use<<boolean>>(isFocus) or
-            use<<number>>(computeAlpha) > .001
-    end)
-
-    return Computed(scope, function(use, scope): Fusion.Child
-        if not use<<boolean>>(shouldShow) then return nil :: any end
-        return createRing(scope)
-    end)
+    return TransparencyGated(scope, Supercorner.new :: any, CombineProps({
+        GatedTransparencyProperty = "StrokeTransparency",
+        Size = computeSize,
+        Position = UDim2.fromScale(.5, .5),
+        AnchorPoint = Vector2.new(.5, .5),
+        StrokeThickness = ringThickness + ringInset,
+        StrokeTransparency = computeTransparency,
+        StrokeColor = accentColor,
+        BackgroundTransparency = 1,
+        ForceSupercorner = true,
+        CornerRadius = ringCornerRadius,
+        TopLeftRadius = ringTopLeftRadius,
+        TopRightRadius = ringTopRightRadius,
+        BottomRightRadius = ringBottomRightRadius,
+        BottomLeftRadius = ringBottomLeftRadius,
+        MaxCornerRadius = ringMaxCornerRadius,
+        Redrawable = redrawable,
+        CornerSmoothing = 1,
+        ZIndex = 0,
+    }, props :: any))
 end)

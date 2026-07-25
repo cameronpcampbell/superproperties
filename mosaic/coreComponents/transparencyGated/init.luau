@@ -3,7 +3,8 @@
 
 local Packages = script.Parent.Parent.Parent
 local Fusion = require(Packages.fusion)
-local Computed = Fusion.Computed
+local Computed, Observer, Peek, Value =
+    Fusion.Computed, Fusion.Observer, Fusion.peek, Fusion.Value
 
 local Utils = script.Parent.Parent.utils
 
@@ -27,15 +28,46 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
     local gatedTransparency =
         (props :: { [any]: any })[gatedTransparencyProperty] or 0
 
-    local shouldRender = Computed(scope, function(use): boolean
-        return use<<number>>(gatedTransparency) < 1
+    local renderState = Value(
+        scope,
+        Peek<<number>>(gatedTransparency) < 1
+    )
+    local pendingRenderState = Peek<<boolean>>(renderState)
+    local renderUpdateScheduled = false
+    local renderStateAlive = true
+
+    Observer(scope, gatedTransparency):onChange(function()
+        local nextRenderState =
+            Peek<<number>>(gatedTransparency) < 1
+        if pendingRenderState == nextRenderState then return end
+
+        pendingRenderState = nextRenderState
+        if renderUpdateScheduled then return end
+
+        -- Animated states update while Fusion's graph is busy. Reconcile the
+        -- constructor afterward so mounting cannot add dependencies during
+        -- the animation traversal that triggered it.
+        renderUpdateScheduled = true
+        task.defer(function()
+            renderUpdateScheduled = false
+            if not renderStateAlive then return end
+            if Peek<<boolean>>(renderState) == pendingRenderState then
+                return
+            end
+
+            renderState:set(pendingRenderState)
+        end)
+    end)
+
+    table.insert(scope, function()
+        renderStateAlive = false
     end)
 
     return Computed(scope, function(
         use: Fusion.Use,
         renderScope: Fusion.Scope
     ): Fusion.Child
-        if not use<<boolean>>(shouldRender) then return {} end
+        if not use<<boolean>>(renderState) then return {} end
 
         return constructor(renderScope, props)
     end)
