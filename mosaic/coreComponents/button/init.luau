@@ -53,6 +53,7 @@ return ConstructorComponent<<ButtonProps>>(function(scope, constructor, props)
     local cursorImage = POINTER_CURSOR
     local isHovered = false
     local predictionManaged = false
+    local destroyed = false
     local predictionRegistration: CursorPredictor.Registration? = nil
 
     local function applyCursor()
@@ -111,7 +112,10 @@ return ConstructorComponent<<ButtonProps>>(function(scope, constructor, props)
     end
 
     local function CleanupButton()
-        setHovered(false, nil)
+        if destroyed then return end
+        destroyed = true
+        isHovered = false
+        restorePointer()
 
         local registration = predictionRegistration
         predictionRegistration = nil

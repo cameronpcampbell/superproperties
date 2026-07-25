@@ -42,6 +42,7 @@ return ConstructorComponent<<FrameProps>>(function(scope, constructor, props)
 
     local isHovered = false
     local predictionManaged = false
+    local destroyed = false
     local predictionRegistration: CursorPredictor.FrameRegistration? = nil
 
     local function setHovered(
@@ -67,7 +68,9 @@ return ConstructorComponent<<FrameProps>>(function(scope, constructor, props)
     end
 
     local function CleanupFrame()
-        setHovered(false, nil)
+        if destroyed then return end
+        destroyed = true
+        isHovered = false
 
         local registration = predictionRegistration
         predictionRegistration = nil

@@ -797,12 +797,15 @@ local function RegisterTarget(
     local function Destroy()
         if record.Destroying or record.Destroyed then return end
         record.Destroying = true
+        -- Teardown only removes predictor bookkeeping. Closing the callback
+        -- gate first prevents a synthetic Leave from mutating UI state while
+        -- its Fusion scope is already being cleaned up.
+        record.Destroyed = true
         record.Pressed = false
         pendingTargets[record] = nil
 
         if record.Root then RemoveFromRoot(record, false) end
 
-        record.Destroyed = true
         record.Destroying = false
     end
 
