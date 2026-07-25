@@ -75,24 +75,6 @@ local Widget = Scope:Widget {
 
             [Children] = {
                 Scope:New "Frame" {
-                    Size = UDim2.fromScale(1, 1),
-                    BackgroundTransparency = 1,
-
-                    [Children] = {
-                        Scope:New "UIPadding" {
-                            PaddingLeft = UDim.new(0, 25),
-                            PaddingRight = UDim.new(0, 25),
-                            PaddingTop = UDim.new(0, 25),
-                            PaddingBottom = UDim.new(0, 25),
-                        },
-
-                        Scope:Button({
-                            [Children] = "Click me!"
-                        })
-                    }
-                },
-
-                --[[Scope:New "Frame" {
                     Size = UDim2.fromScale(1, 0),
                     AutomaticSize = Enum.AutomaticSize.Y,
                     BackgroundTransparency = 1,
@@ -111,7 +93,7 @@ local Widget = Scope:Widget {
                 Properties.Maps(Scope, {
                     SelectedInstanceValue = SelectedInstanceValue,
                     OmitRbxAttributes = true
-                }),]]
+                }),
 
                 Scope:New "UIPadding" {
                     PaddingRight = UDim.new(0, 4),
