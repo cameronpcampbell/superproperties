@@ -286,6 +286,7 @@ return function(
                     if classIcon then
                         Icon(indicatorScope, {
                             Image = classIcon.Image,
+                            ImageColor3 = Color3.new(1, 1, 1),
                             Size = UDim2.fromScale(1, 1),
                             ImageRectOffset = classIcon.ImageRectOffset,
                             ImageRectSize = classIcon.ImageRectSize,
@@ -315,6 +316,7 @@ return function(
         if classIcon then
             return Icon(indicatorScope, {
                 Image = classIcon.Image,
+                ImageColor3 = Color3.new(1, 1, 1),
                 Size = UDim2.fromOffset(
                     InstanceIconSize,
                     InstanceIconSize
