@@ -6,9 +6,9 @@ local Packages =
     script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.packages
 
 local Fusion = require(Packages.fusion)
-local Computed, New, Children, OnEvent, Peek, Tween, Value =
+local Computed, New, Children, OnEvent, Peek, Tween =
     Fusion.Computed, Fusion.New, Fusion.Children, Fusion.OnEvent,
-    Fusion.peek, Fusion.Tween, Fusion.Value
+    Fusion.peek, Fusion.Tween
 
 local Components = script.Parent.Parent.Parent.Parent.Parent
 local Text = require(Components.text)
@@ -20,19 +20,21 @@ local Assets = require(Components.Parent.assets)
 
 local Utils = Components.Parent.utils
 local SelectionService = require(Utils.selectionService)
+local ColorSpace = require(Utils.colorSpace)
+local ThemeUtils = require(Utils.themeUtils)
+local GetThemeForScope = ThemeUtils.GetThemeForScope
 
 local Types = require(script.Parent.types)
 local InstanceHandle = require(script.Parent["instanceHandle.types"])
 type InstanceHandle = InstanceHandle.InstanceHandle
 type InstanceValue = Instance | InstanceHandle | nil
+type ClassIconTheme = "Dark" | "Light"
 
 local CreateSidePadding = require(script.Parent.utils.createSidePadding)
 local HoverTweenInfo = require(script.Parent.Parent.Parent.hoverTweenInfo)
 
 local SelectionSettleTime = .1
 local InstanceIconSize = 13
-
-local PluginInstance = script:FindFirstAncestorOfClass("Plugin") :: Plugin?
 
 local function InputFinished(input: InputObject): boolean
     return
@@ -53,26 +55,48 @@ local function CreateClearTransparency(
     )
 end
 
-local function CreateClassIconGetter(scope: Fusion.Scope)
-    local themeRevision =
-        if PluginInstance then Value(scope, 0) else nil
+local function CreateClassIconTheme(
+    scope: Fusion.Scope
+): Fusion.Computed<ClassIconTheme>
+    local theme = GetThemeForScope(scope)
 
-    if themeRevision then
-        local revision = themeRevision
-        table.insert(
-            scope,
-            settings().Studio.ThemeChanged:Connect(function()
-                revision:set(Peek<<number>>(revision) + 1)
-            end)
-        )
-    end
+    return Computed(scope, function(use: Fusion.Use): ClassIconTheme
+        local background = use<<Color3>>(theme.BgPrimary)
+
+        return
+            if ColorSpace.Oklab.From(background):IsDark()
+            then "Dark"
+            else "Light"
+    end)
+end
+
+local function ResolveClassIconImage(
+    image: string,
+    iconTheme: ClassIconTheme
+): string
+    local resolved, darkMatches =
+        image:gsub("/Dark/", `/{iconTheme}/`, 1)
+
+    if darkMatches > 0 then return resolved end
+
+    return (image:gsub("/Light/", `/{iconTheme}/`, 1))
+end
+
+local function CreateClassIconGetter(scope: Fusion.Scope)
+    local iconTheme = CreateClassIconTheme(scope)
 
     return function(use: Fusion.Use, className: string)
-        if themeRevision then
-            use<<number>>(themeRevision)
-        end
+        local usedIconTheme = use<<ClassIconTheme>>(iconTheme)
+        local classIcon = StudioService:GetClassIcon(className)
+        if not classIcon then return nil end
 
-        return StudioService:GetClassIcon(className)
+        local themedClassIcon = table.clone(classIcon)
+        themedClassIcon.Image = ResolveClassIconImage(
+            classIcon.Image,
+            usedIconTheme
+        )
+
+        return themedClassIcon
     end
 end
 

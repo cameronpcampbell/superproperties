@@ -12,8 +12,8 @@ local HeaderColorTintChroma: { [TintTarget]: number } = {
     Background = 0.18,
     Foreground = .8,
 }
-local DarkHeaderColorTintStrength = 0.02
-local LightHeaderColorTintStrength = 0.03
+local DarkHeaderColorTintStrength = 0.04
+local LightHeaderColorTintStrength = 0.06
 local LightContrastCandidate =
     ColorSpace.Srgb.From(ThemeConstants.BASE_LIGHT_TEXT_COLOR)
 local DarkContrastCandidate =
