@@ -14,11 +14,6 @@ type Parser = {
     Position: number
 }
 
-type Component = {
-    Value: number,
-    ExplicitDecimal: boolean
-}
-
 local HexLexer = Lexuau.new<<nil>>({
     skip = "[ \t\n\r\f]+",
     init_state = function()
@@ -83,7 +78,7 @@ end
 local function ParseComponent(
     parser: Parser,
     componentName: string
-): (Component?, string?)
+): (number?, string?)
     local sign = 1
     local token = Peek(parser)
 
@@ -116,10 +111,7 @@ local function ParseComponent(
             `Invalid number {string.format("%q", token.Value)} for the {componentName} component.`
     end
 
-    return {
-        Value = sign * value,
-        ExplicitDecimal = string.find(token.Value, ".", 1, true) ~= nil
-    }, nil
+    return sign * value, nil
 end
 
 local function ParseComma(
@@ -137,13 +129,13 @@ local function ParseComma(
 end
 
 local function NormalizeComponent(
-    component: Component,
+    component: number,
+    multiplier: number,
     componentName: string
 ): (number?, string?)
-    local normalizedValue =
-        if component.ExplicitDecimal then component.Value * 255 else component.Value
+    local normalizedValue = math.max(component * multiplier, 0)
 
-    if normalizedValue < 0 or normalizedValue > 255 then
+    if normalizedValue > 255 then
         return nil,
             `The {componentName} component must normalize to a value between 0 and 255.`
     end
@@ -240,15 +232,21 @@ local function ParseRgb(parser: Parser): (Color3?, string?)
             `Expected end of input after the blue component, found {DescribeToken(trailingToken)}.`
     end
 
+    local componentsAreNormalized =
+        redComponent >= 0 and redComponent <= 1 and
+        greenComponent >= 0 and greenComponent <= 1 and
+        blueComponent >= 0 and blueComponent <= 1
+    local multiplier = if componentsAreNormalized then 255 else 1
+
     local red, green, blue
 
-    red, parseError = NormalizeComponent(redComponent, "red")
+    red, parseError = NormalizeComponent(redComponent, multiplier, "red")
     if red == nil then return nil, parseError end
 
-    green, parseError = NormalizeComponent(greenComponent, "green")
+    green, parseError = NormalizeComponent(greenComponent, multiplier, "green")
     if green == nil then return nil, parseError end
 
-    blue, parseError = NormalizeComponent(blueComponent, "blue")
+    blue, parseError = NormalizeComponent(blueComponent, multiplier, "blue")
     if blue == nil then return nil, parseError end
 
     return Color3.fromRGB(red, green, blue), nil
