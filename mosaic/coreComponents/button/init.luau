@@ -2,7 +2,8 @@
 
 local Packages = script.Parent.Parent.Parent
 local Fusion = require(Packages.fusion)
-local OnEvent = Fusion.OnEvent
+local Computed, Observer, OnEvent, Peek =
+    Fusion.Computed, Fusion.Observer, Fusion.OnEvent, Fusion.peek
 
 local Utils = script.Parent.Parent.utils
 
@@ -11,10 +12,14 @@ local ConstructorComponent, CombineProps, ScopedData =
     FusionUtils.ConstructorComponent, FusionUtils.CombineProps,
     FusionUtils.ScopedData
 
+local TableUtils = require(Utils.tableUtils)
+local TableExtract = TableUtils.Extract
+
 local CursorPredictor = require(Utils.cursorPredictor)
 
 local DEFAULT_CURSOR = "rbxasset://SystemCursors/Arrow"
 local POINTER_CURSOR = "rbxasset://SystemCursors/PointingHand"
+local NOT_ALLOWED_CURSOR = "rbxasset://SystemCursors/Forbidden"
 
 local MOUSE_ENTER_EVENT = OnEvent "MouseEnter"
 local MOUSE_MOVED_EVENT = OnEvent "MouseMoved"
@@ -30,10 +35,12 @@ local PluginMouse =
 type Callback = (...any) -> ()
 
 type ButtonProps = {
+    Disabled: Fusion.UsedAs<boolean>?,
     [any]: any,
 }
 
 return ConstructorComponent<<ButtonProps>>(function(scope, constructor, props)
+    local props, disabled = TableExtract(props, "Disabled", false)
     local onMouseEnterEvent =
         (props :: { [any]: any })[MOUSE_ENTER_EVENT] :: Callback?
     local onMouseMovedEvent =
@@ -50,7 +57,12 @@ return ConstructorComponent<<ButtonProps>>(function(scope, constructor, props)
     local cursorList =
         ScopedData(scope, "CursorList") :: { string }
 
-    local cursorImage = POINTER_CURSOR
+    local isDisabled = Computed(scope, function(use): boolean
+        return use<<boolean>>(disabled)
+    end)
+    local cursorImage =
+        if Peek<<boolean>>(isDisabled) then NOT_ALLOWED_CURSOR
+        else POINTER_CURSOR
     local isHovered = false
     local predictionManaged = false
     local destroyed = false
@@ -85,6 +97,22 @@ return ConstructorComponent<<ButtonProps>>(function(scope, constructor, props)
 
         applyCursor()
     end
+
+    local function syncCursorImage()
+        local nextCursorImage =
+            if Peek<<boolean>>(isDisabled) then NOT_ALLOWED_CURSOR
+            else POINTER_CURSOR
+        if cursorImage == nextCursorImage then return end
+
+        local wasHovered = isHovered
+        if wasHovered then restorePointer() end
+
+        cursorImage = nextCursorImage
+
+        if wasHovered then showPointer() end
+    end
+
+    Observer(scope, isDisabled):onChange(syncCursorImage)
 
     local function setHovered(
         nextHovered: boolean,
@@ -187,6 +215,12 @@ return ConstructorComponent<<ButtonProps>>(function(scope, constructor, props)
 
             ManagedChanged = function(isManaged: boolean)
                 predictionManaged = isManaged
+            end,
+        },
+        {
+            IsAvailable = function(): boolean
+                return button.Interactable
+                    or Peek<<boolean>>(isDisabled)
             end,
         }
     )

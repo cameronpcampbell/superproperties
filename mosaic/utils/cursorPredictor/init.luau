@@ -21,6 +21,10 @@ export type Handlers = {
     ManagedChanged: (isManaged: boolean) -> (),
 }
 
+export type TargetOptions = {
+    IsAvailable: (() -> boolean)?,
+}
+
 export type Registration = {
     SetPressed: (isPressed: boolean) -> (),
     Destroy: () -> (),
@@ -43,6 +47,7 @@ type TargetRecord = {
     RootIndex: number?,
     RegistrationOrder: number,
     IsExclusiveTarget: boolean,
+    IsAvailable: (() -> boolean)?,
     Pressed: boolean,
     Hovered: boolean,
     HoveredByPrediction: boolean,
@@ -180,12 +185,15 @@ local function IsTargetAvailable(
     rootRecord: RootRecord
 ): boolean
     local target = record.Target
-    if not target.Parent
-        or not target.Visible
-        or not target.Interactable
-    then
+    if not target.Parent or not target.Visible then
         return false
     end
+
+    local resolveAvailability = record.IsAvailable
+    local isAvailable =
+        if resolveAvailability then resolveAvailability()
+        else target.Interactable
+    if not isAvailable then return false end
 
     local absoluteSize = target.AbsoluteSize
     if absoluteSize.X <= 0 or absoluteSize.Y <= 0 then
@@ -757,7 +765,8 @@ local function RegisterTarget(
     scope: Fusion.Scope,
     target: GuiObject,
     isExclusiveTarget: boolean,
-    handlers: TargetHandlers
+    handlers: TargetHandlers,
+    options: TargetOptions?
 ): Registration
     nextRegistrationOrder += 1
 
@@ -768,6 +777,8 @@ local function RegisterTarget(
         RootIndex = nil,
         RegistrationOrder = nextRegistrationOrder,
         IsExclusiveTarget = isExclusiveTarget,
+        IsAvailable =
+            if options then options.IsAvailable else nil,
         Pressed = false,
         Hovered = false,
         HoveredByPrediction = false,
@@ -815,9 +826,10 @@ end
 local function RegisterButton(
     scope: Fusion.Scope,
     button: GuiButton,
-    handlers: Handlers
+    handlers: Handlers,
+    options: TargetOptions?
 ): Registration
-    return RegisterTarget(scope, button, true, handlers)
+    return RegisterTarget(scope, button, true, handlers, options)
 end
 
 local function RegisterFrame(

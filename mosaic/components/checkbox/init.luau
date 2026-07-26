@@ -123,6 +123,7 @@ return Component<<CheckboxProps>>(function(scope, props)
 
     return HighlightSupercorner(scope, {
         Button = true,
+        Disabled = disabled,
         Enabled = gradientEnabled,
         GradientTransparency = 0.82,
         BackgroundColor3 = Oktween(
