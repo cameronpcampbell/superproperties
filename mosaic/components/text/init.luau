@@ -20,12 +20,12 @@ local TableExtract = TableUtils.Extract
 
 type TextProps = {
     Text: Fusion.UsedAs<string>,
-    Variant: ThemeUtils.FgVariant?,
-    AccentVariant: ThemeUtils.AccentVariant?,
-	Font: ThemeUtils.FontVariant?,
-	FontWeight: Enum.FontWeight?,
+    Variant: Fusion.UsedAs<ThemeUtils.FgVariant?>,
+    AccentVariant: Fusion.UsedAs<ThemeUtils.AccentVariant?>,
+	Font: Fusion.UsedAs<ThemeUtils.FontVariant?>,
+	FontWeight: Fusion.UsedAs<Enum.FontWeight?>,
 	FontStyle: Fusion.UsedAs<Enum.FontStyle>?,
-	FontSize: ThemeUtils.FontSizeVariant?,
+	FontSize: Fusion.UsedAs<ThemeUtils.FontSizeVariant?>,
 }
 
 return Component<<TextProps>>(function(scope, props)

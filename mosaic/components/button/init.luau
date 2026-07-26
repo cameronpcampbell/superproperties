@@ -44,7 +44,8 @@ local TransparencyTweenInfo = TweenInfo.new(
 local function TransformChild(
     scope: Fusion.Scope,
     child: unknown,
-    transparency: Fusion.UsedAs<number>
+    transparency: Fusion.UsedAs<number>,
+    variant: Fusion.UsedAs<ThemeUtils.AccentVariant?>
 ): Fusion.Child?
     local childTypeof = typeof(child)
 
@@ -54,14 +55,14 @@ local function TransformChild(
     end
 
     local theme = GetThemeForScope(scope)
-    local accentFgColor = theme:GetAccentFg(scope, "Primary", "Primary")
+    local fgColor = theme:GetFg(scope, "Primary", variant)
 
     if string.match(child :: string, "^rbxassetid://%d+$") then
 
         return New (scope, "ImageLabel") {
             Size = UDim2.fromOffset(9, 9),
             BackgroundTransparency = 1,
-            ImageColor3 = accentFgColor,
+            ImageColor3 = fgColor,
             ImageTransparency = transparency,
             Image = child
         }
@@ -69,9 +70,8 @@ local function TransformChild(
     else
         return Text (scope, {
             Text = child :: string,
-            TextColor3 = accentFgColor,
-            TextTransparency = transparency,
-            UseAccentFg = true
+            AccentVariant = variant,
+            TextTransparency = transparency
         })
 
     end

@@ -226,7 +226,7 @@ export type Theme = {
         theme: Theme,
         scope: Fusion.Scope,
         variant: Fusion.UsedAs<FgVariant>,
-        accentVariant: Fusion.UsedAs<AccentVariant>?,
+        accentVariant: Fusion.UsedAs<AccentVariant?>,
         modifier: Fusion.UsedAs<ThemeColorModifier?>
     ) -> Fusion.UsedAs<Color3>,
 
