@@ -130,6 +130,15 @@ local Patches: Patches = {
         SoundService = {
             AudioApiByDefault = HIDDEN_PATCH,
             IsNewExpForAudioApiByDefault = HIDDEN_PATCH,
+        },
+        ChatWindowConfiguration = {
+            AbsolutePositionWrite = HIDDEN_PATCH,
+            AbsoluteSizeWrite = HIDDEN_PATCH
+        },
+        ChatInputBarConfiguration = {
+            AbsolutePositionWrite = HIDDEN_PATCH,
+            AbsoluteSizeWrite = HIDDEN_PATCH,
+            IsFocusedWrite = HIDDEN_PATCH
         }
     },
     Text = {
