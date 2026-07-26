@@ -94,7 +94,7 @@ return Component<<FocusRingProps>>(function(scope, props)
 
     if alphaOut then
         Observer(scope, computeAlpha):onBind(function()
-            alphaOut:set(Peek<<number>>(computeAlpha))
+            (alphaOut :: Fusion.Value<number>):set(Peek<<number>>(computeAlpha))
         end)
     end
 

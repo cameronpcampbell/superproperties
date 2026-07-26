@@ -44,13 +44,13 @@ local function UseActiveFocusRing(
             >= ZIndices.FocusRingActiveAlphaThreshold
 end
 
-type MapItemProps = Typeforge.Flatten<{
+type MapItemProps = {
     Variant: ThemeUtils.BgVariantLayer,
     Layout: Types.ItemLayout,
     LayoutOrder: number,
     RowCount: Fusion.UsedAs<number>,
     RowMetadata: Fusion.UsedAs<Types.RowMetadata>
-}>
+}
 
 local function CreateRightChildren(
     scope: Fusion.Scope,

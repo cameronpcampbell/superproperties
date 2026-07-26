@@ -3,7 +3,6 @@
 
 local Packages = script.Parent.Parent.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
-local Typeforge = require(Packages.typeforge)
 
 local Fusion = require(Packages.fusion)
 local New, Children, Peek = Fusion.New, Fusion.Children, Fusion.peek
@@ -30,7 +29,7 @@ local CreateMapItemInteraction = require(script.Parent.interaction)
 
 local ValueVariants = require(script.variants)
 local DefaultValueVariant = ValueVariants.Default
-type MapItemValueProps = Typeforge.Flatten<Types.BaseMapProps & {
+type MapItemValueProps = Types.BaseMapProps & {
 	Value: Fusion.UsedAs<any>,
 	ValueType: Types.ValueType,
 	Mixed: Fusion.UsedAs<boolean>,
@@ -43,7 +42,7 @@ type MapItemValueProps = Typeforge.Flatten<Types.BaseMapProps & {
 	FocusElevationState: Fusion.Value<boolean>?,
 	FocusRingAlphaState: Fusion.Value<number>?,
 	RightChildren: Fusion.Child?,
-}>
+}
 
 local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
 	local rowCount, rowIdx = props.RowCount, props.RowIdx
@@ -103,7 +102,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
 
 			RootChildren = interaction.RootChildren,
 
-			[Children] = {
+			[Children] = ({
 				valueVariant(scope, {
 					Value = value,
 					Mixed = props.Mixed,
@@ -115,7 +114,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
 					HoverState = props.HoverState,
 				}),
 
-				props.RightChildren,
+				props.RightChildren or {},
 
 				New(scope, "UIListLayout")({
 					Padding = UDim.new(0, 6),
@@ -123,7 +122,7 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
 					VerticalAlignment = Enum.VerticalAlignment.Center,
 					SortOrder = Enum.SortOrder.LayoutOrder,
 				}),
-			},
+			} :: { Fusion.Child }),
 		}, interaction.InteractionProps)
 	)
 end

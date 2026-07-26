@@ -12,8 +12,10 @@ local Mosaic = require(Packages.mosaic)
 local Icon, Text, TransparencyGated =
     Mosaic.Icon, Mosaic.Text, Mosaic.TransparencyGated
 
-local Map = require(Packages.mosaic.components.map)
-type ValueVariantProps<T> = Map.ValueVariantProps<T>
+local ValueVariantTypes = require(
+    Packages.mosaic.components.map.item.value.variants.types
+)
+type ValueVariantProps<T> = ValueVariantTypes.ValueVariantProps<T>
 
 local Assets = require(Root.assets)
 
@@ -59,7 +61,7 @@ return function(
 
         Name = "NotScriptableText",
 
-        [Children] = {
+        [Children] = ({
             TransparencyGated(scope, Text :: any, {
                 GatedTransparencyProperty = "TextTransparency",
                 Text = "Not scriptable.",
@@ -82,7 +84,7 @@ return function(
             New(scope, "UIFlexItem") {
                 FlexMode = Enum.UIFlexMode.Shrink
             }
-        }
+        } :: { Fusion.Child })
     }
 
     return New(scope, "Frame") {
@@ -99,7 +101,7 @@ return function(
             hoverState:set(false)
         end,
 
-        [Children] = {
+        [Children] = ({
             textGroup,
 
             Icon(scope, {
@@ -127,6 +129,6 @@ return function(
             New(scope, "UIFlexItem") {
                 FlexMode = Enum.UIFlexMode.Shrink
             }
-        }
+        } :: { Fusion.Child })
     }
 end
