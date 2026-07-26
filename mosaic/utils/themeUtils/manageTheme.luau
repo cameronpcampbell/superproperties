@@ -40,9 +40,26 @@ local THEME_TOKEN_KEYS: { [number]: keyof<Types.ThemeSource> } = {
     "AccentSecondary",
     "AccentDestructive",
 
+    "AccentPrimaryFgPrimary",
+    "AccentPrimaryFgSecondary",
+    "AccentPrimaryFgTertiary",
+
+    "AccentSecondaryFgPrimary",
+    "AccentSecondaryFgSecondary",
+    "AccentSecondaryFgTertiary",
+
+    "AccentCautionFgPrimary",
+    "AccentCautionFgSecondary",
+    "AccentCautionFgTertiary",
+
+    "AccentDestructiveFgPrimary",
+    "AccentDestructiveFgSecondary",
+    "AccentDestructiveFgTertiary",
+
     "AccentFgPrimary",
     "AccentFgSecondary",
-    "AccentFgTertiary",
+    "AccentFgCaution",
+    "AccentFgDestructive",
 
     "HeightSm",
     "HeightMd",

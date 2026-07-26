@@ -99,12 +99,16 @@ local function GetFg(
     theme: Types.Theme,
     scope: Fusion.Scope,
     variant: Fusion.UsedAs<Types.FgVariant>,
+    accentVariant: Fusion.UsedAs<Types.AccentVariant?>?,
     modifier: Fusion.UsedAs<Types.ThemeColorModifier?>
 ): Fusion.UsedAs<Color3>
     local computeName = Computed(scope, function(use, scope)
         local usedVariant = use<<Types.FgVariant>>(variant)
+        local usedAccentVariant = use<<Types.AccentVariant?>>(accentVariant)
 
-        return `Fg{usedVariant}`
+        return
+            if usedAccentVariant then `Accent{usedAccentVariant}Fg{usedVariant}`
+            else `Fg{usedVariant}`
     end)
 
     return ApplyColorModifier(
@@ -132,16 +136,17 @@ end
 local function GetAccentFg(
     theme: Types.Theme,
     scope: Fusion.Scope,
-    variant: Fusion.UsedAs<Types.FgVariant>
+    variant: Fusion.UsedAs<Types.AccentVariant>,
+    modifier: Fusion.UsedAs<Types.ThemeColorModifier?>
 ): Fusion.UsedAs<Color3>
     local computeName = Computed(scope, function(use, scope)
-        local usedVariant = use<<Types.FgVariant>>(variant)
+        local usedVariant = use<<Types.AccentVariant>>(variant)
 
         return `AccentFg{usedVariant}`
     end)
 
-    return ComputeWithDefault(
-        theme, scope, computeName, theme.AccentFgPrimary
+    return ApplyColorModifier(
+        theme, scope, computeName, theme.AccentPrimary, modifier
     )
 end
 

@@ -112,8 +112,8 @@ return Component<<CheckboxProps>>(function(scope, props)
 
     local theme = GetThemeForScope(scope)
     local accentColor = theme:GetAccent(scope, "Primary", themeColorModifier)
-    local accentFgColor = theme:GetAccentFg(scope, "Primary")
-    local strokeColor = theme:GetFg(scope, "Primary", themeColorModifier)
+    local accentFgColor = theme:GetFg(scope, "Primary", "Primary")
+    local strokeColor = theme:GetFg(scope, "Primary", nil, themeColorModifier)
     local height = theme:GetHeight(scope, "Sm")
     local cornerRadius = theme:GetCornerRadius(scope, "Sm")
 

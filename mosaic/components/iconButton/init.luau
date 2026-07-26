@@ -59,7 +59,7 @@ return Component<<IconButtonProps>>(function(scope, props)
     local themeColorModifier = CalcColorModifier(scope, isHoverState, isFocusState)
 
     local theme = GetThemeForScope(scope)
-    local fgColor = theme:GetFg(scope, variant, themeColorModifier)
+    local fgColor = theme:GetFg(scope, variant, nil, themeColorModifier)
     local boundsHeight = theme:GetHeight(scope, "Lg")
 
     return New(scope, "Frame") (CombineProps({

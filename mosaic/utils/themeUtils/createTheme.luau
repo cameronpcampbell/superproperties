@@ -7,6 +7,19 @@ local ColorSpace = require(Utils.colorSpace)
 local Types = require(script.Parent.types)
 local Constants = require(script.Parent.constants)
 
+const CORNER_RADIUS_SM = 3
+const CORNER_RADIUS_MD = 6
+const CORNER_RADIUS_LG = 9
+
+const BASE_DARK_TEXT_COLOR = Constants.BASE_DARK_TEXT_COLOR
+const BASE_LIGHT_TEXT_COLOR = Constants.BASE_LIGHT_TEXT_COLOR
+const DARK_FG_LIGHTNESS_STRENGTH = 1
+const LIGHT_FG_LIGHTNESS_STRENGTH = .62
+const BASE_BG_TINT_COLOR = Color3.fromRGB(25, 26, 31)
+
+local _, _, BASE_BG_TINT_HUE =
+	ColorSpace.Oklch.From(BASE_BG_TINT_COLOR):Components()
+
 local function GenPalette(
 	color: Color3,
 	amount: number,
@@ -65,15 +78,6 @@ local function GenLerpedPalette(colors: { Color3 }, alpha: number): { Color3 }
 	return palette
 end
 
-const BASE_LIGHT_TEXT_COLOR = Constants.BASE_LIGHT_TEXT_COLOR
-const BASE_DARK_TEXT_COLOR = Constants.BASE_DARK_TEXT_COLOR
-const DARK_FG_LIGHTNESS_STRENGTH = 1
-const LIGHT_FG_LIGHTNESS_STRENGTH = .62
-const BASE_BG_TINT_COLOR = Color3.fromRGB(25, 26, 31)
-
-local _, _, BASE_BG_TINT_HUE =
-	ColorSpace.Oklch.From(BASE_BG_TINT_COLOR):Components()
-
 local function GenFgPalette(surfaceColor: Color3): { Color3 }
     local surface = ColorSpace.Srgb.From(surfaceColor)
 
@@ -104,13 +108,25 @@ local function GenFgPalette(surfaceColor: Color3): { Color3 }
     )
 end
 
-const CORNER_RADIUS_SM = 3
-const CORNER_RADIUS_MD = 6
-const CORNER_RADIUS_LG = 9
+local function GenFgAccent(accentColor: Color3, primaryBgColor: Color3): Color3
+    local accent = ColorSpace.Oklch.From(accentColor)
+    local primaryBg = ColorSpace.Oklch.From(primaryBgColor)
+
+    local grayscalePrimaryBg = ColorSpace.Oklch.new(
+        primaryBg.lightness,
+        0,
+        accent.hue
+    )
+
+    return ColorSpace.Oklch.Lerp(accent, grayscalePrimaryBg, .25):ToColor3()
+end
 
 local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
     local bgBaseColor = config.BgBaseColor
     local accentPrimary = config.AccentPrimary
+    local accentSecondary = config.AccentSecondary
+    local accentCaution = config.AccentCaution
+    local accentDestructive = config.AccentCaution
 
     local bgColors = GenPalette(
         bgBaseColor,
@@ -122,10 +138,16 @@ local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
     local bgHighlightColors = GenLerpedPalette(bgColors, .5)
 
     local fgColors = GenFgPalette(bgBaseColor)
-    local accentFgColors = GenFgPalette(accentPrimary)
+
+    local accentPrimaryFgColors = GenFgPalette(accentPrimary)
+    local accentSecondaryFgColors = GenFgPalette(accentSecondary)
+    local accentCautionFgColors = GenFgPalette(accentCaution)
+    local accentDestructiveFgColors = GenFgPalette(accentDestructive)
+
+    local primaryBgColor = bgColors[1]
 
     return {
-        BgPrimary = bgColors[1],
+        BgPrimary = primaryBgColor,
         BgSecondary = bgColors[2],
         BgTertiary = bgColors[3],
         BgQuaternary = bgColors[4],
@@ -142,12 +164,30 @@ local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
         FgTertiary = fgColors[3],
 
         AccentPrimary = accentPrimary,
-        AccentSecondary = config.AccentSecondary,
-        AccentDestructive = config.AccentDestructive,
+        AccentSecondary = accentSecondary,
+        AccentCaution = accentCaution,
+        AccentDestructive = accentDestructive,
 
-        AccentFgPrimary = accentFgColors[1],
-        AccentFgSecondary = accentFgColors[2],
-        AccentFgTertiary = accentFgColors[3],
+        AccentPrimaryFgPrimary = accentPrimaryFgColors[1],
+        AccentPrimaryFgSecondary = accentPrimaryFgColors[2],
+        AccentPrimaryFgTertiary = accentPrimaryFgColors[3],
+
+        AccentSecondaryFgPrimary = accentSecondaryFgColors[1],
+        AccentSecondaryFgSecondary = accentSecondaryFgColors[2],
+        AccentSecondaryFgTertiary = accentSecondaryFgColors[3],
+
+        AccentCautionFgPrimary = accentCautionFgColors[1],
+        AccentCautionFgSecondary = accentCautionFgColors[2],
+        AccentCautionFgTertiary = accentCautionFgColors[3],
+
+        AccentDestructiveFgPrimary = accentDestructiveFgColors[1],
+        AccentDestructiveFgSecondary = accentDestructiveFgColors[2],
+        AccentDestructiveFgTertiary = accentDestructiveFgColors[3],
+
+        AccentFgPrimary = GenFgAccent(accentPrimary, primaryBgColor),
+        AccentFgSecondary = GenFgAccent(accentSecondary, primaryBgColor),
+        AccentFgCaution = GenFgAccent(accentCaution, primaryBgColor),
+        AccentFgDestructive = GenFgAccent(accentDestructive, primaryBgColor),
 
         HeightSm = config.HeightSm,
         HeightMd = config.HeightMd,

@@ -8,7 +8,8 @@ local function DefaultThemeConfig(): Types.ThemeConfig
 
         AccentPrimary = settings().Studio.Theme:GetColor(Enum.StudioStyleGuideColor.DialogMainButton),
         AccentSecondary = settings().Studio.Theme:GetColor(Enum.StudioStyleGuideColor.DialogMainButton),
-        AccentDestructive = settings().Studio.Theme:GetColor(Enum.StudioStyleGuideColor.DialogMainButton),
+        AccentCaution = Color3.fromHex("A47103"),
+        AccentDestructive = Color3.fromHex("#BE123C"),
 
         HeightSm = 13,
         HeightMd = 18,

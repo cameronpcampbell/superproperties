@@ -21,7 +21,7 @@ local TableExtract = TableUtils.Extract
 type TextProps = {
     Text: Fusion.UsedAs<string>,
     Variant: ThemeUtils.FgVariant?,
-    UseAccentFg: boolean?,
+    AccentVariant: ThemeUtils.AccentVariant?,
 	Font: ThemeUtils.FontVariant?,
 	FontWeight: Enum.FontWeight?,
 	FontStyle: Fusion.UsedAs<Enum.FontStyle>?,
@@ -35,12 +35,10 @@ return Component<<TextProps>>(function(scope, props)
     local props, fontWeight = TableExtract(props, "FontWeight", Enum.FontWeight.Regular)
     local props, fontStyle = TableExtract(props, "FontStyle", Enum.FontStyle.Normal)
     local props, fontSize = TableExtract(props, "FontSize", "Body")
-    local props, useAccentFg = TableExtract(props, "UseAccentFg")
+    local props, accentVariant = TableExtract(props, "AccentVariant")
 
     local theme = GetThemeForScope(scope)
-    local textColor = if useAccentFg then
-        theme:GetAccentFg(scope, variant)
-        else theme:GetFg(scope, variant)
+    local textColor = theme:GetFg(scope, variant, accentVariant)
     local font = theme:GetFont(scope, fontVariant, fontWeight, fontStyle)
     local fontSize = theme:GetFontSize(scope, fontVariant, fontSize)
 

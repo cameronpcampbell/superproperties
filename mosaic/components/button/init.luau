@@ -54,7 +54,7 @@ local function TransformChild(
     end
 
     local theme = GetThemeForScope(scope)
-    local accentFgColor = theme:GetAccentFg(scope, "Primary")
+    local accentFgColor = theme:GetAccentFg(scope, "Primary", "Primary")
 
     if string.match(child :: string, "^rbxassetid://%d+$") then
 

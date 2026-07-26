@@ -13,7 +13,7 @@ export type BgVariantSubLayer = Typeforge.Omit<BgVariantLayer, "Quaternary">
 
 export type FgVariant = "Primary" | "Secondary" | "Tertiary"
 
-export type AccentVariant = "Primary" | "Secondary" | "Destructive"
+export type AccentVariant = "Primary" | "Secondary" | "Caution" | "Destructive"
 
 export type HeightVariant = "Sm" | "Md" | "Lg"
 
@@ -50,6 +50,7 @@ export type ThemeConfig = {
 
     AccentPrimary: Color3,
     AccentSecondary: Color3,
+    AccentCaution: Color3,
     AccentDestructive: Color3,
 
     HeightSm: number,
@@ -93,11 +94,29 @@ export type ThemeSource = {
 
     AccentPrimary: Color3,
     AccentSecondary: Color3,
+    AccentCaution: Color3,
     AccentDestructive: Color3,
+
+    AccentPrimaryFgPrimary: Color3,
+    AccentPrimaryFgSecondary: Color3,
+    AccentPrimaryFgTertiary: Color3,
+
+    AccentSecondaryFgPrimary: Color3,
+    AccentSecondaryFgSecondary: Color3,
+    AccentSecondaryFgTertiary: Color3,
+
+    AccentCautionFgPrimary: Color3,
+    AccentCautionFgSecondary: Color3,
+    AccentCautionFgTertiary: Color3,
+
+    AccentDestructiveFgPrimary: Color3,
+    AccentDestructiveFgSecondary: Color3,
+    AccentDestructiveFgTertiary: Color3,
 
     AccentFgPrimary: Color3,
     AccentFgSecondary: Color3,
-    AccentFgTertiary: Color3,
+    AccentFgCaution: Color3,
+    AccentFgDestructive: Color3,
 
     HeightSm: number,
     HeightMd: number,
@@ -138,11 +157,29 @@ export type Theme = {
 
     AccentPrimary: Fusion.UsedAs<Color3>,
     AccentSecondary: Fusion.UsedAs<Color3>,
+    AccentCaution: Fusion.UsedAs<Color3>,
     AccentDestructive: Fusion.UsedAs<Color3>,
+
+    AccentPrimaryFgPrimary: Fusion.UsedAs<Color3>,
+    AccentPrimaryFgSecondary: Fusion.UsedAs<Color3>,
+    AccentPrimaryFgTertiary: Fusion.UsedAs<Color3>,
+
+    AccentSecondaryFgPrimary: Fusion.UsedAs<Color3>,
+    AccentSecondaryFgSecondary: Fusion.UsedAs<Color3>,
+    AccentSecondaryFgTertiary: Fusion.UsedAs<Color3>,
+
+    AccentCautionFgPrimary: Fusion.UsedAs<Color3>,
+    AccentCautionFgSecondary: Fusion.UsedAs<Color3>,
+    AccentCautionFgTertiary: Fusion.UsedAs<Color3>,
+
+    AccentDestructiveFgPrimary: Fusion.UsedAs<Color3>,
+    AccentDestructiveFgSecondary: Fusion.UsedAs<Color3>,
+    AccentDestructiveFgTertiary: Fusion.UsedAs<Color3>,
 
     AccentFgPrimary: Fusion.UsedAs<Color3>,
     AccentFgSecondary: Fusion.UsedAs<Color3>,
-    AccentFgTertiary: Fusion.UsedAs<Color3>,
+    AccentFgCaution: Fusion.UsedAs<Color3>,
+    AccentFgDestructive: Fusion.UsedAs<Color3>,
 
     HeightSm: Fusion.UsedAs<number>,
     HeightMd: Fusion.UsedAs<number>,
@@ -189,6 +226,7 @@ export type Theme = {
         theme: Theme,
         scope: Fusion.Scope,
         variant: Fusion.UsedAs<FgVariant>,
+        accentVariant: Fusion.UsedAs<AccentVariant>?,
         modifier: Fusion.UsedAs<ThemeColorModifier?>
     ) -> Fusion.UsedAs<Color3>,
 
@@ -202,7 +240,8 @@ export type Theme = {
     GetAccentFg: (
         theme: Theme,
         scope: Fusion.Scope,
-        variant: Fusion.UsedAs<FgVariant>
+        variant: Fusion.UsedAs<AccentVariant>,
+        modifier: Fusion.UsedAs<ThemeColorModifier?>
     ) -> Fusion.UsedAs<Color3>,
 
     GetHeight: (
