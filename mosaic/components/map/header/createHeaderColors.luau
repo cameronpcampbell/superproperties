@@ -1,12 +1,12 @@
 --!strict
 
-local Packages = script.Parent.Parent.Parent.Parent
+local Packages = script.Parent.Parent.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
 local Computed = Fusion.Computed
 
-local Types = require(script.Parent.types)
-local TintHeaderColor = require(script.Parent.header.headerColorTint)
+local Types = require(script.Parent.Parent.types)
+local TintHeaderColor = require(script.Parent.headerColorTint)
 
 type HeaderColors = Types.HeaderColors
 type TintTarget = TintHeaderColor.TintTarget

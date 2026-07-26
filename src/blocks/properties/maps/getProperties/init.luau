@@ -270,10 +270,15 @@ local function WritePlannedProperty(instance: Instance, propertyPlan: PropertyPl
 	return pcall(WriteProperty, instance, propertyPlan.Name, value)
 end
 
-local function GetProperties(instance: Instance): Snapshot
+local function GetProperties(
+	instance: Instance,
+	showNonScriptableProperties: boolean?
+): Snapshot
 	local categories: { CategorySnapshot } = {}
 	local locationsByName: { [string]: PropertyLocation } = {}
 	local classPlan = GetClassPlan(instance.ClassName)
+	local showNonScriptableProperties =
+		showNonScriptableProperties ~= false
 
 	for _, categoryPlan in classPlan.Categories do
 		local propertyPlans = categoryPlan.Properties
@@ -285,6 +290,10 @@ local function GetProperties(instance: Instance): Snapshot
 			local name = propertyPlan.Name
 			local readSecurity = propertyPlan.ReadSecurity
 			local warning = readSecurity ~= nil
+			if warning and not showNonScriptableProperties then
+				continue
+			end
+
 			local value: any
 			local valueType: string
 			local writable = false

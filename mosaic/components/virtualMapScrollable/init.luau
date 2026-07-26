@@ -154,8 +154,10 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
             local emptyText = mapProps.EmptyText
             local width = mapProps.Width or UDim.new(1, 0)
             local showOnTop = mapProps.ShowOnTop or false
+            local collapsible = mapProps.Collapsible ~= false
             local collapsedState = CoerceToValue<<boolean>>(
-                scope, mapProps.Collapsed or false
+                scope,
+                if collapsible then mapProps.Collapsed or false else false
             )
 
             local layout = CreateMapLayout(

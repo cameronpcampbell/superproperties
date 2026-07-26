@@ -15,7 +15,9 @@ type MapProps = Category.MapProps
 
 type PropertiesMapsProps = {
     SelectedInstancesValue: Fusion.Value<{ Instance }>,
-    OmitRbxAttributes: boolean?
+    OmitRbxAttributes: boolean?,
+    TintHeaders: Fusion.UsedAs<boolean>,
+    ShowNonScriptableProperties: Fusion.UsedAs<boolean>
 }
 
 local ExtraCategories = require(script.extraCategories)
@@ -45,7 +47,8 @@ local function GetCategoryStates(
     outerScope: Fusion.Scope,
     collapsedStateScope: Fusion.Scope,
     instances: { Instance },
-    omitRbxAttributes: boolean
+    omitRbxAttributes: boolean,
+    showNonScriptableProperties: boolean
 ): { CategoryState }
     local categories: { CategoryState } = {}
 
@@ -53,7 +56,8 @@ local function GetCategoryStates(
         scope,
         outerScope,
         collapsedStateScope,
-        instances
+        instances,
+        showNonScriptableProperties
     ))
 
     table.insert(categories, InstanceMaps.Tags(
@@ -107,6 +111,8 @@ return function(
         scope: Fusion.Scope
     ): { CategoryState }
         local instances = use<<{ Instance }>>(selectedInstancesValue)
+        local showNonScriptableProperties =
+            use<<boolean>>(props.ShowNonScriptableProperties)
         if #instances == 0 then return {} end
 
         return GetCategoryStates(
@@ -114,7 +120,8 @@ return function(
             outerScope,
             collapsedStateScope,
             instances,
-            omitRbxAttributes
+            omitRbxAttributes,
+            showNonScriptableProperties
         )
     end)
 
@@ -129,7 +136,9 @@ return function(
             if not mapProps then continue end
 
             mapCount += 1
-            mapPropsList[mapCount] = mapProps
+            local styledMapProps = table.clone(mapProps)
+            styledMapProps.HeaderColorTint = props.TintHeaders
+            mapPropsList[mapCount] = styledMapProps
         end
 
         return mapPropsList

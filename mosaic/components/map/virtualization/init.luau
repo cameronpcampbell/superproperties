@@ -96,6 +96,7 @@ export type VirtualRowsConfig = {
     ShowOnTop: Fusion.UsedAs<boolean>,
     EmptyText: string?,
     Layout: MapLayout,
+    Collapsible: boolean,
     CollapsedState: Fusion.Value<boolean>,
     AnimatedMapSize: Fusion.UsedAs<UDim2>,
     VisibleRootRange: Fusion.UsedAs<Vector2>?,
@@ -911,6 +912,7 @@ local function CreateRow(
             ZIndex = config.HeaderZIndex,
             RowCount = rowCount,
             RowIdx = 1,
+            Collapsible = config.Collapsible,
             CollapsedState = config.CollapsedState,
             TweenComputeMapSize = config.AnimatedMapSize
         })

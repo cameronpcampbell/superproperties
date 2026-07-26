@@ -15,6 +15,7 @@ local SelectionService = Mosaic.SelectionService
 
 local Blocks = script.blocks
 local Properties = require(Blocks.properties)
+local Settings = require(Blocks.settings)
 
 local Scope = Fusion.scoped(Fusion, Mosaic)
 
@@ -54,6 +55,8 @@ end
 
 local SelectedInstancesValue = GetSelectedInstancesValue(Scope)
 local WidgetEnabled = Value(Scope, true)
+local SettingsWidgetEnabled = Value(Scope, false)
+local SettingsState = Settings.CreateState(Scope)
 
 local ComputeWidgetTitle = Scope:Computed(function(use, scope)
     local selectedInstances = use<<{ Instance }>>(SelectedInstancesValue)
@@ -97,7 +100,10 @@ local Widget = Scope:Widget {
 
                 Properties.Maps(Scope, {
                     SelectedInstancesValue = SelectedInstancesValue,
-                    OmitRbxAttributes = true
+                    OmitRbxAttributes = true,
+                    TintHeaders = SettingsState.TintHeaders,
+                    ShowNonScriptableProperties =
+                        SettingsState.ShowNonScriptableProperties
                 }),
 
                 Scope:New "UIPadding" {
@@ -117,22 +123,75 @@ local Widget = Scope:Widget {
     }
 } :: DockWidgetPluginGui
 
+local SettingsWidget = Scope:Widget {
+    Id = "SuperPropertiesSettings",
+    Title = "SuperProperties Settings",
+    Debug = Debug,
+    Enabled = SettingsWidgetEnabled,
+    FloatXSize = 360,
+    FloatYSize = 120,
+    MinWidth = 260,
+    MinHeight = 80,
+
+    [Children] = {
+        Scope:New "Frame" {
+            Size = UDim2.fromScale(1, 1),
+            BackgroundTransparency = 1,
+            Name = "Content",
+
+            [Children] = {
+                Settings.Map(Scope, SettingsState),
+
+                Scope:New "UIPadding" {
+                    PaddingLeft = UDim.new(0, 4),
+                    PaddingRight = UDim.new(0, 4),
+                    PaddingTop = UDim.new(0, 4),
+                    PaddingBottom = UDim.new(0, 4)
+                }
+            }
+        }
+    }
+} :: DockWidgetPluginGui
+
 Scope:Toolbar {
     Name = "SuperProperties",
 
-    [Children] = Scope:ToolbarButton {
-        Id = "SuperProperties",
-        Tooltip = "Toggle the SuperProperties widget",
-        Text = "SuperProperties",
-        Active = WidgetEnabled,
-        ClickableWhenViewportHidden = true,
+    [Children] = {
+        Scope:ToolbarButton {
+            Id = "SuperProperties",
+            Tooltip = "Toggle the SuperProperties widget",
+            Text = "SuperProperties",
+            Active = WidgetEnabled,
+            ClickableWhenViewportHidden = true,
 
-        [OnEvent "Click"] = function()
-            WidgetEnabled:set(not Peek<<boolean>>(WidgetEnabled))
-        end
+            [OnEvent "Click"] = function()
+                WidgetEnabled:set(not Peek<<boolean>>(WidgetEnabled))
+            end
+        },
+
+        Scope:ToolbarButton {
+            Id = "SuperPropertiesSettings",
+            Tooltip = "Toggle the SuperProperties settings widget",
+            Text = "Settings",
+            Active = SettingsWidgetEnabled,
+            ClickableWhenViewportHidden = true,
+
+            [OnEvent "Click"] = function()
+                SettingsWidgetEnabled:set(
+                    not Peek<<boolean>>(SettingsWidgetEnabled)
+                )
+            end
+        }
     }
 }
 
 table.insert(Scope, Widget:GetPropertyChangedSignal("Enabled"):Connect(function()
     WidgetEnabled:set(Widget.Enabled)
 end))
+
+table.insert(
+    Scope,
+    SettingsWidget:GetPropertyChangedSignal("Enabled"):Connect(function()
+        SettingsWidgetEnabled:set(SettingsWidget.Enabled)
+    end)
+)

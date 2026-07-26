@@ -23,6 +23,7 @@ local GetThemeForScope = ThemeUtils.GetThemeForScope
 local Components = script.Parent.Parent
 local Text = require(Components.text)
 
+local Assets = require(script.Parent.Parent.Parent.assets)
 local Types = require(script.Parent.types)
 local Arrow = require(script.Parent.arrow)
 
@@ -34,6 +35,7 @@ type MapHeaderProps = {
     ZIndex: Fusion.UsedAs<number>,
     RowCount: Fusion.UsedAs<number>,
     RowIdx: Fusion.UsedAs<number>,
+    Collapsible: boolean,
     CollapsedState: Fusion.Value<boolean>,
     TweenComputeMapSize: Fusion.UsedAs<UDim2>
 }
@@ -95,6 +97,23 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
         props.HeaderColors.BackgroundColor3
     local headerForegroundColor =
         props.HeaderColors.ForegroundColor3
+    local dotColor = theme:GetFg(scope, "Tertiary")
+
+    local collapseIndicator: Fusion.Child =
+        if props.Collapsible
+        then Arrow(scope, {
+            CollapsedState = collapsedState,
+            ImageColor3 = headerForegroundColor
+        })
+        else New(scope, "ImageLabel") {
+            Image = Assets.Dot,
+            Size = UDim2.fromOffset(9, 9),
+            BackgroundTransparency = 1,
+            ImageColor3 = dotColor,
+            ImageTransparency = .5,
+
+            Name = "MapHeaderDot"
+        }
 
     local topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius =
         ComputeCornerRadii(
@@ -127,10 +146,7 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
                 Name = "MapHeaderContent",
 
                 [Children] = {
-                    Arrow(scope, {
-                        CollapsedState = collapsedState,
-                        ImageColor3 = headerForegroundColor
-                    }),
+                    collapseIndicator,
 
                     Text(scope, {
                         Text = props.Header,

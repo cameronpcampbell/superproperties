@@ -25,7 +25,7 @@ local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
 local Types = require(script.types)
-local CreateHeaderColors = require(script.createHeaderColors)
+local CreateHeaderColors = require(script.header.createHeaderColors)
 
 local Virtualization = require(script.virtualization)
 local CreateMapLayout, CreateMapSizeTween,
@@ -62,6 +62,7 @@ export type MapProps = {
     ShowOnTop: Fusion.UsedAs<boolean>?,
     Items: Fusion.UsedAs<Items>?,
     EmptyText: string?,
+    Collapsible: boolean?,
     Collapsed: Fusion.UsedAs<boolean>?,
     VirtualListData: VirtualListData?,
 }
@@ -85,11 +86,16 @@ local MapComponent = (Component :: any)(function(
     local props: MapProps, showOnTop = (TableExtract :: any)(props, "ShowOnTop", false)
     local props: MapProps, items = (TableExtract :: any)(props, "Items")
     local props: MapProps, emptyText = (TableExtract :: any)(props, "EmptyText")
+    local props: MapProps, collapsible =
+        (TableExtract :: any)(props, "Collapsible", true)
     local props: MapProps, collapsed = (TableExtract :: any)(props, "Collapsed", false)
     local props: MapProps, virtualListData = (TableExtract :: any)(props, "VirtualListData")
 
     local strokeVariant = GetNextVariant(scope, variant)
-    local collapsedState = CoerceToValue<<boolean>>(scope, collapsed)
+    local collapsedState = CoerceToValue<<boolean>>(
+        scope,
+        if collapsible then collapsed else false
+    )
 
     local theme = GetThemeForScope(scope)
     local strokeColor = theme:GetBg(scope, strokeVariant)
@@ -191,6 +197,7 @@ local MapComponent = (Component :: any)(function(
         ShowOnTop = showOnTop,
         EmptyText = emptyText,
         Layout = layout,
+        Collapsible = collapsible,
         CollapsedState = collapsedState,
         AnimatedMapSize = animatedMapSize,
         VisibleRootRange = visibleRootRange,

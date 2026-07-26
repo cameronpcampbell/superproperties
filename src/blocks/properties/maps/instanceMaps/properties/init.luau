@@ -163,7 +163,8 @@ return function(
     scope: Fusion.Scope,
     outerScope: Fusion.Scope,
     collapsedStateScope: Fusion.Scope,
-    instances: { Instance }
+    instances: { Instance },
+    showNonScriptableProperties: boolean
 ): { CategoryState }
     local snapshotsByInstance: { [Instance]: Snapshot } = {}
     local targetsByInstance: {
@@ -172,7 +173,10 @@ return function(
     local propertyCandidates = {} :: { PropertyCandidate }
 
     for _, instance in instances do
-        local snapshot = GetProperties.Read(instance)
+        local snapshot = GetProperties.Read(
+            instance,
+            showNonScriptableProperties
+        )
         local instanceTargets: { [string]: PropertyTarget } = {}
         snapshotsByInstance[instance] = snapshot
         targetsByInstance[instance] = instanceTargets
