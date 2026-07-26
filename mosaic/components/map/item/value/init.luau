@@ -32,7 +32,7 @@ local ValueVariants = require(script.variants)
 local DefaultValueVariant = ValueVariants.Default
 type MapItemValueProps = Typeforge.Flatten<Types.BaseMapProps & {
 	Value: Fusion.UsedAs<any>,
-	ValueType: string,
+	ValueType: Types.ValueType,
 	Mixed: Fusion.UsedAs<boolean>,
 	TextColor3: Fusion.UsedAs<Color3>,
 	Writable: boolean,
@@ -50,11 +50,17 @@ local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
 	local variant = props.Variant
 	local value = props.Value
 	local currentValue = Peek<<any>>(value)
+	local valueType = props.ValueType
 
-	local valueVariant: ValueVariants.ValueVariantFn<any> =
-		if currentValue == nil and props.ValueType ~= "Instance"
-		then DefaultValueVariant
-		else (ValueVariants :: any)[props.ValueType] or DefaultValueVariant
+	local valueVariant: ValueVariants.ValueVariantFn<any>
+	if type(valueType) == "function" then
+		valueVariant = valueType
+	elseif currentValue == nil and valueType ~= "Instance" then
+		valueVariant = DefaultValueVariant
+	else
+		valueVariant =
+			(ValueVariants :: any)[valueType] or DefaultValueVariant
+	end
 
 	local theme = GetThemeForScope(scope)
 	local bgColor = theme:GetBg(scope, variant)

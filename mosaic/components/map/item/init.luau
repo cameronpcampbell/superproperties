@@ -301,7 +301,7 @@ local function CreateMapItem(
     if hasValue then
         table.insert(itemContentChildren, MapItemValue(scope, {
             Value = layout.ResolvedValue,
-            ValueType = layout.ValueType :: string,
+            ValueType = layout.ValueType :: Types.ValueType,
             Mixed = layout.Mixed,
             TextColor3 = textColor,
             Writable = layout.ValueWritable,

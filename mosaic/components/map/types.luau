@@ -6,6 +6,9 @@ local Fusion = require(Packages.fusion)
 local Utils = script.Parent.Parent.Parent.utils
 local ThemeUtils = require(Utils.themeUtils)
 
+local ValueVariantTypes =
+	require(script.Parent.item.value.variants.types)
+
 export type BaseMapProps = {
 	Variant: ThemeUtils.BgVariantLayer,
 	RowCount: Fusion.UsedAs<number>,
@@ -16,6 +19,11 @@ export type TrySet<T> = (value: T) -> (boolean, string?, T?)
 export type TransformValue = (value: any) -> any
 export type TryTransformValue =
 	(transform: TransformValue) -> (boolean, string?, any?)
+export type ValueVariantProps<T> =
+	ValueVariantTypes.ValueVariantProps<T>
+export type ValueVariantFn<T> =
+	ValueVariantTypes.ValueVariantFn<T>
+export type ValueType = string | ValueVariantFn<any>
 
 export type Item = {
 	Key: string,
@@ -25,7 +33,7 @@ export type Item = {
 	TrySetKey: TrySet<string>?,
 	Value: Fusion.UsedAs<any?>,
 	ComparisonValues: { Fusion.UsedAs<any?> }?,
-	ValueType: string?,
+	ValueType: ValueType?,
 	ValueChildren: { Fusion.Child }?,
 	ValueWritable: boolean?,
 	TrySetValue: TrySet<any>?,
@@ -56,7 +64,7 @@ export type IntrinsicItems = { IntrinsicItem }
 export type ItemLayout = {
 	Item: Item | IntrinsicItem,
 	ResolvedValue: Fusion.UsedAs<any?>,
-	ValueType: string?,
+	ValueType: ValueType?,
 	Mixed: Fusion.UsedAs<boolean>,
 	TrySetKey: TrySet<string>?,
 	TrySetValue: TrySet<any>?,

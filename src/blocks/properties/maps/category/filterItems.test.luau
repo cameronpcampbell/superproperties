@@ -9,7 +9,7 @@ local CreateItemFilter =
 type Item = {
     Key: string,
     Value: any?,
-    ValueType: string?
+    ValueType: (string | ((any, any) -> any))?
 }
 type ItemFilter = (query: string?) -> { Item }
 
@@ -134,6 +134,15 @@ assert(
     #reactiveIntrinsicResults == 1
         and reactiveIntrinsicResults[1] == reactiveIntrinsicItem
 )
+
+local customVariantItem = {
+    Key = "CustomBounds",
+    Value = UDim2.new(0, 0, 0, 0),
+    ValueType = function(_scope: any, _props: any): any return {} end
+}
+local customVariantFilter = CreateFilter({ customVariantItem })
+assert(#customVariantFilter("scale") == 0)
+assert(#customVariantFilter("custom") == 1)
 
 local mutableIntrinsicItems = {
     { Key = "Bounds", Value = 0 }

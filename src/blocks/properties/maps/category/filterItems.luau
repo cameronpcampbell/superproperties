@@ -20,8 +20,11 @@ type ItemFilterFactory = (items: { Item }) -> ItemFilter
 local IntrinsicSearchTextsByType: { [string]: { string } } = {}
 
 local function GetIntrinsicSearchTexts(item: Item): { string }
+    local valueType = item.ValueType
+    if type(valueType) == "function" then return {} end
+
     local typeName =
-        item.ValueType or typeof(Peek(item.Value))
+        valueType or typeof(Peek(item.Value))
     local existingSearchTexts = IntrinsicSearchTextsByType[typeName]
     if existingSearchTexts then return existingSearchTexts end
 

@@ -47,7 +47,7 @@ type ResolvedItem = {
     RootValue: Fusion.UsedAs<any?>,
     RootValues: { Fusion.UsedAs<any?> },
     ResolvedValue: Fusion.UsedAs<any?>,
-    ValueType: string?,
+    ValueType: Types.ValueType?,
     Mixed: Fusion.UsedAs<boolean>,
     ValueAccessor: IntrinsicAccessor?,
     TrySetKey: TrySet<string>?,
@@ -362,11 +362,11 @@ local function GetChildItems(
         return childItems
     end
 
+    local valueType = item.ValueType
     local intrinsicItems: IntrinsicItems =
-        IntrinsicSubItemDefinitions[
-            item.ValueType
-                or typeof(Peek<<any?>>(item.ResolvedValue))
-        ] or {}
+        if type(valueType) == "string"
+        then IntrinsicSubItemDefinitions[valueType] or {}
+        else {}
     local suppliedParent = item.Item :: Item
     local suppliedMapItems: Items = suppliedParent.SubItems or {}
     local childItems = table.create(

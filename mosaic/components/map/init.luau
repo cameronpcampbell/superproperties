@@ -42,6 +42,9 @@ export type Item = Types.Item
 export type Items = Types.Items
 export type TransformValue = Types.TransformValue
 export type TryTransformValue = Types.TryTransformValue
+export type ValueVariantProps<T> = Types.ValueVariantProps<T>
+export type ValueVariantFn<T> = Types.ValueVariantFn<T>
+export type ValueType = Types.ValueType
 export type VirtualListData = Virtualization.VirtualListData
 
 export type MapProps = {

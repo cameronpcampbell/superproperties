@@ -188,11 +188,15 @@ return function(
             }
             instanceTargets[propertyName] = target
 
+            local itemValueType = item.ValueType
             table.insert(propertyCandidates, {
                 Id = plan.Id,
                 Name = plan.Name,
                 CategoryName = categorySnapshot.Name,
-                ValueType = item.ValueType or typeof(item.Value),
+                ValueType =
+                    if type(itemValueType) == "string"
+                    then itemValueType
+                    else typeof(item.Value),
                 Target = target,
                 Writable = item.ValueWritable == true,
                 Warning = item.Warning == true
