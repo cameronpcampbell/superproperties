@@ -44,22 +44,28 @@ type MapItemValueProps = Types.BaseMapProps & {
 	RightChildren: Fusion.Child?,
 }
 
+local function GetValueVariant(
+	valueType: Types.ValueType,
+	currentValue: any
+): ValueVariants.ValueVariantFn<any>
+	if type(valueType) == "function" then
+		return valueType
+	elseif currentValue == nil and valueType ~= "Instance" then
+		return DefaultValueVariant
+	end
+
+	local registeredVariant = (ValueVariants :: any)[valueType]
+	return if type(registeredVariant) == "function"
+		then registeredVariant :: ValueVariants.ValueVariantFn<any>
+		else DefaultValueVariant
+end
+
 local function MapItemValue(scope: Fusion.Scope, props: MapItemValueProps)
 	local rowCount, rowIdx = props.RowCount, props.RowIdx
 	local variant = props.Variant
 	local value = props.Value
 	local currentValue = Peek<<any>>(value)
-	local valueType = props.ValueType
-
-	local valueVariant: ValueVariants.ValueVariantFn<any>
-	if type(valueType) == "function" then
-		valueVariant = valueType
-	elseif currentValue == nil and valueType ~= "Instance" then
-		valueVariant = DefaultValueVariant
-	else
-		valueVariant =
-			(ValueVariants :: any)[valueType] or DefaultValueVariant
-	end
+	local valueVariant = GetValueVariant(props.ValueType, currentValue)
 
 	local theme = GetThemeForScope(scope)
 	local bgColor = theme:GetBg(scope, variant)
