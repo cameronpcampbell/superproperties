@@ -134,10 +134,13 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
         local previousBottom: Fusion.UsedAs<number>? = nil
         local lastRowFocused: Fusion.UsedAs<boolean>? = nil
         local lastMapCollapsed: Fusion.UsedAs<boolean>? = nil
+        local lastHeader: string? = nil
 
         for idx, mapProps in usedMapsProps do
             local items = mapProps.Items
             local header = mapProps.Header
+            local previousHeader =
+                mapProps.PreviousHeader or lastHeader
             local emptyText = mapProps.EmptyText
             local width = mapProps.Width or UDim.new(1, 0)
             local showOnTop = mapProps.ShowOnTop or false
@@ -217,6 +220,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
                     Position = mapPosition,
                     AnchorPoint = Vector2.new(0, 0),
                     Collapsed = collapsedState,
+                    PreviousHeader = previousHeader,
 
                     [Fusion.Out "AbsolutePosition"] =
                         mapAbsolutePositionState,
@@ -284,6 +288,7 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
             previousBottom = mapBottom
             lastRowFocused = layout.LastRowFocused
             lastMapCollapsed = collapsedState
+            lastHeader = header or lastHeader
         end
 
         local emptyRootRange = Vector2.new(1, 0)

@@ -28,9 +28,12 @@ local Types = require(script.Parent.types)
 local Arrow = require(script.Parent.arrow)
 local TintHeaderColor = require(script.Parent.headerColorTint)
 
+type TintTarget = "Background" | "Foreground"
+
 type MapHeaderProps = Typeforge.Flatten<
     Types.BaseMapProps & {
         Header: string,
+        PreviousHeader: string?,
         HeaderColorTint: Fusion.UsedAs<boolean>,
         HeaderChildrenFrame: Fusion.Child,
         HeaderOverlayFrame: Fusion.Child,
@@ -93,17 +96,36 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
     local theme = GetThemeForScope(scope)
     local innerCornerRadius = ComputeAdd(scope, theme:GetCornerRadius(scope, "Md"), - 1)
     local rowHeight = ComputeAdd(scope, theme:GetHeight(scope, "Lg"), - 2)
-    local headerBaseColor = theme:GetBgHighlight(scope, variant)
-    local headerColor = Computed(scope, function(use: Fusion.Use): Color3
-        local usedHeaderBaseColor =
-            use<<Color3>>(headerBaseColor)
 
-        if not use<<boolean>>(props.HeaderColorTint) then
-            return usedHeaderBaseColor
-        end
+    local function ComputeHeaderColor(
+        headerBaseColor: Fusion.UsedAs<Color3>,
+        target: TintTarget
+    ): Fusion.Computed<Color3>
+        return Computed(scope, function(use: Fusion.Use): Color3
+            local usedHeaderBaseColor =
+                use<<Color3>>(headerBaseColor)
 
-        return TintHeaderColor(usedHeaderBaseColor, props.Header)
-    end)
+            if not use<<boolean>>(props.HeaderColorTint) then
+                return usedHeaderBaseColor
+            end
+
+            return TintHeaderColor(
+                usedHeaderBaseColor,
+                props.Header,
+                target,
+                props.PreviousHeader
+            )
+        end)
+    end
+
+    local headerBackgroundColor = ComputeHeaderColor(
+        theme:GetBgHighlight(scope, variant),
+        "Background"
+    )
+    local headerForegroundColor = ComputeHeaderColor(
+        theme:GetFg(scope, "Primary"),
+        "Foreground"
+    )
 
     local topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius =
         ComputeCornerRadii(
@@ -115,7 +137,7 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
         )
 
     return Supercorner.new(scope, {
-        BackgroundColor3 = headerColor,
+        BackgroundColor3 = headerBackgroundColor,
         Size = ComputeUDim2(scope, UDim.new(1, 0), ComputeUDim(scope, 0, rowHeight)),
         LayoutOrder = rowIdx,
         ZIndex = props.ZIndex,
@@ -137,11 +159,13 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
 
                 [Children] = {
                     Arrow(scope, {
-                        CollapsedState = collapsedState
+                        CollapsedState = collapsedState,
+                        ImageColor3 = headerForegroundColor
                     }),
 
                     Text(scope, {
                         Text = props.Header,
+                        TextColor3 = headerForegroundColor,
                         Size = UDim2.fromScale(1, 0),
                         LayoutOrder = 1,
                         FontWeight = Enum.FontWeight.Medium,

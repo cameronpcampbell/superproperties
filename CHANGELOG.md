@@ -3,5 +3,7 @@
 - Disabled buttons and checkboxes now show the `NotAllowed` cursor, instead of `PointingHand`.
 - Scrollbar underlay color is slightly darker to improve contrast.
 
+- [FIX BUG] Instance component needs to refetch class icons when studio theme changes.
+
 # v0.1.0
 - Initial release.

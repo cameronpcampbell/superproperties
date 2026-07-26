@@ -89,6 +89,7 @@ export type VirtualListData = {
 export type VirtualRowsConfig = {
     Variant: ThemeUtils.BgVariantLayer,
     Header: string?,
+    PreviousHeader: string?,
     HeaderColorTint: Fusion.UsedAs<boolean>,
     HeaderChildren: { Fusion.Child }?,
     HeaderOverlay: Fusion.Child?,
@@ -901,6 +902,7 @@ local function CreateRow(
 
         return MapHeader(scope, {
             Header = config.Header :: string,
+            PreviousHeader = config.PreviousHeader,
             HeaderColorTint = config.HeaderColorTint,
             HeaderChildrenFrame = cache.ChildrenFrame,
             HeaderOverlayFrame = cache.OverlayFrame,
