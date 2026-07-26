@@ -6,9 +6,9 @@ local Packages =
     script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.packages
 
 local Fusion = require(Packages.fusion)
-local Computed, New, Children, OnEvent, Peek, Tween =
+local Computed, New, Children, OnEvent, Peek, Tween, Value =
     Fusion.Computed, Fusion.New, Fusion.Children, Fusion.OnEvent,
-    Fusion.peek, Fusion.Tween
+    Fusion.peek, Fusion.Tween, Fusion.Value
 
 local Components = script.Parent.Parent.Parent.Parent.Parent
 local Text = require(Components.text)
@@ -32,6 +32,8 @@ local HoverTweenInfo = require(script.Parent.Parent.Parent.hoverTweenInfo)
 local SelectionSettleTime = .1
 local InstanceIconSize = 13
 
+local PluginInstance = script:FindFirstAncestorOfClass("Plugin") :: Plugin?
+
 local function InputFinished(input: InputObject): boolean
     return
         input.UserInputState == Enum.UserInputState.End
@@ -51,10 +53,34 @@ local function CreateClearTransparency(
     )
 end
 
+local function CreateClassIconGetter(scope: Fusion.Scope)
+    local themeRevision =
+        if PluginInstance then Value(scope, 0) else nil
+
+    if themeRevision then
+        local revision = themeRevision
+        table.insert(
+            scope,
+            settings().Studio.ThemeChanged:Connect(function()
+                revision:set(Peek<<number>>(revision) + 1)
+            end)
+        )
+    end
+
+    return function(use: Fusion.Use, className: string)
+        if themeRevision then
+            use<<number>>(themeRevision)
+        end
+
+        return StudioService:GetClassIcon(className)
+    end
+end
+
 return function(
     scope: Fusion.Scope,
     props: Types.ValueVariantProps<InstanceValue>
 ): Fusion.Child
+    local getClassIcon = CreateClassIconGetter(scope)
     local initialStoredValue = Peek<<InstanceValue>>(props.Value)
     local storedValueType = typeof(initialStoredValue) :: string
     local usesInstanceHandle = storedValueType == "InstanceHandle"
@@ -264,7 +290,7 @@ return function(
         local usedValue = use<<Instance?>>(value)
         if not usedValue then return {} end
 
-        local classIcon = StudioService:GetClassIcon(usedValue.ClassName)
+        local classIcon = getClassIcon(use, usedValue.ClassName)
 
         if writable
             and hoverState
