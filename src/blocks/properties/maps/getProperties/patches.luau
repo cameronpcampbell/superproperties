@@ -139,6 +139,9 @@ local Patches: Patches = {
             AbsolutePositionWrite = HIDDEN_PATCH,
             AbsoluteSizeWrite = HIDDEN_PATCH,
             IsFocusedWrite = HIDDEN_PATCH
+        },
+        BasePart = {
+            LocalTransparencyModifier = HIDDEN_PATCH
         }
     },
     Text = {
