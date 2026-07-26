@@ -61,9 +61,8 @@ return Component<<InputProps>>(function(scope, props)
     local themeColorModifier =
         CalcColorModifier(scope, isHoverState, isFocusState, "Stroke")
 
-    local computeVisualText = Computed(scope, function(use, scope)
-        local usedText = use<<string?>>(text)
-        return if usedText == nil then "" else usedText
+    local computeVisualText = Computed(scope, function(use, scope): string
+        return use<<string>>(text)
     end)
     local textValue = if IsValue(text) then
         (text :: any) :: Fusion.Value<string?, string>

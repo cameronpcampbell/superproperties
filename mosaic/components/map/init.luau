@@ -62,7 +62,12 @@ export type MapProps = {
     VirtualListData: VirtualListData?,
 }
 
-return Component<<MapProps>>(function(scope, props)
+type MapComponent = (Fusion.Scope, MapProps, ...any) -> Fusion.Child
+
+local MapComponent = (Component :: any)(function(
+    scope: Fusion.Scope,
+    props: MapProps
+): Fusion.Child
     -- TypeError: Code is too complex to typecheck!
     local props: MapProps, variant = (TableExtract :: any)(props, "Variant", "Secondary")
     local props: MapProps, width = (TableExtract :: any)(props, "Width", UDim.new(1, 0))
@@ -213,4 +218,6 @@ return Component<<MapProps>>(function(scope, props)
             }
         }
     }, props :: any))
-end)
+end) :: MapComponent
+
+return MapComponent

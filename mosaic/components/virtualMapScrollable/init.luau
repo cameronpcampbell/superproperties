@@ -61,6 +61,12 @@ type VirtualMapScrollableProps = {
     Padding: Fusion.UsedAs<number>?
 }
 
+type VirtualMapScrollableComponent = (
+    Fusion.Scope,
+    VirtualMapScrollableProps,
+    ...any
+) -> Fusion.Child
+
 local DefaultPadding = 4
 local DefaultOverdrawRows = 6
 local VirtualizationStepRows = 1
@@ -83,10 +89,14 @@ local function SortMapProps(mapProps: { MapProps }): { MapProps }
     return sortedMapProps
 end
 
-return Component<<VirtualMapScrollableProps>>(function(scope, props)
-    local props, mapsProps = TableExtract(props, "Maps")
-    local props, overdraw = TableExtract(props, "Overdraw")
-    local props, padding = TableExtract(props, "Padding", DefaultPadding)
+local VirtualMapScrollableComponent = (Component :: any)(function(
+    scope: Fusion.Scope,
+    props: any
+): Fusion.Child
+    local props, mapsProps = (TableExtract :: any)(props, "Maps")
+    local props, overdraw = (TableExtract :: any)(props, "Overdraw")
+    local props, padding =
+        (TableExtract :: any)(props, "Padding", DefaultPadding)
 
     local viewportAbsolutePositionState =
         Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
@@ -506,4 +516,6 @@ return Component<<VirtualMapScrollableProps>>(function(scope, props)
 
         [Children] = computeMapInstances
     }, (props :: any))
-end)
+end) :: VirtualMapScrollableComponent
+
+return VirtualMapScrollableComponent
