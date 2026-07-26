@@ -3,7 +3,6 @@
 
 local Packages = script.Parent.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
-local Typeforge = require(Packages.typeforge)
 
 local Fusion = require(Packages.fusion)
 local New, Children, Computed =
@@ -26,22 +25,18 @@ local Text = require(Components.text)
 
 local Types = require(script.Parent.types)
 local Arrow = require(script.Parent.arrow)
-local TintHeaderColor = require(script.Parent.headerColorTint)
 
-type TintTarget = "Background" | "Foreground"
-
-type MapHeaderProps = Typeforge.Flatten<
-    Types.BaseMapProps & {
-        Header: string,
-        PreviousHeader: string?,
-        HeaderColorTint: Fusion.UsedAs<boolean>,
-        HeaderChildrenFrame: Fusion.Child,
-        HeaderOverlayFrame: Fusion.Child,
-        ZIndex: Fusion.UsedAs<number>,
-        CollapsedState: Fusion.Value<boolean>,
-        TweenComputeMapSize: Fusion.UsedAs<UDim2>
-    }
->
+type MapHeaderProps = {
+    Header: string,
+    HeaderColors: Types.HeaderColors,
+    HeaderChildrenFrame: Frame,
+    HeaderOverlayFrame: Frame,
+    ZIndex: Fusion.UsedAs<number>,
+    RowCount: Fusion.UsedAs<number>,
+    RowIdx: Fusion.UsedAs<number>,
+    CollapsedState: Fusion.Value<boolean>,
+    TweenComputeMapSize: Fusion.UsedAs<UDim2>
+}
 
 local function ComputeCornerRadii(
     scope: Fusion.Scope,
@@ -89,7 +84,6 @@ end
 
 local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
     local rowCount, rowIdx = props.RowCount, props.RowIdx
-    local variant = props.Variant
     local collapsedState = props.CollapsedState
     local tweenComputeMapSize = props.TweenComputeMapSize
 
@@ -97,35 +91,10 @@ local function MapHeader(scope: Fusion.Scope, props: MapHeaderProps)
     local innerCornerRadius = ComputeAdd(scope, theme:GetCornerRadius(scope, "Md"), - 1)
     local rowHeight = ComputeAdd(scope, theme:GetHeight(scope, "Lg"), - 2)
 
-    local function ComputeHeaderColor(
-        headerBaseColor: Fusion.UsedAs<Color3>,
-        target: TintTarget
-    ): Fusion.Computed<Color3>
-        return Computed(scope, function(use: Fusion.Use): Color3
-            local usedHeaderBaseColor =
-                use<<Color3>>(headerBaseColor)
-
-            if not use<<boolean>>(props.HeaderColorTint) then
-                return usedHeaderBaseColor
-            end
-
-            return TintHeaderColor(
-                usedHeaderBaseColor,
-                props.Header,
-                target,
-                props.PreviousHeader
-            )
-        end)
-    end
-
-    local headerBackgroundColor = ComputeHeaderColor(
-        theme:GetBgHighlight(scope, variant),
-        "Background"
-    )
-    local headerForegroundColor = ComputeHeaderColor(
-        theme:GetFg(scope, "Primary"),
-        "Foreground"
-    )
+    local headerBackgroundColor =
+        props.HeaderColors.BackgroundColor3
+    local headerForegroundColor =
+        props.HeaderColors.ForegroundColor3
 
     local topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius =
         ComputeCornerRadii(

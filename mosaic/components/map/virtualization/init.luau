@@ -89,8 +89,7 @@ export type VirtualListData = {
 export type VirtualRowsConfig = {
     Variant: ThemeUtils.BgVariantLayer,
     Header: string?,
-    PreviousHeader: string?,
-    HeaderColorTint: Fusion.UsedAs<boolean>,
+    HeaderColors: Types.HeaderColors?,
     HeaderChildren: { Fusion.Child }?,
     HeaderOverlay: Fusion.Child?,
     HeaderZIndex: Fusion.UsedAs<number>,
@@ -891,6 +890,10 @@ local function CreateRow(
             headerContentCache,
             "Header rows must have a content cache."
         )
+        local headerColors = assert(
+            config.HeaderColors,
+            "Header rows must have resolved colors."
+        )
 
         -- MapHeader's cleanup unparents the frames first. Since scopes clean
         -- up in reverse order, this earlier task returns them to the cache for
@@ -902,12 +905,10 @@ local function CreateRow(
 
         return MapHeader(scope, {
             Header = config.Header :: string,
-            PreviousHeader = config.PreviousHeader,
-            HeaderColorTint = config.HeaderColorTint,
+            HeaderColors = headerColors,
             HeaderChildrenFrame = cache.ChildrenFrame,
             HeaderOverlayFrame = cache.OverlayFrame,
             ZIndex = config.HeaderZIndex,
-            Variant = config.Variant,
             RowCount = rowCount,
             RowIdx = 1,
             CollapsedState = config.CollapsedState,

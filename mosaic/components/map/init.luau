@@ -25,6 +25,7 @@ local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
 local Types = require(script.types)
+local CreateHeaderColors = require(script.createHeaderColors)
 
 local Virtualization = require(script.virtualization)
 local CreateMapLayout, CreateMapSizeTween,
@@ -45,6 +46,9 @@ export type TryTransformValue = Types.TryTransformValue
 export type ValueVariantProps<T> = Types.ValueVariantProps<T>
 export type ValueVariantFn<T> = Types.ValueVariantFn<T>
 export type ValueType = Types.ValueType
+export type HeaderColors = Types.HeaderColors
+export type HeaderChildrenBuilder = Types.HeaderChildrenBuilder
+export type HeaderChildren = Types.HeaderChildren
 export type VirtualListData = Virtualization.VirtualListData
 
 export type MapProps = {
@@ -53,7 +57,7 @@ export type MapProps = {
     Header: string?,
     PreviousHeader: string?,
     HeaderColorTint: Fusion.UsedAs<boolean>?,
-    HeaderChildren: { Fusion.Child }?,
+    HeaderChildren: HeaderChildren?,
     HeaderOverlay: Fusion.Child?,
     ShowOnTop: Fusion.UsedAs<boolean>?,
     Items: Fusion.UsedAs<Items>?,
@@ -91,6 +95,31 @@ local MapComponent = (Component :: any)(function(
     local strokeColor = theme:GetBg(scope, strokeVariant)
     local height = theme:GetHeight(scope, "Lg")
     local cornerRadius = theme:GetCornerRadius(scope, "Md")
+
+    local headerColors: HeaderColors? =
+        if header
+        then CreateHeaderColors(scope, {
+            Header = header,
+            PreviousHeader = previousHeader,
+            HeaderColorTint = headerColorTint,
+            BackgroundBaseColor3 =
+                theme:GetBgHighlight(scope, variant),
+            ForegroundBaseColor3 =
+                theme:GetFg(scope, "Primary")
+        })
+        else nil
+    local resolvedHeaderChildren: { Fusion.Child }? = nil
+
+    if type(headerChildren) == "function" then
+        if headerColors then
+            resolvedHeaderChildren = (
+                headerChildren :: HeaderChildrenBuilder
+            )(scope, headerColors)
+        end
+    else
+        resolvedHeaderChildren =
+            headerChildren :: { Fusion.Child }?
+    end
 
     local rowHeight = ComputeAdd(scope, height, - VerticalStrokeInset)
 
@@ -155,9 +184,8 @@ local MapComponent = (Component :: any)(function(
     local visibleRows = ComputeVirtualizedRows(scope, {
         Variant = variant,
         Header = header,
-        PreviousHeader = previousHeader,
-        HeaderColorTint = headerColorTint,
-        HeaderChildren = headerChildren,
+        HeaderColors = headerColors,
+        HeaderChildren = resolvedHeaderChildren,
         HeaderOverlay = headerOverlay,
         HeaderZIndex = headerZIndex,
         ShowOnTop = showOnTop,

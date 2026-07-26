@@ -309,31 +309,35 @@ return function(
         end
     }) :: GuiObject
 
-    addButton = IconButton(scope, {
-        Image = Assets.Add,
-
-        [OnEvent "MouseButton1Click"] = function()
-            if Peek<<boolean>>(popoverFocus.State) then
-                closeMenu()
-                return
-            end
-
-            selectedIdxState:set(nil)
-            searchState:set("")
-            refreshAllTags()
-            popoverFocus.Capture()
-        end
-    }) :: GuiObject
-
     return Category(scope, outerScope, collapsedStateScope, {
         Name = "Tags",
-        HeaderChildren = ({
-            addButton
-        } :: { Fusion.Child }),
+        HeaderChildren = function(
+            headerScope: Fusion.Scope,
+            headerColors: Map.HeaderColors
+        ): { Fusion.Child }
+            addButton = IconButton(headerScope, {
+                Image = Assets.Add,
+                ImageColor3 = headerColors.ForegroundColor3,
+
+                [OnEvent "MouseButton1Click"] = function()
+                    if Peek<<boolean>>(popoverFocus.State) then
+                        closeMenu()
+                        return
+                    end
+
+                    selectedIdxState:set(nil)
+                    searchState:set("")
+                    refreshAllTags()
+                    popoverFocus.Capture()
+                end
+            }) :: GuiObject
+
+            return { addButton }
+        end,
         HeaderOverlay = ({
             selectMenu,
             popoverFocus.Target
-        } :: Fusion.Child),
+        } :: any),
         ShowOnTop = menuElevatedState,
         Items = tagItemsState,
         EmptyText = "No Tags have been added yet."

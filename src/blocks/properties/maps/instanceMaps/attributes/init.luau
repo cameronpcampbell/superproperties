@@ -415,29 +415,33 @@ return function(
         }
     }) :: GuiObject
 
-    addButton = IconButton(scope, {
-        Image = Assets.Add,
-
-        [OnEvent "MouseButton1Click"] = function()
-            if Peek<<boolean>>(popoverFocus.State) then
-                popoverFocus.Release()
-                return
-            end
-
-            resetCreateAttributeForm()
-            popoverFocus.Capture()
-        end
-    }) :: GuiObject
-
     return Category(scope, outerScope, collapsedStateScope, {
         Name = "Attributes",
-        HeaderChildren = ({
-            addButton
-        } :: { Fusion.Child }),
+        HeaderChildren = function(
+            headerScope: Fusion.Scope,
+            headerColors: Map.HeaderColors
+        ): { Fusion.Child }
+            addButton = IconButton(headerScope, {
+                Image = Assets.Add,
+                ImageColor3 = headerColors.ForegroundColor3,
+
+                [OnEvent "MouseButton1Click"] = function()
+                    if Peek<<boolean>>(popoverFocus.State) then
+                        popoverFocus.Release()
+                        return
+                    end
+
+                    resetCreateAttributeForm()
+                    popoverFocus.Capture()
+                end
+            }) :: GuiObject
+
+            return { addButton }
+        end,
         HeaderOverlay = ({
             attributeMenu,
             popoverFocus.Target
-        } :: Fusion.Child),
+        } :: any),
         ShowOnTop = popoverFocus.State,
         Items = attributeItemsState,
         EmptyText = "No Attributes have been added yet."

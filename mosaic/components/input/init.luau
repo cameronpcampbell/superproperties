@@ -62,7 +62,8 @@ return Component<<InputProps>>(function(scope, props)
         CalcColorModifier(scope, isHoverState, isFocusState, "Stroke")
 
     local computeVisualText = Computed(scope, function(use, scope): string
-        return use<<string>>(text)
+        local usedText = use<<string?>>(text :: any)
+        return usedText or ""
     end)
     local textValue = if IsValue(text) then
         (text :: any) :: Fusion.Value<string?, string>

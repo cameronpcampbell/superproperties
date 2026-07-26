@@ -15,6 +15,19 @@ export type BaseMapProps = {
 	RowIdx: Fusion.UsedAs<number>,
 }
 
+export type HeaderColors = {
+	BackgroundColor3: Fusion.UsedAs<Color3>,
+	ForegroundColor3: Fusion.UsedAs<Color3>,
+}
+
+export type HeaderChildrenBuilder = (
+	scope: Fusion.Scope,
+	colors: HeaderColors
+) -> { Fusion.Child }
+
+export type HeaderChildren =
+	{ Fusion.Child } | HeaderChildrenBuilder
+
 export type TrySet<T> = (value: T) -> (boolean, string?, T?)
 export type TransformValue = (value: any) -> any
 export type TryTransformValue =

@@ -27,7 +27,7 @@ type CategoryProps = {
     Presorted: boolean?,
     StableKeys: boolean?,
     EmptyText: string?,
-    HeaderChildren: { Fusion.Child }?,
+    HeaderChildren: Map.HeaderChildren?,
     HeaderOverlay: Fusion.Child?,
     ShowOnTop: Fusion.UsedAs<boolean>?
 }
