@@ -11,7 +11,11 @@ local function Capture()
 		return
 	end
 
-	PluginCapabilities = SecurityCapabilities.fromCurrent()
+	PluginCapabilities = SecurityCapabilities.fromCurrent():Add(
+		Enum.SecurityCapability.Basic,
+		Enum.SecurityCapability.Plugin,
+		Enum.SecurityCapability.PluginOrOpenCloud
+	)
 end
 
 local function GetPlugin(): SecurityCapabilities

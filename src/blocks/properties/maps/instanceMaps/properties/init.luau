@@ -31,6 +31,7 @@ type PropertyCandidate =
     GroupPropertyTargets.Candidate<PropertyTarget>
 type PropertyGroup =
     GroupPropertyTargets.Group<PropertyTarget>
+local NotScriptableValue = require(script.notScriptableValue)
 
 local PollOptions: LongPollOptions = {
     MinInterval = 0.1,
@@ -148,7 +149,8 @@ local function CreatePropertyItem(group: PropertyGroup): Item
         Warning = group.Warning,
         Value = group.Targets[1].ValueState,
         ComparisonValues = comparisonValues,
-        ValueType = group.ValueType,
+        ValueType =
+            if group.Warning then NotScriptableValue else group.ValueType,
         ValueWritable = group.AllWritable,
         TrySetValue = function(value: any): (boolean, string?, any?)
             return tryTransformValue(function(): any return value end)
