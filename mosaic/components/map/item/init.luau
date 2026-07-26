@@ -2,7 +2,6 @@
 --!nolint LocalShadow
 
 local Packages = script.Parent.Parent.Parent.Parent
-local Typeforge = require(Packages.typeforge)
 
 local Fusion = require(Packages.fusion)
 local Computed, New, Children, Observer, Peek, Tween, Value =

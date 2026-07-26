@@ -56,7 +56,7 @@ return Component<<ScrollableProps>>(function(scope, props)
 
     local theme = GetThemeForScope(scope)
     local scrollBarColor = theme:GetBgHighlight(scope, GetNextVariant(scope, variant))
-    local scrollBarUnderlayColor = theme:GetBgHighlight(scope, variant)
+    local scrollBarUnderlayColor = theme:GetBg(scope, variant)
     local composedTransparency = ComposeTransparency(scope, 0, transparency)
 
     local copmputePaddingRight = Computed(scope, function(use, scope)
