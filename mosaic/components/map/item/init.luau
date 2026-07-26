@@ -272,6 +272,7 @@ local function CreateMapItem(
     table.insert(itemContentChildren, MapItemKey(scope, {
         Key = key,
         TextColor3 = textColor,
+        Warning = layout.Warning,
         Writable = layout.KeyWritable,
         DisplayAsWritable = layout.DisplayAsWritable,
         TrySetKey = layout.TrySetKey,

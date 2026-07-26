@@ -30,6 +30,7 @@ type IconButtonProps = {
     Variant: ThemeUtils.FgVariant?,
     Rotation: Fusion.UsedAs<number>?,
     Image: Fusion.UsedAs<string>?,
+    ImageColor3: Fusion.UsedAs<Color3>?,
     ImageTransparency: Fusion.UsedAs<number>?,
     Interactable: Fusion.UsedAs<boolean>?,
     ZIndex: Fusion.UsedAs<number>?,
@@ -50,6 +51,7 @@ return Component<<IconButtonProps>>(function(scope, props)
     local props, onClickEvent = TableExtract(props, OnEvent "MouseButton1Click")
     local props, onActivatedEvent = TableExtract(props, OnEvent "Activated")
     local props, image = TableExtract(props, "Image")
+    local props, imageColor = TableExtract(props, "ImageColor3")
     local props, imageTransparency =
         TableExtract(props, "ImageTransparency", 0)
     local props, interactable = TableExtract(props, "Interactable", true)
@@ -59,7 +61,8 @@ return Component<<IconButtonProps>>(function(scope, props)
     local themeColorModifier = CalcColorModifier(scope, isHoverState, isFocusState)
 
     local theme = GetThemeForScope(scope)
-    local fgColor = theme:GetFg(scope, variant, nil, themeColorModifier)
+    local fgColor =
+        imageColor or theme:GetFg(scope, variant, nil, themeColorModifier)
     local boundsHeight = theme:GetHeight(scope, "Lg")
 
     return New(scope, "Frame") (CombineProps({

@@ -41,6 +41,7 @@ type MapItemKeyProps = Typeforge.Flatten<
     Types.BaseMapProps & {
         Key: string,
         TextColor3: Fusion.UsedAs<Color3>,
+        Warning: boolean,
         Writable: boolean,
         DisplayAsWritable: boolean,
         TrySetKey: Types.TrySet<string>?,
@@ -68,7 +69,10 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
 
     local theme = GetThemeForScope(scope)
     local bgColor = theme:GetBg(scope, variant)
-    local dotColor = theme:GetFg(scope, "Tertiary")
+    local indicatorColor =
+        if props.Warning
+        then props.TextColor3
+        else theme:GetFg(scope, "Tertiary")
     local rowHeight = ComputeAdd(scope, theme:GetHeight(scope, "Lg"), - 2)
     local innerCornerRadius = ComputeAdd(scope, theme:GetCornerRadius(scope, "Md"), - 1)
 
@@ -79,6 +83,7 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
             Variant =
                 if props.DisplayAsWritable then "Primary"
                 else "Secondary",
+            ImageColor3 = if props.Warning then indicatorColor else nil,
             Thin = true,
             LayoutOrder = 0
         })
@@ -88,7 +93,7 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
             Image = Assets.Dot,
             Size = UDim2.fromOffset(IndicatorSize, IndicatorSize),
             BackgroundTransparency = 1,
-            ImageColor3 = dotColor,
+            ImageColor3 = indicatorColor,
             ImageTransparency = .5,
             LayoutOrder = 0
         }

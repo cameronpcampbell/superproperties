@@ -15,6 +15,7 @@ local MapTweenInfo = require(script.Parent.animation)
 export type ArrowProps = {
     CollapsedState: Fusion.Value<boolean>,
     Variant: "Primary" | "Secondary"?,
+    ImageColor3: Fusion.UsedAs<Color3>?,
     Thin: boolean?,
     LayoutOrder: number?
 }
@@ -27,6 +28,7 @@ return function(scope: Fusion.Scope, props: ArrowProps)
             Assets.ArrowThin
             else Assets.Arrow,
         Variant = props.Variant,
+        ImageColor3 = props.ImageColor3,
         LayoutOrder = props.LayoutOrder,
         Rotation = Tween<<number>>(
             scope,
