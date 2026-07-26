@@ -7,9 +7,6 @@ A custom properties explorer for roblox.
 ## Installation
 Install the `rbxm` from the [latest release](https://github.com/cameronpcampbell/superproperties/releases/latest) to your local plugins folder.
 
-> [!WARNING]
-> Superproperties is a work in progress.
-
 ## TODOs
 
 ### Core
