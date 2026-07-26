@@ -14,18 +14,21 @@ local function GenPalette(
 	chromaStrength: number?,
 	chromaHue: number?
 ): { Color3 }
-    local lightness, chroma, hue = ColorSpace.Oklch.From(color):Components()
+    local baseColor = ColorSpace.Oklch.From(color)
+    local lightness, chroma, hue = baseColor:Components()
 
-    local lightnessIntensity: number = lightnessStrength or 1
+    local lightnessIntensity: number = math.abs(lightnessStrength or 1)
 	local chromaIntensity: number = chromaStrength or 0
-	local lightnessRange: number = if lightnessIntensity >= 0 then 1 - lightness else lightness
+	local targetLightness: number = if baseColor:IsDark() then 1 else 0
 
 	local palette = table.create(amount) :: { Color3 }
 	palette[1] = color
 
 	for idx = 2, amount do
 		local progress: number = (idx - 1) / (5 - 1)
-		local newLightness: number = lightness + lightnessRange * progress * lightnessIntensity
+		local newLightness: number =
+			lightness
+			+ (targetLightness - lightness) * progress * lightnessIntensity
 
 		if chromaHue then
 			local chromaOffset: number = progress * chromaIntensity
@@ -86,12 +89,10 @@ local function GenFgPalette(surfaceColor: Color3): { Color3 }
         if useLightCandidate then BASE_LIGHT_TEXT_COLOR
         else BASE_DARK_TEXT_COLOR
 
-    local lightnessDirection = if useLightCandidate then -1 else 1
-
     return GenPalette(
         baseFgColor,
         3,
-        .62 * lightnessDirection,
+        .62,
         .017
     )
 end
@@ -103,14 +104,11 @@ const CORNER_RADIUS_LG = 9
 local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
     local bgBaseColor = config.BgBaseColor
     local accentPrimary = config.AccentPrimary
-    local isDarkTheme = ColorSpace.Srgb.From(bgBaseColor):IsDark()
-
-    local bgLightnessDirection = if isDarkTheme then 1 else -1
 
     local bgColors = GenPalette(
         bgBaseColor,
         6,
-        .225 * bgLightnessDirection,
+        .225,
         .017,
         BASE_BG_TINT_HUE
     )
