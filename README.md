@@ -2,7 +2,7 @@
 
 A custom properties explorer for roblox.
 
-<img src="assets/readme/example.png" alt="Superproperties example" width="400">
+<img src="assets/readme/example.png" alt="Superproperties example" width="600">
 
 > [!WARNING]
 > Superproperties is a work in progress.
