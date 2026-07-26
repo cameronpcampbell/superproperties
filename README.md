@@ -4,6 +4,9 @@ A custom properties explorer for roblox.
 
 <img src="assets/readme/example.png" alt="Superproperties example" width="600">
 
+## Installation
+Install the `rbxm` from the [latest release](https://github.com/cameronpcampbell/superproperties/releases/latest) to your local plugins folder.
+
 > [!WARNING]
 > Superproperties is a work in progress.
 
