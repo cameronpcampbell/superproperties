@@ -51,6 +51,7 @@ export type MapProps = {
     Variant: ThemeUtils.BgVariantLayer?,
     Width: UDim?,
     Header: string?,
+    HeaderColorTint: Fusion.UsedAs<boolean>?,
     HeaderChildren: { Fusion.Child }?,
     HeaderOverlay: Fusion.Child?,
     ShowOnTop: Fusion.UsedAs<boolean>?,
@@ -65,6 +66,8 @@ return Component<<MapProps>>(function(scope, props)
     local props: MapProps, variant = (TableExtract :: any)(props, "Variant", "Secondary")
     local props: MapProps, width = (TableExtract :: any)(props, "Width", UDim.new(1, 0))
     local props: MapProps, header = (TableExtract :: any)(props, "Header")
+    local props: MapProps, headerColorTint =
+        (TableExtract :: any)(props, "HeaderColorTint", false)
     local props: MapProps, headerChildren = (TableExtract :: any)(props, "HeaderChildren")
     local props: MapProps, headerOverlay = (TableExtract :: any)(props, "HeaderOverlay")
     local props: MapProps, showOnTop = (TableExtract :: any)(props, "ShowOnTop", false)
@@ -144,6 +147,7 @@ return Component<<MapProps>>(function(scope, props)
     local visibleRows = ComputeVirtualizedRows(scope, {
         Variant = variant,
         Header = header,
+        HeaderColorTint = headerColorTint,
         HeaderChildren = headerChildren,
         HeaderOverlay = headerOverlay,
         HeaderZIndex = headerZIndex,

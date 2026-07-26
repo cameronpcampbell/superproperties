@@ -96,6 +96,7 @@ return function(
     -- The category state only changes when its visibility changes.
     local mapProps = {
         Header = name,
+        HeaderColorTint = true,
         HeaderChildren = props.HeaderChildren,
         HeaderOverlay = props.HeaderOverlay,
         ShowOnTop = props.ShowOnTop,
