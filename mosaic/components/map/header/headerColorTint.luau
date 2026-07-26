@@ -1,6 +1,6 @@
 --!strict
 
-local Utils = script.Parent.Parent.Parent.utils
+local Utils = script.Parent.Parent.Parent.Parent.utils
 local ColorSpace = require(Utils.colorSpace)
 local ThemeConstants = require(Utils.themeUtils.constants)
 
@@ -9,8 +9,8 @@ export type TintTarget = "Background" | "Foreground"
 local Uint32Mask = 0xFFFFFFFF
 local Uint32Scale = 4_294_967_296
 local HeaderColorTintChroma: { [TintTarget]: number } = {
-    Background = 0.18,
-    Foreground = .8,
+    Background = 0.22,
+    Foreground = .804,
 }
 local DarkHeaderColorTintStrength = 0.04
 local LightHeaderColorTintStrength = 0.06

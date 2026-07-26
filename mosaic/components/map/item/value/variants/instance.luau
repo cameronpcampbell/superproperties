@@ -29,6 +29,11 @@ local InstanceHandle = require(script.Parent["instanceHandle.types"])
 type InstanceHandle = InstanceHandle.InstanceHandle
 type InstanceValue = Instance | InstanceHandle | nil
 type ClassIconTheme = "Dark" | "Light"
+type ClassIcon = {
+    Image: string,
+    ImageRectOffset: Vector2,
+    ImageRectSize: Vector2
+}
 
 local CreateSidePadding = require(script.Parent.utils.createSidePadding)
 local HoverTweenInfo = require(script.Parent.Parent.Parent.hoverTweenInfo)
@@ -82,15 +87,17 @@ local function ResolveClassIconImage(
     return (image:gsub("/Light/", `/{iconTheme}/`, 1))
 end
 
-local function CreateClassIconGetter(scope: Fusion.Scope)
+local function CreateClassIconGetter(
+    scope: Fusion.Scope
+): (Fusion.Use, string) -> ClassIcon?
     local iconTheme = CreateClassIconTheme(scope)
 
-    return function(use: Fusion.Use, className: string)
+    return function(use: Fusion.Use, className: string): ClassIcon?
         local usedIconTheme = use<<ClassIconTheme>>(iconTheme)
         local classIcon = StudioService:GetClassIcon(className)
         if not classIcon then return nil end
 
-        local themedClassIcon = table.clone(classIcon)
+        local themedClassIcon = table.clone(classIcon) :: ClassIcon
         themedClassIcon.Image = ResolveClassIconImage(
             classIcon.Image,
             usedIconTheme

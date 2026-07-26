@@ -1,7 +1,7 @@
 --!strict
 
 local ColorSpace =
-    require("../../utils/colorSpace")
+    require("../../../utils/colorSpace")
 local TintHeaderColor =
     require("./headerColorTint")
 

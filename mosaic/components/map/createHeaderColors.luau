@@ -6,7 +6,7 @@ local Fusion = require(Packages.fusion)
 local Computed = Fusion.Computed
 
 local Types = require(script.Parent.types)
-local TintHeaderColor = require(script.Parent.headerColorTint)
+local TintHeaderColor = require(script.Parent.header.headerColorTint)
 
 type HeaderColors = Types.HeaderColors
 type TintTarget = TintHeaderColor.TintTarget
