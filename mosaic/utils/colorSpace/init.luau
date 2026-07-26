@@ -579,5 +579,4 @@ return {
 	Xyz = Xyz,
 	Oklab = Oklab,
 	Oklch = Oklch,
-	Contrast = Contrast,
 }
