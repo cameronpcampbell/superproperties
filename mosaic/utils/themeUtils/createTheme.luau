@@ -91,7 +91,7 @@ local function GenFgPalette(surfaceColor: Color3): { Color3 }
     return GenPalette(
         baseFgColor,
         3,
-        .32 * lightnessDirection,
+        .62 * lightnessDirection,
         .017
     )
 end
