@@ -1,5 +1,8 @@
 --!strict
 
+local ReflectionSecurity = require(script.reflectionSecurity)
+ReflectionSecurity.Capture()
+
 local Packages = script.packages
 
 local Fusion = require(Packages.fusion)

@@ -40,6 +40,7 @@ local IndicatorGap = 6
 type MapItemKeyProps = Typeforge.Flatten<
     Types.BaseMapProps & {
         Key: string,
+        TextColor3: Fusion.UsedAs<Color3>,
         Writable: boolean,
         DisplayAsWritable: boolean,
         TrySetKey: Types.TrySet<string>?,
@@ -124,7 +125,6 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
     if props.Writable and trySetKey then
         local key = props.Key
         local textState = Value<<string>>(scope, key)
-        local textColor = theme:GetFg(scope, "Primary")
         local font = theme:GetFont(scope, "Main", Enum.FontWeight.Regular)
         local fontSize = theme:GetFontSize(scope, "Main", "Body")
         local textBox: TextBox
@@ -133,7 +133,7 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
             Size = UDim2.fromScale(1, 1),
             BackgroundTransparency = 1,
             Text = textState,
-            TextColor3 = textColor,
+            TextColor3 = props.TextColor3,
             FontFace = font,
             TextSize = fontSize,
             ClearTextOnFocus = false,
@@ -179,9 +179,7 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
     else
         keyContent = Text(scope, {
             Text = props.Key,
-            Variant =
-                if props.DisplayAsWritable then "Primary"
-                else "Secondary",
+            TextColor3 = props.TextColor3,
             Size = UDim2.fromScale(1, 0),
             LayoutOrder = 1,
 

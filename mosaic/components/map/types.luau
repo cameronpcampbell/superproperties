@@ -19,6 +19,7 @@ export type TryTransformValue =
 
 export type Item = {
 	Key: string,
+	Warning: boolean?,
 	KeyChildren: { Fusion.Child }?,
 	KeyWritable: boolean?,
 	TrySetKey: TrySet<string>?,
@@ -62,6 +63,7 @@ export type ItemLayout = {
 	KeyWritable: boolean,
 	ValueWritable: boolean,
 	DisplayAsWritable: boolean,
+	Warning: boolean,
 	KeyFocusState: Fusion.Value<boolean>?,
 	KeyFocusElevationState: Fusion.Value<boolean>?,
 	ValueFocusState: Fusion.Value<boolean>?,

@@ -103,7 +103,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
         TableExtract(props, "StrokeTransparency", 0)
 
     local selectedIdxValue = CoerceToValue<<number?>>(scope, selectedIdx)
-    local searchState = providedSearchState or Value(scope, "")
+    local searchState = (providedSearchState or Value(scope, "")) :: Fusion.Value<string>
 
     local isSearchEnabled = Computed(scope, function(use): boolean
         return use<<boolean>>(enableSearch)
@@ -181,7 +181,9 @@ return Component<<SelectMenuProps>>(function(scope, props)
     Observer(scope, shouldRender):onBind(function()
         local isRendering = Peek<<boolean>>(shouldRender)
 
-        if outRenderVisible then outRenderVisible:set(isRendering) end
+        if outRenderVisible then
+            (outRenderVisible :: Fusion.Value<boolean>):set(isRendering)
+        end
         if not isRendering then searchState:set("") end
     end)
 

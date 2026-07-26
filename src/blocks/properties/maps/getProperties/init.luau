@@ -8,6 +8,8 @@ local Packages = script.Parent.Parent.Parent.Parent.packages
 
 local Map = require(Packages.mosaic.components.map)
 
+local ReflectionSecurity =
+	require(script.Parent.Parent.Parent.Parent.reflectionSecurity)
 local IsPropertyVisible = require(script.isPropertyVisible)
 local Patches = require(script.patches)
 local Types = require(script.types)
@@ -21,7 +23,9 @@ export type PropertyPlan = {
 	ValueType: string?,
 	Read: ((Instance) -> any)?,
 	Write: ((Instance, any) -> ())?,
+	Readable: boolean,
 	Writable: boolean,
+	ReadSecurity: string?,
 	Poll: boolean,
 	Visibility: Types.PropertyVisibility?,
 }
@@ -52,9 +56,6 @@ export type Snapshot = {
 }
 
 local ClassPlansByName: { [string]: ClassPlan } = {}
-local PluginReflectionSecurity =
-	SecurityCapabilities.fromCurrent()
-		:Add(Enum.SecurityCapability.Basic, Enum.SecurityCapability.Plugin, Enum.SecurityCapability.PluginOrOpenCloud)
 
 local function MergeTables(target: { [any]: any }, source: { [any]: any })
 	for sourceKey, sourceValue in source do
@@ -138,7 +139,11 @@ local function BuildClassPlan(className: string): ClassPlan
 	}
 
 	local reflectedProperties =
-		ReflectionService:GetPropertiesOfClass(className, { Security = PluginReflectionSecurity })
+		ReflectionService:GetPropertiesOfClass(
+			className,
+			{ Security = ReflectionSecurity.All }
+		)
+	local pluginSecurity = ReflectionSecurity.GetPlugin()
 
 	for _, reflectedItem in reflectedProperties do
 		local item = ApplyPatches(reflectedItem)
@@ -157,6 +162,32 @@ local function BuildClassPlan(className: string): ClassPlan
 		local category = CreateOrGetCategoryPlan(classPlan.Categories, categoriesByName, itemDisplay.Category)
 
 		local customReadWrite = item.CustomReadWrite
+		local readPermits = item.Permits.Read
+		local writePermits = item.Permits.Write
+		local readable =
+			customReadWrite ~= nil
+			or (
+				readPermits ~= nil
+				and ReflectionSecurity.ContainsAll(
+					pluginSecurity,
+					readPermits
+				)
+			)
+		local writable =
+			customReadWrite ~= nil
+			or (
+				writePermits ~= nil
+				and ReflectionSecurity.ContainsAll(
+					pluginSecurity,
+					writePermits
+				)
+			)
+		local readSecurity =
+			if not readable
+				and not writable
+				and readPermits ~= nil
+			then ReflectionSecurity.DescribeMissing(readPermits)
+			else nil
 		local owner = item.Owner or className
 		local propertyPlan: PropertyPlan = {
 			Id = `{owner}\0{item.Name}`,
@@ -165,7 +196,9 @@ local function BuildClassPlan(className: string): ClassPlan
 			ValueType = item.Type.ScriptType,
 			Read = if customReadWrite then customReadWrite.Read else nil,
 			Write = if customReadWrite then customReadWrite.Write else nil,
-			Writable = customReadWrite ~= nil or item.Permits.Write ~= nil,
+			Readable = readable,
+			Writable = writable,
+			ReadSecurity = readSecurity,
 			Poll = customReadWrite ~= nil and customReadWrite.Poll == true,
 			Visibility = item.CustomVisibility,
 		}
@@ -199,6 +232,10 @@ local function ReadProperty(instance: Instance, name: string): any
 end
 
 local function ReadPlannedProperty(instance: Instance, propertyPlan: PropertyPlan): (boolean, any)
+	if not propertyPlan.Readable then
+		return false, nil
+	end
+
 	if propertyPlan.Read then
 		return pcall(propertyPlan.Read, instance)
 	end
@@ -211,7 +248,7 @@ local function WriteProperty(instance: Instance, name: string, value: any)
 end
 
 local function IsPropertyWritable(instance: Instance, propertyPlan: PropertyPlan): boolean
-	if not propertyPlan.Writable then
+	if not propertyPlan.Readable or not propertyPlan.Writable then
 		return false
 	end
 	if propertyPlan.Name ~= "Parent" then
@@ -246,24 +283,43 @@ local function GetProperties(instance: Instance): Snapshot
 
 		for _, propertyPlan in propertyPlans do
 			local name = propertyPlan.Name
-			local readSuccess, value = ReadPlannedProperty(instance, propertyPlan)
-			if not readSuccess then
-				continue
-			end
-			if not IsPropertyVisible(
-				propertyPlan.Visibility,
-				instance,
-				value
-			) then
-				continue
+			local readSecurity = propertyPlan.ReadSecurity
+			local warning = readSecurity ~= nil
+			local value: any
+			local valueType: string
+			local writable = false
+
+			if warning then
+				value = readSecurity :: string
+				valueType = "string"
+			else
+				local readSuccess
+				readSuccess, value =
+					ReadPlannedProperty(instance, propertyPlan)
+				if not readSuccess then
+					continue
+				end
+				if not IsPropertyVisible(
+					propertyPlan.Visibility,
+					instance,
+					value
+				) then
+					continue
+				end
+
+				valueType =
+					propertyPlan.ValueType or typeof(value)
+				writable =
+					IsPropertyWritable(instance, propertyPlan)
 			end
 
 			itemCount += 1
 			items[itemCount] = {
 				Key = name,
+				Warning = warning,
 				Value = value,
-				ValueType = propertyPlan.ValueType or typeof(value),
-				ValueWritable = IsPropertyWritable(instance, propertyPlan),
+				ValueType = valueType,
+				ValueWritable = writable,
 			}
 
 			locationsByName[name] = {

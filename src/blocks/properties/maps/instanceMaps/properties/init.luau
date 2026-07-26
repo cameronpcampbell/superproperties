@@ -60,6 +60,7 @@ local function ObservePropertyChanges(
 )
     local polledPropertyNames = {} :: { string }
     for propertyName, location in snapshot.LocationsByName do
+        if not location.Plan.Readable then continue end
         if location.Plan.Poll then
             table.insert(polledPropertyNames, propertyName)
         end
@@ -67,6 +68,7 @@ local function ObservePropertyChanges(
 
     if instance:IsA("ValueBase") then
         for propertyName, location in snapshot.LocationsByName do
+            if not location.Plan.Readable then continue end
             if location.Plan.Poll then continue end
 
             local connection = ConnectToPropertyChange(instance, propertyName, function()
@@ -100,6 +102,8 @@ local function ObservePropertyChanges(
 end
 
 local function RefreshTarget(target: PropertyTarget): (boolean, any?)
+    if not target.Plan.Readable then return false, nil end
+
     local readSuccess, value =
         GetProperties.ReadProperty(target.Instance, target.Plan)
     if not readSuccess then return false, nil end
@@ -141,6 +145,7 @@ local function CreatePropertyItem(group: PropertyGroup): Item
 
     return {
         Key = group.Name,
+        Warning = group.Warning,
         Value = group.Targets[1].ValueState,
         ComparisonValues = comparisonValues,
         ValueType = group.ValueType,
@@ -189,7 +194,8 @@ return function(
                 CategoryName = categorySnapshot.Name,
                 ValueType = item.ValueType or typeof(item.Value),
                 Target = target,
-                Writable = item.ValueWritable == true
+                Writable = item.ValueWritable == true,
+                Warning = item.Warning == true
             })
         end
     end

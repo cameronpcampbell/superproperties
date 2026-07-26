@@ -361,9 +361,7 @@ return function(
         [Children] = {
             Text(scope, {
                 Text = displayText,
-                Variant =
-                    if props.DisplayAsWritable then "Primary"
-                    else "Secondary",
+                TextColor3 = props.TextColor3,
                 FontStyle = fontStyle,
                 Size = UDim2.fromScale(1, 0),
                 LayoutOrder = 0,

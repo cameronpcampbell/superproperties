@@ -47,9 +47,7 @@ local function CreateTextVariant<T>(
             return {
                 Text(scope, {
                     Text = displayedValue,
-                    Variant =
-                        if props.DisplayAsWritable then "Primary"
-                        else "Secondary",
+                    TextColor3 = props.TextColor3,
                     Size = UDim2.fromScale(1, 0),
 
                     [Children] = New(scope, "UIFlexItem") {
@@ -76,7 +74,6 @@ local function CreateTextVariant<T>(
         Observer(scope, displayedValue):onChange(syncDisplayedValue)
 
         local theme = GetThemeForScope(scope)
-        local textColor = theme:GetFg(scope, "Primary")
         local font = theme:GetFont(scope, "Main", Enum.FontWeight.Regular)
         local fontSize = theme:GetFontSize(scope, "Main", "Body")
 
@@ -85,7 +82,7 @@ local function CreateTextVariant<T>(
             Size = UDim2.fromScale(1, 1),
             BackgroundTransparency = 1,
             Text = textState,
-            TextColor3 = textColor,
+            TextColor3 = props.TextColor3,
             FontFace = font,
             TextSize = fontSize,
             ClearTextOnFocus = false,

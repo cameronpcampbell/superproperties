@@ -259,11 +259,19 @@ local function CreateMapItem(
 
     local theme = GetThemeForScope(scope)
     local rowHeight = ComputeAdd(scope, theme:GetHeight(scope, "Lg"), - 2)
+    local textColor =
+        if layout.Warning
+        then theme:GetAccentFg(scope, "Caution")
+        else theme:GetFg(
+            scope,
+            if layout.DisplayAsWritable then "Primary" else "Secondary"
+        )
 
     local itemContentChildren = {} :: { Fusion.Child }
 
     table.insert(itemContentChildren, MapItemKey(scope, {
         Key = key,
+        TextColor3 = textColor,
         Writable = layout.KeyWritable,
         DisplayAsWritable = layout.DisplayAsWritable,
         TrySetKey = layout.TrySetKey,
@@ -294,8 +302,8 @@ local function CreateMapItem(
             Value = layout.ResolvedValue,
             ValueType = layout.ValueType :: string,
             Mixed = layout.Mixed,
+            TextColor3 = textColor,
             Writable = layout.ValueWritable,
-            DisplayAsWritable = layout.DisplayAsWritable,
             TrySetValue = layout.TrySetValue,
             Variant = props.Variant,
             RowCount = props.RowCount,

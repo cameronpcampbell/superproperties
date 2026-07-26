@@ -55,7 +55,8 @@ type ResolvedItem = {
     TryTransformValue: TryTransformValue?,
     KeyWritable: boolean,
     ValueWritable: boolean,
-    DisplayAsWritable: boolean
+    DisplayAsWritable: boolean,
+    Warning: boolean
 }
 type CollapseStateNode = {
     IsCollapsed: boolean?,
@@ -263,7 +264,8 @@ local function ResolveItem(
         KeyWritable = keyWritable,
         ValueWritable = valueWritable,
         DisplayAsWritable =
-            keyWritable or valueWritable or item.DisplayAsWritable == true
+            keyWritable or valueWritable or item.DisplayAsWritable == true,
+        Warning = item.Warning == true
     }
 end
 
@@ -274,7 +276,8 @@ local function ResolveIntrinsicItem(
     rootValue: Fusion.UsedAs<any?>,
     rootValues: { Fusion.UsedAs<any?> },
     parentValueWritable: boolean,
-    parentDisplayAsWritable: boolean
+    parentDisplayAsWritable: boolean,
+    parentWarning: boolean
 ): ResolvedItem
     local valueAccessor = item.Value
     local writeValue = valueAccessor.Write
@@ -328,7 +331,8 @@ local function ResolveIntrinsicItem(
         TryTransformValue = tryTransformRootValue,
         KeyWritable = false,
         ValueWritable = parentValueWritable,
-        DisplayAsWritable = parentDisplayAsWritable
+        DisplayAsWritable = parentDisplayAsWritable,
+        Warning = parentWarning
     }
 end
 
@@ -350,7 +354,8 @@ local function GetChildItems(
                 item.RootValue,
                 item.RootValues,
                 item.ValueWritable,
-                item.DisplayAsWritable
+                item.DisplayAsWritable,
+                item.Warning
             )
         end
 
@@ -376,7 +381,8 @@ local function GetChildItems(
             item.RootValue,
             item.RootValues,
             item.ValueWritable,
-            item.DisplayAsWritable
+            item.DisplayAsWritable,
+            item.Warning
         )
     end
 
@@ -527,6 +533,7 @@ local function CreateItemLayout(
         KeyWritable = resolvedItem.KeyWritable,
         ValueWritable = resolvedItem.ValueWritable,
         DisplayAsWritable = resolvedItem.DisplayAsWritable,
+        Warning = resolvedItem.Warning,
         KeyFocusState = keyFocusState,
         KeyFocusElevationState = keyFocusElevationState,
         ValueFocusState = valueFocusState,

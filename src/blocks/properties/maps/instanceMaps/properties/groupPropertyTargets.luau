@@ -6,7 +6,8 @@ export type Candidate<T> = {
     CategoryName: string,
     ValueType: string,
     Target: T,
-    Writable: boolean
+    Writable: boolean,
+    Warning: boolean
 }
 
 export type Group<T> = {
@@ -15,7 +16,8 @@ export type Group<T> = {
     CategoryName: string,
     ValueType: string,
     Targets: { T },
-    AllWritable: boolean
+    AllWritable: boolean,
+    Warning: boolean
 }
 
 return function<T>(
@@ -36,7 +38,8 @@ return function<T>(
                 CategoryName = candidate.CategoryName,
                 ValueType = candidate.ValueType,
                 Targets = {},
-                AllWritable = true
+                AllWritable = true,
+                Warning = false
             }
             groupsById[candidate.Id] = group
             table.insert(groups, group)
@@ -49,6 +52,7 @@ return function<T>(
 
         table.insert(group.Targets, candidate.Target)
         if not candidate.Writable then group.AllWritable = false end
+        if candidate.Warning then group.Warning = true end
     end
 
     return groups, categoryNames

@@ -61,9 +61,7 @@ return function(
         return {
             Text(scope, {
                 Text = displayedValue,
-                Variant =
-                    if props.DisplayAsWritable then "Primary"
-                    else "Secondary",
+                TextColor3 = props.TextColor3,
                 Size = UDim2.fromScale(1, 0),
 
                 [Children] = New(scope, "UIFlexItem") {
@@ -227,6 +225,7 @@ return function(
         Size = UDim2.fromScale(1, 1),
         AutomaticSize = Enum.AutomaticSize.None,
         Text = displayedValueState,
+        TextColor3 = props.TextColor3,
         ZIndex = 1,
 
         Name = "EnumItemText"

@@ -26,9 +26,7 @@ return function(
     return {
         Text(scope, {
             Text = text,
-            Variant =
-                if props.DisplayAsWritable then "Primary"
-                else "Secondary",
+            TextColor3 = props.TextColor3,
             Size = UDim2.fromScale(1, 0),
 
             [Children] = New(scope, "UIFlexItem") {
