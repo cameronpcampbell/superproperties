@@ -1,4 +1,5 @@
 --!strict
+--!nolint LocalShadow
 
 local Utils = script.Parent.Parent
 
@@ -108,17 +109,24 @@ local function GenFgPalette(surfaceColor: Color3): { Color3 }
     )
 end
 
-local function GenFgAccent(accentColor: Color3, primaryBgColor: Color3): Color3
-    local accent = ColorSpace.Oklch.From(accentColor)
-    local primaryBg = ColorSpace.Oklch.From(primaryBgColor)
+local function GenFgAccent(accentColor: Color3, primaryFgColor: Color3): Color3
+    local accentColor = ColorSpace.Oklch.From(accentColor)
+    local primaryFg = ColorSpace.Oklch.From(primaryFgColor)
 
-    local grayscalePrimaryBg = ColorSpace.Oklch.new(
-        primaryBg.lightness,
+    local grayscalePrimaryFg = ColorSpace.Oklch.new(
+        primaryFg.lightness,
         0,
-        accent.hue
+        accentColor.hue
     )
 
-    return ColorSpace.Oklch.Lerp(accent, grayscalePrimaryBg, .25):ToColor3()
+    local fgAccent =
+        ColorSpace.Oklch.Lerp(accentColor, grayscalePrimaryFg, .53)
+
+    return ColorSpace.Oklch.new(
+        fgAccent.lightness,
+        fgAccent.chroma + .1,
+        fgAccent.hue
+    ):ToColor3()
 end
 
 local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
@@ -144,10 +152,10 @@ local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
     local accentCautionFgColors = GenFgPalette(accentCaution)
     local accentDestructiveFgColors = GenFgPalette(accentDestructive)
 
-    local primaryBgColor = bgColors[1]
+    local primaryFgColor = fgColors[1]
 
     return {
-        BgPrimary = primaryBgColor,
+        BgPrimary = bgColors[1],
         BgSecondary = bgColors[2],
         BgTertiary = bgColors[3],
         BgQuaternary = bgColors[4],
@@ -159,7 +167,7 @@ local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
         BgQuaternaryHighlight = bgHighlightColors[4],
         BgQuinaryHighlight = bgHighlightColors[5],
 
-        FgPrimary = fgColors[1],
+        FgPrimary = primaryFgColor,
         FgSecondary = fgColors[2],
         FgTertiary = fgColors[3],
 
@@ -184,10 +192,10 @@ local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
         AccentDestructiveFgSecondary = accentDestructiveFgColors[2],
         AccentDestructiveFgTertiary = accentDestructiveFgColors[3],
 
-        AccentFgPrimary = GenFgAccent(accentPrimary, primaryBgColor),
-        AccentFgSecondary = GenFgAccent(accentSecondary, primaryBgColor),
-        AccentFgCaution = GenFgAccent(accentCaution, primaryBgColor),
-        AccentFgDestructive = GenFgAccent(accentDestructive, primaryBgColor),
+        AccentFgPrimary = GenFgAccent(accentPrimary, primaryFgColor),
+        AccentFgSecondary = GenFgAccent(accentSecondary, primaryFgColor),
+        AccentFgCaution = GenFgAccent(accentCaution, primaryFgColor),
+        AccentFgDestructive = GenFgAccent(accentDestructive, primaryFgColor),
 
         HeightSm = config.HeightSm,
         HeightMd = config.HeightMd,
