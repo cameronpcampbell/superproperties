@@ -67,6 +67,8 @@ end
 
 const BASE_LIGHT_TEXT_COLOR = Constants.BASE_LIGHT_TEXT_COLOR
 const BASE_DARK_TEXT_COLOR = Constants.BASE_DARK_TEXT_COLOR
+const DARK_FG_LIGHTNESS_STRENGTH = 1
+const LIGHT_FG_LIGHTNESS_STRENGTH = .62
 const BASE_BG_TINT_COLOR = Color3.fromRGB(25, 26, 31)
 
 local _, _, BASE_BG_TINT_HUE =
@@ -89,10 +91,15 @@ local function GenFgPalette(surfaceColor: Color3): { Color3 }
         if useLightCandidate then BASE_LIGHT_TEXT_COLOR
         else BASE_DARK_TEXT_COLOR
 
+    local baseFg = ColorSpace.Oklch.From(baseFgColor)
+    local lightnessStrength =
+        if baseFg:IsDark() then DARK_FG_LIGHTNESS_STRENGTH
+        else LIGHT_FG_LIGHTNESS_STRENGTH
+
     return GenPalette(
         baseFgColor,
         3,
-        .62,
+        lightnessStrength,
         .017
     )
 end
