@@ -21,7 +21,7 @@ export type HeaderColors = {
 }
 
 export type HeaderChildrenBuilder = (
-	scope: Fusion.Scope,
+	scope: Fusion.Scope<typeof(Fusion)>,
 	colors: HeaderColors
 ) -> { Fusion.Child }
 

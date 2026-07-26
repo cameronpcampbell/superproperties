@@ -1,4 +1,5 @@
 --!strict
+--!nolint LocalShadow
 
 local Packages = script.Parent.Parent.Parent
 local Fusion = require(Packages.fusion)

@@ -418,7 +418,7 @@ return function(
     return Category(scope, outerScope, collapsedStateScope, {
         Name = "Attributes",
         HeaderChildren = function(
-            headerScope: Fusion.Scope,
+            headerScope: Fusion.Scope<typeof(Fusion)>,
             headerColors: Map.HeaderColors
         ): { Fusion.Child }
             addButton = IconButton(headerScope, {
