@@ -22,7 +22,7 @@ type PropertiesMapsProps = {
 
 local ExtraCategories = require(script.extraCategories)
 local GetFilterState = require(script.Parent.getFilterState)
-local InstanceMaps = require(script.instanceMaps)
+local Categories = require(script.categories)
 
 local function TableBulkInsert<T>(target: { T }, source: { T })
     table.move(source, 1, #source, #target + 1, target)
@@ -52,7 +52,7 @@ local function GetCategoryStates(
 ): { CategoryState }
     local categories: { CategoryState } = {}
 
-    TableBulkInsert(categories, InstanceMaps.Properties(
+    TableBulkInsert(categories, Categories.Properties(
         scope,
         outerScope,
         collapsedStateScope,
@@ -60,14 +60,14 @@ local function GetCategoryStates(
         showNonScriptableProperties
     ))
 
-    table.insert(categories, InstanceMaps.Tags(
+    table.insert(categories, Categories.Tags(
         scope,
         outerScope,
         collapsedStateScope,
         instances
     ))
 
-    table.insert(categories, InstanceMaps.Attributes(
+    table.insert(categories, Categories.Attributes(
         scope,
         outerScope,
         collapsedStateScope,
