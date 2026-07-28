@@ -25,6 +25,7 @@ return {
     -- Buttons.
     Button = require(Components.button),
     IconButton = require(Components.iconButton),
+    BooleanIconButton = require(Components.booleanIconButton),
     Checkbox = require(Components.checkbox),
 
     -- Map.

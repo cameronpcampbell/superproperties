@@ -6,10 +6,12 @@ local Fusion = require(Packages.fusion)
 local Computed, Observer, Peek, Value =
     Fusion.Computed, Fusion.Observer, Fusion.peek, Fusion.Value
 
+local Mosaic = require(Packages.mosaic)
+local BooleanIconButton = Mosaic.BooleanIconButton
 local Map = require(Packages.mosaic.components.map)
 type Item = Map.Item
 
-local BookmarkButton = require(script.Parent.Parent.bookmarkButton)
+local Assets = require(script.Parent.Parent.Parent.Parent.assets)
 local Bookmarks = require(script.Parent.Parent.bookmarks)
 local CategoryOrder = require(script.categoryOrder)
 local CreateItemFilter = require(script.filterItems)
@@ -108,8 +110,10 @@ local function DecorateBookmarkItems(
                     end
                 )
                 local decoratedKeyChildren = {
-                    BookmarkButton(childScope, {
-                        Bookmarked = bookmarkedState,
+                    BooleanIconButton(childScope, {
+                        Value = bookmarkedState,
+                        TruthyIcon = Assets.BookmarkFill,
+                        FalseyIcon = Assets.BookmarkOutlineThin,
                         Transparency = bookmarkTransparency,
 
                         OnChanged = function(bookmarked: boolean)
@@ -123,7 +127,9 @@ local function DecorateBookmarkItems(
                             warn(
                                 `Could not save bookmark {usedBookmarkKey}: {err}`
                             )
-                        end
+                        end,
+
+                        Name = "BookmarkButton"
                     })
                 } :: { Fusion.Child }
 

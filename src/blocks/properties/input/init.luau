@@ -4,10 +4,10 @@ local Packages = script.Parent.Parent.Parent.packages
 local Fusion = require(Packages.fusion)
 
 local Mosaic = require(Packages.mosaic)
-local Input, Icon = Mosaic.Input, Mosaic.Icon
+local BooleanIconButton, Input, Icon =
+    Mosaic.BooleanIconButton, Mosaic.Input, Mosaic.Icon
 
 local Assets = require(script.Parent.Parent.Parent.assets)
-local BookmarkButton = require(script.Parent.bookmarkButton)
 local GetBookmarksOnlyState = require(script.Parent.getBookmarksOnlyState)
 local GetFilterState = require(script.Parent.getFilterState)
 
@@ -22,8 +22,12 @@ return function(scope: Fusion.Scope)
         LeftChildren = Icon(scope, {
             Image = Assets.Search,
         }),
-        RightChildren = BookmarkButton(scope, {
-            Bookmarked = bookmarksOnlyState
+        RightChildren = BooleanIconButton(scope, {
+            Value = bookmarksOnlyState,
+            TruthyIcon = Assets.BookmarkFill,
+            FalseyIcon = Assets.BookmarkOutlineThin,
+
+            Name = "BookmarkButton"
         })
     })
 end
