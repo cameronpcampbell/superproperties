@@ -212,14 +212,14 @@ local function CreateMapItem(
         end)
     end
 
-    local containerZIndex: Fusion.UsedAs<number> = rowZIndex
+    local subItemsZIndex: Fusion.UsedAs<number> = ZIndices.Default
     if hasSubItems then
-        containerZIndex = Computed(scope, function(use: Fusion.Use): number
-            local highestZIndex = use<<number>>(rowZIndex)
+        subItemsZIndex = Computed(scope, function(use: Fusion.Use): number
             if not use<<boolean>>(layout.ChildrenMounted) then
-                return highestZIndex
+                return ZIndices.Default
             end
 
+            local highestZIndex = ZIndices.Default
             for _, childSubtreeZIndex in childSubtreeZIndices do
                 highestZIndex = math.max(
                     highestZIndex,
@@ -228,6 +228,17 @@ local function CreateMapItem(
             end
 
             return highestZIndex
+        end)
+    end
+
+    local containerZIndex: Fusion.UsedAs<number> = rowZIndex
+    if hasSubItems then
+        local usedSubItemsZIndex = subItemsZIndex
+        containerZIndex = Computed(scope, function(use: Fusion.Use): number
+            return math.max(
+                use<<number>>(rowZIndex),
+                use<<number>>(usedSubItemsZIndex)
+            )
         end)
     end
 
@@ -330,6 +341,7 @@ local function CreateMapItem(
     local itemContent = New(scope, "Frame") {
         Size = ComputeUDim2(scope, UDim.new(1, 0), ComputeUDim(scope, 0, rowHeight)),
         BackgroundTransparency = 1,
+        ZIndex = rowZIndex,
         Name = "ItemContent",
 
         [Children] = itemContentChildren
@@ -365,6 +377,7 @@ local function CreateMapItem(
             BackgroundTransparency = 1,
             ClipsDescendants = clipsDescendants,
             Visible = subItemsVisible,
+            ZIndex = subItemsZIndex,
             Name = "SubItemsClip",
 
             [Children] = New(scope, "Frame") {
