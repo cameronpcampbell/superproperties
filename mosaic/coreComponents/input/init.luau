@@ -9,16 +9,15 @@ local New, Value, Computed, OnEvent =
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CombineProps, ScopedData =
-    FusionUtils.Component, FusionUtils.CombineProps,
-    FusionUtils.ScopedData
+local Component, CombineProps =
+    FusionUtils.Component, FusionUtils.CombineProps
 
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
 local CursorPredictor = require(Utils.cursorPredictor)
+local CursorStack = require(Utils.cursorStack)
 
-local DEFAULT_CURSOR = "rbxasset://SystemCursors/Arrow"
 local TEXT_CURSOR = "rbxasset://SystemCursors/IBeam"
 
 type InputProps = {
@@ -36,10 +35,6 @@ local MOUSE_ENTER_EVENT = OnEvent "MouseEnter"
 local MOUSE_MOVED_EVENT = OnEvent "MouseMoved"
 local MOUSE_LEAVE_EVENT = OnEvent "MouseLeave"
 local DESTROYING_EVENT = OnEvent "Destroying"
-
-local PluginInstance = script:FindFirstAncestorOfClass("Plugin") :: Plugin?
-local PluginMouse =
-    if PluginInstance then PluginInstance:GetMouse() else nil
 
 return Component<<InputProps>>(function(scope, props)
     local props, textTruncate =
@@ -62,8 +57,7 @@ return Component<<InputProps>>(function(scope, props)
     local onMouseLeave = mouseLeaveCallback :: Callback?
     local onDestroying = destroyingCallback :: Callback?
     local isFocusState = Value(scope, false)
-    local cursorList =
-        ScopedData(scope, "CursorList") :: { string }
+    local cursor = CursorStack(scope)
 
     local isHovered = false
     local predictionManaged = false
@@ -77,34 +71,12 @@ return Component<<InputProps>>(function(scope, props)
                 use<<Enum.TextTruncate>>(textTruncate)
     end)
 
-    local function applyCursor()
-        if not PluginMouse then return end
-
-        local activeCursor = cursorList[#cursorList]
-        PluginMouse.Icon =
-            if activeCursor then activeCursor
-            else DEFAULT_CURSOR
-    end
-
     local function showTextCursor()
-        if not PluginMouse then return end
-
-        if not table.find(cursorList, TEXT_CURSOR) then
-            table.insert(cursorList, TEXT_CURSOR)
-        end
-
-        applyCursor()
+        cursor.Set(TEXT_CURSOR)
     end
 
     local function restoreCursor()
-        local cursorIdx = table.find(cursorList, TEXT_CURSOR)
-        if not cursorIdx then return end
-
-        for idx = #cursorList, cursorIdx, -1 do
-            cursorList[idx] = nil
-        end
-
-        applyCursor()
+        cursor.Clear()
     end
 
     local function setHovered(
@@ -140,8 +112,6 @@ return Component<<InputProps>>(function(scope, props)
 
         if onDestroying then onDestroying() end
     end
-
-    table.insert(scope, restoreCursor)
 
     local input = New(scope, "TextBox")(CombineProps({
         TextTruncate = computedTextTruncate,

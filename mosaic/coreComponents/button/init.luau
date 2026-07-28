@@ -9,16 +9,15 @@ local Computed, Observer, OnEvent, Peek =
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local ConstructorComponent, CombineProps, ScopedData =
-    FusionUtils.ConstructorComponent, FusionUtils.CombineProps,
-    FusionUtils.ScopedData
+local ConstructorComponent, CombineProps =
+    FusionUtils.ConstructorComponent, FusionUtils.CombineProps
 
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
 local CursorPredictor = require(Utils.cursorPredictor)
+local CursorStack = require(Utils.cursorStack)
 
-local DEFAULT_CURSOR = "rbxasset://SystemCursors/Arrow"
 local POINTER_CURSOR = "rbxasset://SystemCursors/PointingHand"
 local NOT_ALLOWED_CURSOR = "rbxasset://SystemCursors/Forbidden"
 
@@ -28,10 +27,6 @@ local MOUSE_LEAVE_EVENT = OnEvent "MouseLeave"
 local MOUSE_BUTTON_1_DOWN_EVENT = OnEvent "MouseButton1Down"
 local MOUSE_BUTTON_1_UP_EVENT = OnEvent "MouseButton1Up"
 local DESTROYING_EVENT = OnEvent "Destroying"
-
-local PluginInstance = script:FindFirstAncestorOfClass("Plugin") :: Plugin?
-local PluginMouse =
-    if PluginInstance then PluginInstance:GetMouse() else nil
 
 type Callback = (...any) -> ()
 
@@ -55,8 +50,7 @@ return ConstructorComponent<<ButtonProps>>(function(scope, constructor, props)
     local onDestroyingEvent =
         (props :: { [any]: any })[DESTROYING_EVENT] :: Callback?
 
-    local cursorList =
-        ScopedData(scope, "CursorList") :: { string }
+    local cursor = CursorStack(scope)
 
     local isDisabled = Computed(scope, function(use): boolean
         return use<<boolean>>(disabled)
@@ -69,34 +63,12 @@ return ConstructorComponent<<ButtonProps>>(function(scope, constructor, props)
     local destroyed = false
     local predictionRegistration: CursorPredictor.Registration? = nil
 
-    local function applyCursor()
-        if not PluginMouse then return end
-
-        local activeCursor = cursorList[#cursorList]
-        PluginMouse.Icon =
-            if activeCursor then activeCursor
-            else DEFAULT_CURSOR
-    end
-
     local function showPointer()
-        if not PluginMouse then return end
-
-        if not table.find(cursorList, cursorImage) then
-            table.insert(cursorList, cursorImage)
-        end
-
-        applyCursor()
+        cursor.Set(cursorImage)
     end
 
     local function restorePointer()
-        local cursorIdx = table.find(cursorList, cursorImage)
-        if not cursorIdx then return end
-
-        for idx = #cursorList, cursorIdx, -1 do
-            cursorList[idx] = nil
-        end
-
-        applyCursor()
+        cursor.Clear()
     end
 
     local function syncCursorImage()
@@ -152,8 +124,6 @@ return ConstructorComponent<<ButtonProps>>(function(scope, constructor, props)
 
         if onDestroyingEvent then onDestroyingEvent() end
     end
-
-    table.insert(scope, restorePointer)
 
     local button = constructor(scope, CombineProps(props, {
         [MOUSE_ENTER_EVENT] = function(x: number, y: number)
