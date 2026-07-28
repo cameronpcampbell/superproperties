@@ -54,11 +54,9 @@ type MapItemProps = {
 local function CreateRightChildren(
     scope: Fusion.Scope,
     name: string,
-    children: { Fusion.Child }?,
+    buildChildren: Types.ItemChildrenBuilder,
     hoverState: Fusion.Value<boolean>
 ): Instance?
-    if not children or next(children) == nil then return nil end
-
     local transparency = Tween<<number>>(
         scope,
         Computed(scope, function(use: Fusion.Use): number
@@ -66,18 +64,19 @@ local function CreateRightChildren(
         end),
         HoverTweenInfo
     )
+    local children = buildChildren(scope, transparency)
+    if next(children) == nil then return nil end
 
-    return New(scope, "CanvasGroup") {
+    return New(scope, "Frame") {
         Size = UDim2.fromScale(0, 1),
         AutomaticSize = Enum.AutomaticSize.X,
         BackgroundTransparency = 1,
-        GroupTransparency = transparency,
         Interactable = hoverState,
         LayoutOrder = 2,
 
         Name = name,
 
-        [Children] = {
+        [Children] = ({
             children,
 
             New(scope, "UIListLayout") {
@@ -86,7 +85,7 @@ local function CreateRightChildren(
                 VerticalAlignment = Enum.VerticalAlignment.Center,
                 SortOrder = Enum.SortOrder.LayoutOrder
             }
-        }
+        } :: { Fusion.Child })
     }
 end
 
@@ -104,12 +103,9 @@ local function CreateMapItem(
     local redrawable = layout.CanBecomeMapBottom
     local hasInteractiveKey = layout.KeyWritable
     local hasInteractiveValue = hasValue and layout.ValueWritable
-    local hasKeyChildren =
-        item.KeyChildren ~= nil and next(item.KeyChildren) ~= nil
+    local hasKeyChildren = item.KeyChildren ~= nil
     local hasValueChildren =
-        hasValue
-        and item.ValueChildren ~= nil
-        and next(item.ValueChildren) ~= nil
+        hasValue and item.ValueChildren ~= nil
 
     local keyHoverState: Fusion.Value<boolean>? =
         if hasInteractiveKey or hasKeyChildren
@@ -291,7 +287,7 @@ local function CreateMapItem(
             CreateRightChildren(
                 scope,
                 "KeyChildren",
-                item.KeyChildren,
+                item.KeyChildren :: Types.ItemChildrenBuilder,
                 keyHoverState
             )
             else nil
@@ -317,7 +313,7 @@ local function CreateMapItem(
                 CreateRightChildren(
                     scope,
                     "ValueChildren",
-                    item.ValueChildren,
+                    item.ValueChildren :: Types.ItemChildrenBuilder,
                     valueHoverState :: Fusion.Value<boolean>
                 )
                 else nil

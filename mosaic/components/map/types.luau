@@ -28,6 +28,11 @@ export type HeaderChildrenBuilder = (
 export type HeaderChildren =
 	{ Fusion.Child } | HeaderChildrenBuilder
 
+export type ItemChildrenBuilder = (
+	scope: Fusion.Scope<typeof(Fusion)>,
+	transparency: Fusion.UsedAs<number>
+) -> { Fusion.Child }
+
 export type TrySet<T> = (value: T) -> (boolean, string?, T?)
 export type TransformValue = (value: any) -> any
 export type TryTransformValue =
@@ -41,13 +46,13 @@ export type ValueType = string | ValueVariantFn<any>
 export type Item = {
 	Key: string,
 	Warning: boolean?,
-	KeyChildren: { Fusion.Child }?,
+	KeyChildren: ItemChildrenBuilder?,
 	KeyWritable: boolean?,
 	TrySetKey: TrySet<string>?,
 	Value: Fusion.UsedAs<any?>,
 	ComparisonValues: { Fusion.UsedAs<any?> }?,
 	ValueType: ValueType?,
-	ValueChildren: { Fusion.Child }?,
+	ValueChildren: ItemChildrenBuilder?,
 	ValueWritable: boolean?,
 	TrySetValue: TrySet<any>?,
 	TryTransformValue: TryTransformValue?,
@@ -65,9 +70,9 @@ export type IntrinsicAccessor = {
 
 export type IntrinsicItem = {
 	Key: string,
-	KeyChildren: { Fusion.Child }?,
+	KeyChildren: ItemChildrenBuilder?,
 	Value: IntrinsicAccessor,
-	ValueChildren: { Fusion.Child }?,
+	ValueChildren: ItemChildrenBuilder?,
 	SubItems: { IntrinsicItem }?,
 	Collapsed: Fusion.Value<boolean>?,
 }

@@ -49,6 +49,7 @@ export type ValueType = Types.ValueType
 export type HeaderColors = Types.HeaderColors
 export type HeaderChildrenBuilder = Types.HeaderChildrenBuilder
 export type HeaderChildren = Types.HeaderChildren
+export type ItemChildrenBuilder = Types.ItemChildrenBuilder
 export type VirtualListData = Virtualization.VirtualListData
 
 export type MapProps = {

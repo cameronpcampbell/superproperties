@@ -2,6 +2,7 @@
 
 export type Candidate<T> = {
     Id: string,
+    OwnerName: string,
     Name: string,
     CategoryName: string,
     ValueType: string,
@@ -12,6 +13,7 @@ export type Candidate<T> = {
 
 export type Group<T> = {
     Id: string,
+    OwnerName: string,
     Name: string,
     CategoryName: string,
     ValueType: string,
@@ -29,11 +31,15 @@ return function<T>(
     local seenCategoryNames: { [string]: boolean } = {}
 
     for _, candidate in candidates do
-        local group = groupsById[candidate.Id]
+        local existingGroup = groupsById[candidate.Id]
+        local group: Group<T>
 
-        if not group then
+        if existingGroup then
+            group = existingGroup
+        else
             group = {
                 Id = candidate.Id,
+                OwnerName = candidate.OwnerName,
                 Name = candidate.Name,
                 CategoryName = candidate.CategoryName,
                 ValueType = candidate.ValueType,

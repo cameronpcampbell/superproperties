@@ -15,6 +15,7 @@ local securedTarget: { Value: string? } = {
 local groups, categoryNames = GroupPropertyTargets({
     {
         Id = "Workspace\0Gravity",
+        OwnerName = "Workspace",
         Name = "Gravity",
         CategoryName = "Behavior",
         ValueType = "number",
@@ -24,6 +25,7 @@ local groups, categoryNames = GroupPropertyTargets({
     },
     {
         Id = "TextBox\0Text",
+        OwnerName = "TextBox",
         Name = "Text",
         CategoryName = "Text",
         ValueType = "string",
@@ -33,6 +35,7 @@ local groups, categoryNames = GroupPropertyTargets({
     },
     {
         Id = "Instance\0Name",
+        OwnerName = "Instance",
         Name = "Name",
         CategoryName = "Data",
         ValueType = "string",
@@ -42,6 +45,7 @@ local groups, categoryNames = GroupPropertyTargets({
     },
     {
         Id = "Instance\0Name",
+        OwnerName = "Instance",
         Name = "Name",
         CategoryName = "Data",
         ValueType = "string",
@@ -51,6 +55,7 @@ local groups, categoryNames = GroupPropertyTargets({
     },
     {
         Id = "Unrelated\0Name",
+        OwnerName = "Unrelated",
         Name = "Name",
         CategoryName = "Other",
         ValueType = "string",
@@ -60,6 +65,7 @@ local groups, categoryNames = GroupPropertyTargets({
     },
     {
         Id = "Secured\0Secret",
+        OwnerName = "Secured",
         Name = "Secret",
         CategoryName = "Security",
         ValueType = "string",
@@ -78,6 +84,7 @@ assert(categoryNames[4] == "Other")
 assert(categoryNames[5] == "Security")
 
 local gravityGroup = groups[1]
+assert(gravityGroup.OwnerName == "Workspace")
 assert(#gravityGroup.Targets == 1)
 assert(gravityGroup.Targets[1] == workspaceTarget)
 
@@ -88,6 +95,7 @@ assert(textGroup.Targets[1] == textBoxTextTarget)
 
 -- A shared reflected descriptor has both instances as write targets.
 local sharedNameGroup = groups[3]
+assert(sharedNameGroup.OwnerName == "Instance")
 assert(#sharedNameGroup.Targets == 2)
 assert(sharedNameGroup.Targets[1] == workspaceNameTarget)
 assert(sharedNameGroup.Targets[2] == textBoxNameTarget)

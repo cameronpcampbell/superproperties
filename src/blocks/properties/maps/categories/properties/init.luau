@@ -9,6 +9,7 @@ local Map = require(Packages.mosaic.components.map)
 type Item = Map.Item
 type TransformValue = Map.TransformValue
 
+local Bookmarks = require(script.Parent.Parent.Parent.bookmarks)
 local Category = require(script.Parent.Parent.category)
 type CategoryState = Category.State
 
@@ -144,8 +145,13 @@ local function CreatePropertyItem(group: PropertyGroup): Item
         return success, err, if success then savedValue else nil
     end
 
-    return {
+    return ({
         Key = group.Name,
+        BookmarkKey = Bookmarks.CreateKey(
+            group.CategoryName,
+            group.OwnerName,
+            group.Name
+        ),
         Warning = group.Warning,
         Value = group.Targets[1].ValueState,
         ComparisonValues = comparisonValues,
@@ -156,7 +162,7 @@ local function CreatePropertyItem(group: PropertyGroup): Item
             return tryTransformValue(function(): any return value end)
         end,
         TryTransformValue = tryTransformValue
-    }
+    } :: any) :: Item
 end
 
 return function(
@@ -197,6 +203,7 @@ return function(
             local itemValueType = item.ValueType
             table.insert(propertyCandidates, {
                 Id = plan.Id,
+                OwnerName = plan.Owner,
                 Name = plan.Name,
                 CategoryName = categorySnapshot.Name,
                 ValueType =
@@ -226,9 +233,6 @@ return function(
     local categoryStates = table.create(#categoryNames) :: { CategoryState }
     for categoryIdx, categoryName in categoryNames do
         local items = itemsByCategory[categoryName]
-        table.sort(items, function(leftItem: Item, rightItem: Item): boolean
-            return leftItem.Key < rightItem.Key
-        end)
 
         categoryStates[categoryIdx] = Category(
             scope,
@@ -237,7 +241,7 @@ return function(
             {
                 Name = categoryName,
                 Items = items,
-                Presorted = true,
+                Bookmarkable = true,
                 StableKeys = true
             }
         )

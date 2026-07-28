@@ -22,6 +22,7 @@ local InstanceHandle = require(
 
 local Assets = require(script.Parent.Parent.Parent.Parent.Parent.assets)
 
+local Bookmarks = require(script.Parent.Parent.Parent.bookmarks)
 local Category = require(script.Parent.Parent.category)
 type CategoryState = Category.State
 
@@ -54,6 +55,8 @@ local MENU_OFFSET = 4
 local MENU_GAP = 6
 local MENU_PADDING = 7
 local MENU_RIGHT_INSET = 6
+local BookmarkCategoryName = "Attributes"
+local BookmarkOwnerName = "Instance"
 
 local AttributeTypes: { AttributeTypeOption } = {
     { Label = "string", DefaultValue = "" },
@@ -104,7 +107,6 @@ return function(
 ): CategoryState
     local attributeItemsState = Value<<{ Item }>>(scope, {})
     local groupsByName: { [string]: AttributeGroup } = {}
-    local itemChildrenScope = Fusion.innerScope(scope)
     local refreshItems: () -> ()
 
     local function getTargetInstances(
@@ -183,9 +185,6 @@ return function(
     end
 
     refreshItems = function()
-        Fusion.doCleanup(itemChildrenScope)
-        itemChildrenScope = Fusion.innerScope(scope)
-
         local nextGroupsByName: { [string]: AttributeGroup } = {}
         for _, instance in instances do
             for attributeName, attributeValue in instance:GetAttributes() do
@@ -226,8 +225,13 @@ return function(
                 comparisonValues[targetIdx] = target.Value
             end
 
-            local item: Item = {
+            local item = ({
                 Key = group.Name,
+                BookmarkKey = Bookmarks.CreateKey(
+                    BookmarkCategoryName,
+                    BookmarkOwnerName,
+                    group.Name
+                ),
                 KeyWritable = true,
                 TrySetKey = function(
                     requestedName: string
@@ -240,7 +244,7 @@ return function(
                     if group.CompatibleTypes then group.ValueType
                     else "MixedAttributeTypes",
                 ValueWritable = group.CompatibleTypes
-            }
+            } :: any) :: Item
             if group.CompatibleTypes then
                 item.TrySetValue = function(
                     value: any
@@ -256,15 +260,21 @@ return function(
                     return commitGroupTransform(group, transformValue)
                 end
             end
-            item.KeyChildren = {
-                IconButton(itemChildrenScope, {
-                    Image = Assets.Cross,
+            item.KeyChildren = function(
+                childScope: Fusion.Scope,
+                transparency: Fusion.UsedAs<number>
+            ): { Fusion.Child }
+                return {
+                    IconButton(childScope, {
+                        Image = Assets.Cross,
+                        ImageTransparency = transparency,
 
-                    [OnEvent "MouseButton1Click"] = function()
-                        removeAttribute(group)
-                    end
-                })
-            }
+                        [OnEvent "MouseButton1Click"] = function()
+                            removeAttribute(group)
+                        end
+                    })
+                }
+            end
             table.insert(attributeItems, item)
         end
 
@@ -444,6 +454,7 @@ return function(
         } :: any),
         ShowOnTop = popoverFocus.State,
         Items = attributeItemsState,
+        Bookmarkable = true,
         EmptyText = "No Attributes have been added yet."
     })
 end

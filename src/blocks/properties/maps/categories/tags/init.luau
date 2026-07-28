@@ -18,6 +18,7 @@ type Item = Map.Item
 
 local Assets = require(script.Parent.Parent.Parent.Parent.Parent.assets)
 
+local Bookmarks = require(script.Parent.Parent.Parent.bookmarks)
 local Category = require(script.Parent.Parent.category)
 type CategoryState = Category.State
 
@@ -33,6 +34,8 @@ type TagOption = {
 local MenuGap = 4
 local MenuMaxHeight = 180
 local MenuRightInset = 6
+local BookmarkCategoryName = "Tags"
+local BookmarkOwnerName = "CollectionService"
 
 local function Trim(text: string): string
     return text:match("^%s*(.-)%s*$") or ""
@@ -82,13 +85,9 @@ return function(
     instances: { Instance }
 ): CategoryState
     local tagItemsState = Value<<{ Item }>>(scope, {})
-    local itemChildrenScope = Fusion.innerScope(scope)
     local refreshTagItems: () -> ()
 
     refreshTagItems = function()
-        Fusion.doCleanup(itemChildrenScope)
-        itemChildrenScope = Fusion.innerScope(scope)
-
         local instancesByTag: { [string]: { Instance } } = {}
         for _, instance in instances do
             for _, tag in instance:GetTags() do
@@ -103,25 +102,36 @@ return function(
 
         local tagItems = {} :: { Item }
         for tag, tagInstances in instancesByTag do
-            table.insert(tagItems, {
+            table.insert(tagItems, ({
                 Key = tag,
+                BookmarkKey = Bookmarks.CreateKey(
+                    BookmarkCategoryName,
+                    BookmarkOwnerName,
+                    tag
+                ),
                 DisplayAsWritable = true,
-                KeyChildren = {
-                    IconButton(itemChildrenScope, {
-                        Image = Assets.Cross,
+                KeyChildren = function(
+                    childScope: Fusion.Scope,
+                    transparency: Fusion.UsedAs<number>
+                ): { Fusion.Child }
+                    return {
+                        IconButton(childScope, {
+                            Image = Assets.Cross,
+                            ImageTransparency = transparency,
 
-                        [OnEvent "MouseButton1Click"] = function()
-                            local success, err =
-                                CommitRemoveTag(tagInstances, tag)
-                            refreshTagItems()
+                            [OnEvent "MouseButton1Click"] = function()
+                                local success, err =
+                                    CommitRemoveTag(tagInstances, tag)
+                                refreshTagItems()
 
-                            if not success then
-                                warn(`Could not remove tag {tag}: {err}`)
+                                if not success then
+                                    warn(`Could not remove tag {tag}: {err}`)
+                                end
                             end
-                        end
-                    })
-                }
-            })
+                        })
+                    }
+                end
+            } :: any) :: Item)
         end
 
         tagItemsState:set(tagItems)
@@ -340,6 +350,7 @@ return function(
         } :: any),
         ShowOnTop = menuElevatedState,
         Items = tagItemsState,
+        Bookmarkable = true,
         EmptyText = "No Tags have been added yet."
     })
 end
