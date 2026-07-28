@@ -6,30 +6,15 @@ local Lexuau = require(Packages.lexuau)
 
 local CreateDelimitedNumbersLexer =
     require(script.Parent.Parent.utils.createDelimitedNumbersLexer)
+local MathExpressionLexer =
+    require(script.Parent.Parent.mathExpression.lexer)
+type LexerState = MathExpressionLexer.State
 
-local UDim2Lexer: Lexuau.Lexer<nil>?
-local UDimBodyLexer: Lexuau.Lexer<nil>?
-
-local udim2Patterns: { [string]: Lexuau.PatternConfig<nil> } = {
-    leftBrace = {
-        pattern = "{",
-        callback = function(value: string, _state: nil)
-            return value, UDimBodyLexer :: Lexuau.Lexer<nil>
-        end
-    }
+local udim2Patterns: {
+    [string]: Lexuau.PatternConfig<LexerState>
+} = {
+    leftBrace = "{",
+    rightBrace = "}"
 }
 
-UDim2Lexer = CreateDelimitedNumbersLexer(udim2Patterns)
-
-local udimBodyPatterns: { [string]: Lexuau.PatternConfig<nil> } = {
-    rightBrace = {
-        pattern = "}",
-        callback = function(value: string, _state: nil)
-            return value, UDim2Lexer :: Lexuau.Lexer<nil>
-        end
-    }
-}
-
-UDimBodyLexer = CreateDelimitedNumbersLexer(udimBodyPatterns)
-
-return UDim2Lexer :: Lexuau.Lexer<nil>
+return CreateDelimitedNumbersLexer(udim2Patterns)

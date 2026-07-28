@@ -4,16 +4,26 @@ local Packages =
     script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.packages
 local Lexuau = require(Packages.lexuau)
 
-type PatternConfig = Lexuau.PatternConfig<nil>
+local MathExpressionLexer =
+    require(script.Parent.Parent.mathExpression.lexer)
+type LexerState = MathExpressionLexer.State
+
+type PatternConfig = Lexuau.PatternConfig<LexerState>
 type Patterns = { [string]: PatternConfig }
 
 local function CreateDelimitedNumbersLexer(
     extraPatterns: Patterns?
-): Lexuau.Lexer<nil>
+): Lexuau.Lexer<LexerState>
+    local lexer: Lexuau.Lexer<LexerState>?
     local patterns: Patterns = {
-        number = "(?&num)",
-        comma = ",",
-        sign = "[+-]"
+        expression = {
+            pattern = "[^,{}#\\s]+",
+            callback = function(value: string, state: LexerState)
+                state.ReturnLexer = lexer
+                return value, MathExpressionLexer
+            end
+        },
+        comma = ","
     }
 
     if extraPatterns ~= nil then
@@ -22,19 +32,17 @@ local function CreateDelimitedNumbersLexer(
         end
     end
 
-    return Lexuau.new<<nil>>({
+    lexer = Lexuau.new<<LexerState>>({
         skip = "[ \t\n\r\f]+",
-        init_state = function()
-            return nil
+        init_state = function(): LexerState
+            return {
+                ReturnLexer = nil
+            }
         end,
-
-        subpatterns = {
-            numsect = "_*[\\d]+_*",
-            num = "((?&numsect)+\\.)?(?&numsect)+|\\.(?&numsect)"
-        },
-
         patterns = patterns
     })
+
+    return lexer :: Lexuau.Lexer<LexerState>
 end
 
 return CreateDelimitedNumbersLexer

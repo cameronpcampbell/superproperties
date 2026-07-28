@@ -40,6 +40,11 @@ AssertColor(
     Color3.fromRGB(0, 20, 0),
     "negative components"
 )
+AssertColor(
+    "255 / 2, 2 ^ 7, 10 % 3",
+    Color3.fromRGB(127.5, 128, 1),
+    "math expression components"
+)
 AssertColor("#123456", Color3.fromHex("123456"), "hexadecimal")
 
 local outOfRangeColor, outOfRangeError = ParseColor("256, 0, 0")

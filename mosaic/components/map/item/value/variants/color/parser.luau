@@ -4,6 +4,15 @@ local Packages =
     script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.packages
 local Lexuau = require(Packages.lexuau)
 
+local CreateDelimitedNumbersLexer =
+    require(script.Parent.Parent.utils.createDelimitedNumbersLexer)
+local MathExpressionLexer =
+    require(script.Parent.Parent.mathExpression.lexer)
+type LexerState = MathExpressionLexer.State
+
+local ParseMathExpression =
+    require(script.Parent.Parent.mathExpression.parser)
+
 type Token = {
     Kind: string?,
     Value: string
@@ -14,10 +23,12 @@ type Parser = {
     Position: number
 }
 
-local HexLexer = Lexuau.new<<nil>>({
+local HexLexer = Lexuau.new<<LexerState>>({
     skip = "[ \t\n\r\f]+",
-    init_state = function()
-        return nil
+    init_state = function(): LexerState
+        return {
+            ReturnLexer = nil
+        }
     end,
 
     patterns = {
@@ -25,29 +36,18 @@ local HexLexer = Lexuau.new<<nil>>({
     }
 })
 
-local ColorLexer = Lexuau.new<<nil>>({
-    skip = "[ \t\n\r\f]+",
-    init_state = function()
-        return nil
-    end,
-
-    subpatterns = {
-        numsect = "_*[\\d]+_*",
-        num = "((?&numsect)+\\.)?(?&numsect)+|\\.(?&numsect)"
-    },
-
-    patterns = {
-        hash = {
-            pattern = "#",
-            callback = function(value: string, _state: nil)
-                return value, HexLexer
-            end
-        },
-        number = "(?&num)",
-        comma = ",",
-        sign = "[+-]"
+local colorPatterns: {
+    [string]: Lexuau.PatternConfig<LexerState>
+} = {
+    hash = {
+        pattern = "#",
+        callback = function(value: string, _state: LexerState)
+            return value, HexLexer
+        end
     }
-})
+}
+
+local ColorLexer = CreateDelimitedNumbersLexer(colorPatterns)
 
 local function DescribeToken(token: Token?): string
     if token == nil then
@@ -79,39 +79,30 @@ local function ParseComponent(
     parser: Parser,
     componentName: string
 ): (number?, string?)
-    local sign = 1
-    local token = Peek(parser)
+    local expressionParts: { string } = {}
 
-    if token ~= nil and token.Kind == "sign" then
+    while true do
+        local token = Peek(parser)
+        if
+            token == nil
+            or token.Kind == "comma"
+            or token.Kind == "rightBrace"
+        then
+            break
+        end
+
+        table.insert(expressionParts, token.Value)
         Advance(parser)
-        if token.Value == "-" then
-            sign = -1
-        end
-
-        local numberToken = Peek(parser)
-        if numberToken == nil or numberToken.Kind ~= "number" then
-            return nil,
-                `Expected a number after {string.format("%q", token.Value)} for the {componentName} component, found {DescribeToken(numberToken)}.`
-        end
-
-        token = numberToken
     end
 
-    if token == nil or token.Kind ~= "number" then
-        return nil,
-            `Expected the {componentName} component, found {DescribeToken(token)}.`
-    end
-
-    Advance(parser)
-
-    local normalizedValue = string.gsub(token.Value, "_", "")
-    local value = tonumber(normalizedValue)
+    local value, parseError =
+        ParseMathExpression(table.concat(expressionParts, " "))
     if value == nil then
         return nil,
-            `Invalid number {string.format("%q", token.Value)} for the {componentName} component.`
+            `Invalid math expression for the {componentName} component: {parseError or "Invalid expression."}`
     end
 
-    return sign * value, nil
+    return value, nil
 end
 
 local function ParseComma(

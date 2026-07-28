@@ -2,6 +2,8 @@
 
 local DelimitedNumbersLexer =
     require(script.Parent.Parent.utils.delimitedNumbersLexer)
+local ParseMathExpression =
+    require(script.Parent.Parent.mathExpression.parser)
 
 export type Components = {
     Scale: number,
@@ -48,39 +50,30 @@ local function ParseComponent(
     parser: Parser,
     componentName: string
 ): (number?, string?)
-    local sign = 1
-    local token = Peek(parser)
+    local expressionParts: { string } = {}
 
-    if token ~= nil and token.Kind == "sign" then
+    while true do
+        local token = Peek(parser)
+        if
+            token == nil
+            or token.Kind == "comma"
+            or token.Kind == "rightBrace"
+        then
+            break
+        end
+
+        table.insert(expressionParts, token.Value)
         Advance(parser)
-        if token.Value == "-" then
-            sign = -1
-        end
-
-        local numberToken = Peek(parser)
-        if numberToken == nil or numberToken.Kind ~= "number" then
-            return nil,
-                `Expected a number after {string.format("%q", token.Value)} for the {componentName} component, found {DescribeToken(numberToken)}.`
-        end
-
-        token = numberToken
     end
 
-    if token == nil or token.Kind ~= "number" then
-        return nil,
-            `Expected the {componentName} component, found {DescribeToken(token)}.`
-    end
-
-    Advance(parser)
-
-    local normalizedValue = string.gsub(token.Value, "_", "")
-    local value = tonumber(normalizedValue)
+    local value, parseError =
+        ParseMathExpression(table.concat(expressionParts, " "))
     if value == nil then
         return nil,
-            `Invalid number {string.format("%q", token.Value)} for the {componentName} component.`
+            `Invalid math expression for the {componentName} component: {parseError or "Invalid expression."}`
     end
 
-    return sign * value, nil
+    return value, nil
 end
 
 local function ParseComma(
