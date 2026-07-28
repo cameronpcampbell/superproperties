@@ -43,7 +43,7 @@ return Component<<BookmarkButtonProps>>(function(scope, props)
         return
             if use<<boolean>>(bookmarkedState)
             then Assets.BookmarkFill
-            else Assets.BookmarkOutline
+            else Assets.BookmarkOutlineThin
     end)
     local interactable = Computed(scope, function(use): boolean
         return not use<<boolean>>(disabled)
