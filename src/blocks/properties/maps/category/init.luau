@@ -236,7 +236,10 @@ return function(
         categoryState:set(if visible then mapProps else nil)
     end
 
+    -- Empty sorted lists can keep their identity across filter changes.
+    -- Observe both inputs that determine category visibility.
     Observer(scope, displayItems):onChange(refreshVisibility)
+    Observer(scope, filterState):onChange(refreshVisibility)
     refreshVisibility()
 
     return categoryState
