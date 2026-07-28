@@ -21,6 +21,7 @@ local CursorPredictor = require(Utils.cursorPredictor)
 
 local Components = script.Parent
 local Background = require(Components.background)
+local ResolveOptionalBoolean = require(script.resolveOptionalBoolean)
 
 type WidgetProps = {
 	Id: string,
@@ -96,8 +97,8 @@ return Component<<WidgetProps>>(function(scope, props)
                     id,
                     DockWidgetPluginGuiInfo.new(
                         initDockState or Enum.InitialDockState.Float,
-                        initEnabled or true,
-                        overrideEnabledRestore or true,
+                        ResolveOptionalBoolean(initEnabled, true),
+                        ResolveOptionalBoolean(overrideEnabledRestore, true),
                         floatXSize or 0,
                         floatYSize or 0,
                         minWidth or floatXSize or 0,
