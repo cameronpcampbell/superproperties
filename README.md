@@ -21,6 +21,5 @@ Install the `rbxm` from the [latest release](https://github.com/cameronpcampbell
 
 ### Bonus Features
 - Tabs to filter between the selected instances.
-- The ability to bookmark properties for easy access.
 - The ability to quickly change the class of an Instance directly in the properties explorer.
 - A token/variable system, define a value once - use it across many properties.
