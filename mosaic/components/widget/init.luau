@@ -114,7 +114,9 @@ return Component<<WidgetProps>>(function(scope, props)
 
             [Children] = root,
         }
-    end, debug.traceback)
+    end, function(err: unknown): string
+        return debug.traceback(tostring(err), 2)
+    end)
 
     if not success then
         if widget then widget:Destroy() end
