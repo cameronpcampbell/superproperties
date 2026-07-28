@@ -8,6 +8,9 @@ local Computed, New, Children, Observer, Value, Peek, Out, OnEvent =
     Fusion.Value, Fusion.peek, Fusion.Out, Fusion.OnEvent
 
 local Utils = script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.utils
+local FusionUtils = require(Utils.fusionUtils)
+local CreateOutProxy = FusionUtils.CreateOutProxy
+
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
 
@@ -62,6 +65,11 @@ local function CreateTextVariant<T>(
         local textState = Value<<string>>(
             scope,
             Peek<<string>>(displayedValue)
+        )
+        local textOutProxy = CreateOutProxy<<string>>(
+            scope,
+            textState,
+            function(newText) textState:set(newText) end
         )
         local editing = false
         local focusedValue = ""
@@ -141,7 +149,7 @@ local function CreateTextVariant<T>(
                 warn(`SuperProperties: {err or "Could not set value."}`)
             end,
 
-            [Out "Text"] = textState,
+            [Out "Text"] = textOutProxy,
 
             [Children] = New(scope, "UIFlexItem") {
                 FlexMode = Enum.UIFlexMode.Shrink

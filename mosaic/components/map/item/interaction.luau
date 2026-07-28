@@ -19,9 +19,6 @@ local GetThemeForScope, GetNextVariant, CalcColorModifier =
 local Components = script.Parent.Parent.Parent
 local FocusRing = require(Components.focusRing)
 
-local CoreComponents = Components.Parent.coreComponents
-local TransparencyGated = require(CoreComponents.transparencyGated)
-
 local FocusTransitionTweenInfo = require(script.Parent.value.focusTransitionTweenInfo)
 local HoverTweenInfo = require(script.Parent.hoverTweenInfo)
 local ZIndices = require(script.Parent.Parent.zIndices)
@@ -129,8 +126,10 @@ local function CreateMapItemInteraction(
         HoverTweenInfo
     )
 
-    local border = TransparencyGated(scope, Supercorner.new :: any, {
-        GatedTransparencyProperty = "StrokeTransparency",
+    -- Keep focus-driven visuals mounted. Returning them through reactive
+    -- children can make Fusion's [Children] traversal re-enter a busy state
+    -- when a TextBox receives focus.
+    local border = Supercorner.new(scope, {
         BackgroundTransparency = 1,
         StrokeColor = tweenStrokeColor,
         StrokeTransparency = tweenStrokeTransparency,
@@ -149,6 +148,7 @@ local function CreateMapItemInteraction(
 
     local focusRing = FocusRing(scope, {
         IsFocus = isFocusState,
+        CullWhenHidden = false,
         AlphaOut = focusRingAlphaState,
         TransitionTweenInfo = FocusTransitionTweenInfo,
         BaseSize = UDim2.new(1, 2, 1, 2),

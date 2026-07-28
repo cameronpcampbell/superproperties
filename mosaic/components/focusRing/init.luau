@@ -33,6 +33,7 @@ type FocusRingProps = {
 	MaxCornerRadius: Fusion.UsedAs<number>?,
 	Redrawable: boolean?,
 	IsFocus: Fusion.UsedAs<boolean>,
+	CullWhenHidden: boolean?,
 	TransitionTweenInfo: Fusion.UsedAs<TweenInfo>?,
 	AlphaOut: Fusion.Value<number>?
 }
@@ -54,6 +55,7 @@ return Component<<FocusRingProps>>(function(scope, props)
     local props, maxCornerRadius = TableExtract(props, "MaxCornerRadius")
     local props, redrawable = TableExtract(props, "Redrawable", false)
     local props, isFocus = TableExtract(props, "IsFocus")
+    local props, cullWhenHidden = TableExtract(props, "CullWhenHidden", true)
     local props, alphaOut = TableExtract(props, "AlphaOut")
     local props, transitionTweenInfo =
         TableExtract(
@@ -117,8 +119,7 @@ return Component<<FocusRingProps>>(function(scope, props)
     local theme = GetThemeForScope(scope)
     local accentColor = theme:GetAccent(scope, "Primary")
 
-    return TransparencyGated(scope, Supercorner.new :: any, CombineProps({
-        GatedTransparencyProperty = "StrokeTransparency",
+    local ringProps = CombineProps({
         Size = computeSize,
         Position = UDim2.fromScale(.5, .5),
         AnchorPoint = Vector2.new(.5, .5),
@@ -136,5 +137,13 @@ return Component<<FocusRingProps>>(function(scope, props)
         Redrawable = redrawable,
         CornerSmoothing = 1,
         ZIndex = 0,
-    }, props :: any))
+    }, props :: any)
+
+    if not cullWhenHidden then
+        return Supercorner.new(scope, ringProps)
+    end
+
+    return TransparencyGated(scope, Supercorner.new :: any, CombineProps({
+        GatedTransparencyProperty = "StrokeTransparency",
+    }, ringProps))
 end)

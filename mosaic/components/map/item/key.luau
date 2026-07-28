@@ -14,6 +14,7 @@ local Utils = script.Parent.Parent.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
 local CombineProps = FusionUtils.CombineProps
+local CreateOutProxy = FusionUtils.CreateOutProxy
 local ComputeTransforms = FusionUtils.ComputeTransforms
 local ComputeUDim2, ComputeUDim =
     ComputeTransforms.UDim2, ComputeTransforms.UDim
@@ -130,6 +131,11 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
     if props.Writable and trySetKey then
         local key = props.Key
         local textState = Value<<string>>(scope, key)
+        local textOutProxy = CreateOutProxy<<string>>(
+            scope,
+            textState,
+            function(newText) textState:set(newText) end
+        )
         local font = theme:GetFont(scope, "Main", Enum.FontWeight.Regular)
         local fontSize = theme:GetFontSize(scope, "Main", "Body")
         local textBox: TextBox
@@ -173,7 +179,7 @@ local function MapItemKey(scope: Fusion.Scope, props: MapItemKeyProps)
                 warn(`SuperProperties: {err or "Could not set key."}`)
             end,
 
-            [Out "Text"] = textState,
+            [Out "Text"] = textOutProxy,
 
             [Children] = New(scope, "UIFlexItem") {
                 FlexMode = Enum.UIFlexMode.Shrink
