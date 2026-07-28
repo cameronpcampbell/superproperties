@@ -15,6 +15,11 @@ local NativeInstanceHandle =
     (getfenv() :: any).InstanceHandle :: {
         new: (instance: Instance) -> InstanceHandle
     }
+assert(
+    NativeInstanceHandle ~= nil
+        and type(NativeInstanceHandle.new) == "function",
+    "InstanceHandle is unavailable in this Studio environment"
+)
 
 local EmptyHandleTargets =
     setmetatable({} :: { [Instance]: boolean }, {
@@ -25,10 +30,18 @@ local EmptyHandleTargets =
 -- empty constructor. Use a destroyed weakly-referenced target so an empty
 -- Instance attribute can be preserved while resolving as Empty.
 local emptyTarget = Instance.new("Folder")
-local EmptyInstanceHandle = NativeInstanceHandle.new(emptyTarget)
+local success, result = pcall(NativeInstanceHandle.new, emptyTarget)
 
-EmptyHandleTargets[emptyTarget] = true
+if success then
+    EmptyHandleTargets[emptyTarget] = true
+end
 emptyTarget:Destroy()
+
+if not success then
+    error(result, 0)
+end
+
+local EmptyInstanceHandle = result :: InstanceHandle
 
 return {
     new = NativeInstanceHandle.new,

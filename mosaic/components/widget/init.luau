@@ -51,16 +51,6 @@ return Component<<WidgetProps>>(function(scope, props)
     local props, enabled = TableExtract(props, "Enabled")
     local props, children = TableExtract(props, Children)
 
-    local widget = (script:FindFirstAncestorOfClass("Plugin") :: Plugin):CreateDockWidgetPluginGuiAsync(
-        id,
-        DockWidgetPluginGuiInfo.new(
-            initDockState or Enum.InitialDockState.Float, initEnabled or true, overrideEnabledRestore or true,
-            floatXSize or 0, floatYSize or 0,
-            minWidth or floatXSize or 0, minHeight or floatYSize or 0
-        )
-    )
-    widget.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
     local content = Background (scope, {
         [Children] = {
             children,
@@ -98,11 +88,38 @@ return Component<<WidgetProps>>(function(scope, props)
         }
     end
 
-    return Hydrate(scope, widget) {
-        Title = title or id,
-        Name = id,
-        Enabled = enabled,
+    local widget: DockWidgetPluginGui? = nil
+    local success, result = xpcall(function()
+        local createdWidget =
+            (script:FindFirstAncestorOfClass("Plugin") :: Plugin)
+                :CreateDockWidgetPluginGuiAsync(
+                    id,
+                    DockWidgetPluginGuiInfo.new(
+                        initDockState or Enum.InitialDockState.Float,
+                        initEnabled or true,
+                        overrideEnabledRestore or true,
+                        floatXSize or 0,
+                        floatYSize or 0,
+                        minWidth or floatXSize or 0,
+                        minHeight or floatYSize or 0
+                    )
+                )
+        widget = createdWidget
 
-        [Children] = root,
-    }
+        return Hydrate(scope, createdWidget) {
+            ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+            Title = title or id,
+            Name = id,
+            Enabled = enabled,
+
+            [Children] = root,
+        }
+    end, debug.traceback)
+
+    if not success then
+        if widget then widget:Destroy() end
+        error(result, 0)
+    end
+
+    return result :: DockWidgetPluginGui
 end)

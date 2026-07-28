@@ -13,6 +13,7 @@ export type StepCallback = (now: number) -> ()
 
 export type Adapter = {
     RegisterRoot: (root: GuiObject) -> (() -> ()),
+    Destroy: () -> (),
 }
 
 local PluginInstance =
@@ -30,6 +31,8 @@ local function new(
     local hasEmittedSample = false
     local lastEmittedRoot: GuiObject? = nil
     local lastEmittedPosition: Vector2? = nil
+    local rootCleanups: { [() -> ()]: true } = {}
+    local destroyed = false
 
     local function SetActiveRoot(
         root: GuiObject,
@@ -53,7 +56,9 @@ local function new(
         onRootLeave(root)
     end
 
-    RunService.PreRender:Connect(function()
+    local renderConnection = RunService.PreRender:Connect(function()
+        if destroyed then return end
+
         local now = os.clock()
         local root = activeRoot
         local position =
@@ -79,7 +84,9 @@ local function new(
     end)
 
     local function RegisterRoot(root: GuiObject): () -> ()
-        local destroyed = false
+        assert(not destroyed, "Cannot register a root on a destroyed input adapter")
+
+        local rootDestroyed = false
 
         local mouseEnterConnection = root.MouseEnter:Connect(function(x, y)
             SetActiveRoot(root, x, y)
@@ -92,23 +99,65 @@ local function new(
         end)
 
         local destroyingConnection: RBXScriptConnection
-        local function Destroy()
-            if destroyed then return end
-            destroyed = true
+        local function DestroyRoot()
+            if rootDestroyed then return end
+            rootDestroyed = true
 
-            ClearActiveRoot(root)
+            local shouldNotifyRootLeave = activeRoot == root
+            if shouldNotifyRootLeave then
+                activeRoot = nil
+                activeRootPosition = nil
+            end
+
             mouseEnterConnection:Disconnect()
             mouseMovedConnection:Disconnect()
             mouseLeaveConnection:Disconnect()
             destroyingConnection:Disconnect()
+            rootCleanups[DestroyRoot] = nil
+
+            if shouldNotifyRootLeave then
+                local success, err = pcall(function(): boolean
+                    onRootLeave(root)
+                    return true
+                end)
+                if not success then
+                    warn(`Cursor input root cleanup failed: {err}`)
+                end
+            end
         end
 
-        destroyingConnection = root.Destroying:Connect(Destroy)
-        return Destroy
+        destroyingConnection = root.Destroying:Connect(DestroyRoot)
+        rootCleanups[DestroyRoot] = true
+        return DestroyRoot
+    end
+
+    local function Destroy()
+        if destroyed then return end
+        destroyed = true
+
+        renderConnection:Disconnect()
+
+        for cleanup in rootCleanups do
+            local success, err = pcall(function(): boolean
+                cleanup()
+                return true
+            end)
+            if not success then
+                rootCleanups[cleanup] = nil
+                warn(`Cursor input cleanup failed: {err}`)
+            end
+        end
+
+        table.clear(rootCleanups)
+        activeRoot = nil
+        activeRootPosition = nil
+        lastEmittedRoot = nil
+        lastEmittedPosition = nil
     end
 
     return {
         RegisterRoot = RegisterRoot,
+        Destroy = Destroy,
     }
 end
 

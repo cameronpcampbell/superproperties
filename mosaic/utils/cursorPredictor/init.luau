@@ -719,7 +719,16 @@ local function OnStep(now: number)
     end
 end
 
-local InputAdapter = RobloxInput.new(OnSample, OnRootLeave, OnStep)
+local inputAdapter: RobloxInput.Adapter? = nil
+
+local function GetInputAdapter(): RobloxInput.Adapter
+    local adapter = inputAdapter
+    if adapter then return adapter end
+
+    local createdAdapter = RobloxInput.new(OnSample, OnRootLeave, OnStep)
+    inputAdapter = createdAdapter
+    return createdAdapter
+end
 
 local function RegisterRoot(
     scope: Fusion.Scope,
@@ -738,27 +747,55 @@ local function RegisterRoot(
     }
     roots[root] = rootRecord
 
-    ResolvePendingTargets(rootRecord)
-    rootRecord.InputCleanup = InputAdapter.RegisterRoot(root)
-
     local function Destroy()
         if rootRecord.Destroyed then return end
         rootRecord.Destroyed = true
 
-        ResetRoot(rootRecord)
-        SetRootManaged(rootRecord, false)
         roots[root] = nil
-
-        while #rootRecord.Targets > 0 do
-            RemoveFromRoot(rootRecord.Targets[#rootRecord.Targets], true)
-        end
 
         local inputCleanup = rootRecord.InputCleanup
         rootRecord.InputCleanup = nil
-        if inputCleanup then inputCleanup() end
+        if inputCleanup then
+            local success, err = pcall(function(): boolean
+                inputCleanup()
+                return true
+            end)
+            if not success then
+                warn(`Cursor root input cleanup failed: {err}`)
+            end
+        end
+
+        if next(roots) == nil then
+            local adapter = inputAdapter
+            inputAdapter = nil
+            if adapter then
+                local success, err = pcall(function(): boolean
+                    adapter.Destroy()
+                    return true
+                end)
+                if not success then
+                    warn(`Cursor adapter cleanup failed: {err}`)
+                end
+            end
+        end
+
+        local success, err = pcall(function()
+            ResetRoot(rootRecord)
+            SetRootManaged(rootRecord, false)
+
+            while #rootRecord.Targets > 0 do
+                RemoveFromRoot(rootRecord.Targets[#rootRecord.Targets], true)
+            end
+        end)
+        if not success then
+            warn(`Cursor root bookkeeping cleanup failed: {err}`)
+        end
     end
 
     table.insert(scope, Destroy)
+
+    ResolvePendingTargets(rootRecord)
+    rootRecord.InputCleanup = GetInputAdapter().RegisterRoot(root)
 end
 
 local function RegisterTarget(

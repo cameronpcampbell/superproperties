@@ -37,8 +37,11 @@ type PickState = {
 }
 
 local selectionChangedEvent = Instance.new("BindableEvent")
+local selectionChangedConnection: RBXScriptConnection? = nil
+local unloadingConnection: RBXScriptConnection? = nil
 local publishedSelection = SelectionService:Get()
 local activePick: PickState? = nil
+local destroyed = false
 
 local function RestorePickerState(pick: PickState)
     if PluginMouse then
@@ -110,7 +113,7 @@ local function FindPickedInstance(
     return after[1]
 end
 
-SelectionService.SelectionChanged:Connect(function()
+local function HandleSelectionChanged()
     local currentSelection = SelectionService:Get()
 
     -- Ignore redundant signals, including the selection restoration performed
@@ -129,7 +132,10 @@ SelectionService.SelectionChanged:Connect(function()
 
     publishedSelection = table.clone(currentSelection)
     selectionChangedEvent:Fire()
-end)
+end
+
+selectionChangedConnection =
+    SelectionService.SelectionChanged:Connect(HandleSelectionChanged)
 
 local SelectionServiceWrapper: Wrapper = setmetatable({
     SelectionChanged = selectionChangedEvent.Event
@@ -208,13 +214,34 @@ function SelectionServiceWrapper:CancelPick(token: PickToken): boolean
     return FinishPick(pick, nil, false)
 end
 
-if PluginInstance then
-    PluginInstance.Unloading:Connect(function()
-        local pick = activePick
-        if not pick then return end
+local function DestroyInternal()
+    if destroyed then return end
+    destroyed = true
 
-        FinishPick(pick, nil, false)
-    end)
+    local connection = selectionChangedConnection
+    selectionChangedConnection = nil
+    if connection then connection:Disconnect() end
+
+    local unloading = unloadingConnection
+    unloadingConnection = nil
+    if unloading then unloading:Disconnect() end
+
+    selectionChangedEvent:Destroy()
+    table.clear(publishedSelection)
+
+    local pick = activePick
+    if pick then
+        local success, err = pcall(FinishPick, pick, nil, false)
+        if not success then
+            activePick = nil
+            warn(`Instance picker cleanup failed: {err}`)
+        end
+    end
+end
+
+if PluginInstance then
+    unloadingConnection =
+        PluginInstance.Unloading:Connect(DestroyInternal)
 end
 
 return SelectionServiceWrapper

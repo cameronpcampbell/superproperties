@@ -49,15 +49,16 @@ return function(
     local toolbarButtonChild: ToolbarButtonChild = {
         _MosaicToolbarButton = true,
         Mount = function(toolbar: PluginToolbar): PluginToolbarButton
+            local hydrationProps = CombineProps({
+                Icon = icon
+            }, props)
             local button = toolbar:CreateButton(
                 id,
                 tooltip,
                 Peek<<string>>(icon),
                 text or id
             )
-            local hydratedButton = Hydrate(scope, button)(CombineProps({
-                Icon = icon
-            }, props))
+            local hydratedButton = Hydrate(scope, button)(hydrationProps)
 
             if active ~= nil then
                 local active = active :: Fusion.UsedAs<boolean>
