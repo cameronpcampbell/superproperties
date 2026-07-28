@@ -10,8 +10,8 @@ local Children, New, Peek = Fusion.Children, Fusion.New, Fusion.peek
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CombineProps =
-    FusionUtils.Component, FusionUtils.CombineProps
+local Component, CombineProps, ComputeAdd =
+    FusionUtils.Component, FusionUtils.CombineProps, FusionUtils.ComputeMath.Add
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope, GetNextVariant =
@@ -23,6 +23,7 @@ local TableExtract = TableUtils.Extract
 type ContainerProps = {
 	Variant: ThemeUtils.BgVariantLayer?,
 	CornerRadius: ThemeUtils.CornerRadiusVariant?,
+	CornerRadiusOffset: number?,
 	AutomaticSize: Enum.AutomaticSize?,
 	ContentZIndex: Fusion.UsedAs<number>?,
 	[string | Fusion.SpecialKey]: any
@@ -32,6 +33,8 @@ return Component<<ContainerProps>>(function(scope, props)
     local props, variant = TableExtract(props, "Variant", "Primary")
     local props, cornerRadiusVariant =
         TableExtract(props, "CornerRadius", "Md")
+    local props, cornerRadiusOffset =
+        TableExtract(props, "CornerRadiusOffset", 0)
     local props, automaticSize =
         TableExtract(props, "AutomaticSize", Enum.AutomaticSize.None)
     local props, contentZIndex =
@@ -42,7 +45,11 @@ return Component<<ContainerProps>>(function(scope, props)
     local theme = GetThemeForScope(scope)
     local bgColor = theme:GetBg(scope, variant)
     local strokeColor = theme:GetBg(scope, GetNextVariant(scope, variant))
-    local cornerRadius = theme:GetCornerRadius(scope, cornerRadiusVariant)
+    local cornerRadius = ComputeAdd(
+        scope,
+        theme:GetCornerRadius(scope, cornerRadiusVariant),
+        cornerRadiusOffset
+    )
 
     local automaticSizeContent: Fusion.Child? = nil
     local regularContent: Fusion.Child? = children

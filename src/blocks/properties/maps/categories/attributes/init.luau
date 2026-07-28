@@ -372,6 +372,8 @@ return function(
 
     attributeMenu = Placement(scope, Container, {
         Variant = "Tertiary",
+        CornerRadius = "Md",
+        CornerRadiusOffset = MENU_PADDING - 2,
         Size = UDim2.new(.5, 0, 0, 0),
         AutomaticSize = Enum.AutomaticSize.Y,
         Position = UDim2.new(1, -MENU_RIGHT_INSET, 1, MENU_OFFSET),
