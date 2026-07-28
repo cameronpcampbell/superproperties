@@ -45,6 +45,34 @@ type InputProps = {
 	ParentPopoverFocus: PopoverFocus.Controller?,
 }
 
+local function CreateAccessoryContainer(
+    scope: Fusion.Scope,
+    name: string,
+    layoutOrder: number,
+    children: Fusion.Child?
+): Fusion.Child?
+    if children == nil then return nil end
+
+    return New(scope, "Frame") {
+        Size = UDim2.fromScale(0, 1),
+        AutomaticSize = Enum.AutomaticSize.X,
+        BackgroundTransparency = 1,
+        LayoutOrder = layoutOrder,
+        Name = name,
+
+        [Children] = {
+            children,
+
+            New(scope, "UIListLayout") {
+                FillDirection = Enum.FillDirection.Horizontal,
+                VerticalAlignment = Enum.VerticalAlignment.Center,
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Padding = UDim.new(0, 6)
+            }
+        }
+    }
+end
+
 return Component<<InputProps>>(function(scope, props)
     local props, variant = TableExtract(props, "Variant", "Tertiary")
     local props, text = TableExtract(props, "Text", "")
@@ -118,6 +146,7 @@ return Component<<InputProps>>(function(scope, props)
         ClipsDescendants = true,
         TextXAlignment = Enum.TextXAlignment.Left,
         TextTruncate = textTruncate,
+        LayoutOrder = 1,
 
         [OnEvent "Focused"] = function()
             isFocusState:set(true)
@@ -169,16 +198,27 @@ return Component<<InputProps>>(function(scope, props)
         },
 
         [Children] = {
-            leftChildren,
+            CreateAccessoryContainer(
+                scope,
+                "LeftChildren",
+                0,
+                leftChildren
+            ),
 
             input,
 
-            rightChildren,
+            CreateAccessoryContainer(
+                scope,
+                "RightChildren",
+                2,
+                rightChildren
+            ),
 
             New(scope, "UIListLayout") {
                 FillDirection = Enum.FillDirection.Horizontal,
                 HorizontalAlignment = Enum.HorizontalAlignment.Left,
                 VerticalAlignment = Enum.VerticalAlignment.Center,
+                SortOrder = Enum.SortOrder.LayoutOrder,
                 Padding = UDim.new(0, 6)
             },
 

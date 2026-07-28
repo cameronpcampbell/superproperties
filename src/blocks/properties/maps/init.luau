@@ -21,6 +21,8 @@ type PropertiesMapsProps = {
 }
 
 local ExtraCategories = require(script.extraCategories)
+local GetBookmarksOnlyState =
+    require(script.Parent.getBookmarksOnlyState)
 local GetFilterState = require(script.Parent.getFilterState)
 local Categories = require(script.categories)
 
@@ -104,6 +106,8 @@ return function(
     local outerScope = scope
     local collapsedStateScope = Fusion.innerScope(outerScope)
     local mapsScope = Fusion.innerScope(outerScope)
+    local bookmarksOnlyState =
+        GetBookmarksOnlyState(outerScope)
     local filterState = GetFilterState(outerScope)
 
     local computeCategoryStates = Computed(mapsScope, function(
@@ -152,15 +156,24 @@ return function(
             return CreateEmptyMessage(scope, "No instances selected.")
         end
 
+        local bookmarksOnly =
+            use<<boolean>>(bookmarksOnlyState)
         local filter = use<<string?>>(filterState)
-        local hasActiveFilter =
+        local hasTextFilter =
             filter ~= nil and filter:match("%S") ~= nil
-        if not hasActiveFilter then return nil end
+        if not bookmarksOnly and not hasTextFilter then
+            return nil
+        end
 
         local mapProps = use<<{ MapProps }>>(computeMapProps)
         if #mapProps > 0 then return nil end
 
-        return CreateEmptyMessage(scope, "No results found.")
+        return CreateEmptyMessage(
+            scope,
+            if bookmarksOnly
+            then "No bookmarked results found."
+            else "No results found."
+        )
     end)
 
     return VirtualMapScrollable(mapsScope, {

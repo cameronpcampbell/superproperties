@@ -14,6 +14,8 @@ local Bookmarks = require(script.Parent.Parent.bookmarks)
 local CategoryOrder = require(script.categoryOrder)
 local CreateItemFilter = require(script.filterItems)
 local GetCollapsedState = require(script.getCollapsedState)
+local GetBookmarksOnlyState =
+    require(script.Parent.Parent.getBookmarksOnlyState)
 local GetFilterState = require(script.Parent.Parent.getFilterState)
 local SortItemList = require(script.sortItems)
 
@@ -163,14 +165,36 @@ end
 local function FilterItems(
     scope: Fusion.Scope,
     filterState: Fusion.Value<string?>,
+    bookmarksOnlyState: Fusion.Value<boolean>,
+    bookmarkable: boolean,
     items: Fusion.UsedAs<{ Item }>,
     itemFilter: Fusion.UsedAs<ItemFilter>
 ): Fusion.Computed<{ Item }>
     return Computed(scope, function(use)
         local usedItems = use<<{ Item }>>(items)
+        local bookmarksOnly =
+            use<<boolean>>(bookmarksOnlyState)
+        if bookmarksOnly and not bookmarkable then return {} end
+
         local usedItemFilter = use<<ItemFilter>>(itemFilter)
         local usedFilter = use<<string?>>(filterState)
-        return usedItemFilter(usedFilter, usedItems)
+        local filteredItems =
+            usedItemFilter(usedFilter, usedItems)
+        if not bookmarksOnly then return filteredItems end
+
+        local bookmarkedItems =
+            table.create(#filteredItems) :: { Item }
+        for _, item in filteredItems do
+            local bookmarkedState =
+                (item :: any).Bookmarked :: Fusion.Value<boolean>?
+            if bookmarkedState
+                and use<<boolean>>(bookmarkedState)
+            then
+                table.insert(bookmarkedItems, item)
+            end
+        end
+
+        return bookmarkedItems
     end)
 end
 
@@ -192,13 +216,22 @@ return function(
         then preparedItems
         else SortItems(scope, preparedItems)
 
+    local bookmarksOnlyState =
+        GetBookmarksOnlyState(outerScope)
     local filterState = GetFilterState(outerScope)
     local itemFilter: Fusion.UsedAs<ItemFilter> =
         if props.StableKeys then
             CreateItemFilter(Peek<<{ Item }>>(itemsToFilter))
         else PrepareItemFilter(scope, itemsToFilter)
     local filteredItems =
-        FilterItems(scope, filterState, itemsToFilter, itemFilter)
+        FilterItems(
+            scope,
+            filterState,
+            bookmarksOnlyState,
+            bookmarkable,
+            itemsToFilter,
+            itemFilter
+        )
     local displayItems: Fusion.UsedAs<{ Item }> =
         if bookmarkable
         then SortItems(scope, filteredItems)
@@ -225,7 +258,11 @@ return function(
         local usedDisplayItems = Peek<<{ Item }>>(displayItems)
         local usedFilter = Peek<<string?>>(filterState)
         local hasActiveFilter =
-            usedFilter ~= nil and usedFilter:match("%S") ~= nil
+            Peek<<boolean>>(bookmarksOnlyState)
+            or (
+                usedFilter ~= nil
+                and usedFilter:match("%S") ~= nil
+            )
         local visible = not (
             #usedDisplayItems == 0 and
             (not props.EmptyText or hasActiveFilter)
@@ -237,8 +274,9 @@ return function(
     end
 
     -- Empty sorted lists can keep their identity across filter changes.
-    -- Observe both inputs that determine category visibility.
+    -- Observe all inputs that determine category visibility.
     Observer(scope, displayItems):onChange(refreshVisibility)
+    Observer(scope, bookmarksOnlyState):onChange(refreshVisibility)
     Observer(scope, filterState):onChange(refreshVisibility)
     refreshVisibility()
 

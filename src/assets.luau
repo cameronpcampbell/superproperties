@@ -5,5 +5,5 @@ return {
     Warning = "rbxassetid://114864877949317",
 
     BookmarkFill = "rbxassetid://125934706036264",
-    BookmarkOutline = "rbxassetid://93399405105409",
+    BookmarkOutline = "rbxassetid://96886449478527",
 }
