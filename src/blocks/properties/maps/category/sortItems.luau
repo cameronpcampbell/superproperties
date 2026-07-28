@@ -7,9 +7,23 @@ export type Item = {
 
 type GetBookmarked = (item: any) -> boolean
 
+local function HasSameItemOrder(
+    previousItems: { any },
+    nextItems: { any }
+): boolean
+    if #previousItems ~= #nextItems then return false end
+
+    for itemIdx, item in nextItems do
+        if previousItems[itemIdx] ~= item then return false end
+    end
+
+    return true
+end
+
 return function(
     items: { any },
-    getBookmarked: GetBookmarked
+    getBookmarked: GetBookmarked,
+    previousItems: { any }?
 ): { any }
     local sortedItems = table.clone(items)
 
@@ -34,5 +48,13 @@ return function(
         return leftBookmarkKey < rightBookmarkKey
     end)
 
-    return sortedItems
+    -- Fusion compares frozen tables by identity. Reusing this result prevents
+    -- Mosaic from remounting rows when a bookmark toggle keeps the same order.
+    if previousItems
+        and HasSameItemOrder(previousItems, sortedItems)
+    then
+        return previousItems
+    end
+
+    return table.freeze(sortedItems)
 end

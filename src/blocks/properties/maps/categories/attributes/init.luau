@@ -261,7 +261,7 @@ return function(
                 end
             end
             item.KeyChildren = function(
-                childScope: Fusion.Scope,
+                childScope: Fusion.Scope<typeof(Fusion)>,
                 transparency: Fusion.UsedAs<number>
             ): { Fusion.Child }
                 return {

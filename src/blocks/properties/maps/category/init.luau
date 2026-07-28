@@ -40,7 +40,9 @@ local function SortItems(
     scope: Fusion.Scope,
     items: Fusion.UsedAs<{ Item }>
 ): Fusion.Computed<{ Item }>
-    return Computed(scope, function(use)
+    local previousSortedItems: { Item }? = nil
+
+    return Computed(scope, function(use): { Item }
         local usedItems = use<<{ Item }>>(items)
         local bookmarkedByItem: { [Item]: boolean } = {}
 
@@ -52,12 +54,16 @@ local function SortItems(
                 and use<<boolean>>(bookmarkedState)
         end
 
-        return (SortItemList(
+        local sortedItems = (SortItemList(
             usedItems :: any,
             function(item: Item): boolean
                 return bookmarkedByItem[item]
-            end
+            end,
+            previousSortedItems :: any
         ) :: any) :: { Item }
+
+        previousSortedItems = sortedItems
+        return sortedItems
     end)
 end
 
@@ -86,7 +92,7 @@ local function DecorateBookmarkItems(
             local originalKeyChildren = item.KeyChildren
 
             decoratedItem.KeyChildren = function(
-                childScope: Fusion.Scope,
+                childScope: Fusion.Scope<typeof(Fusion)>,
                 hoverTransparency: Fusion.UsedAs<number>
             ): { Fusion.Child }
                 local bookmarkTransparency = Computed(
