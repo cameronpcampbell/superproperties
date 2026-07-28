@@ -1,4 +1,4 @@
-# Unreleased
+# v0.3.0
 - Properties, attributes, and tags can now be bookmarked.
 - Fixed resource leaks during failed initialization and plugin unload, preventing orphaned widgets, Instances, and event connections.
 - Properties with numbers now support math expressions.
