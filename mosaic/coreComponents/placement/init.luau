@@ -27,10 +27,11 @@ export type Props = {
     Visible: Fusion.UsedAs<boolean>?,
     Transparency: Fusion.UsedAs<number>?,
     OutRenderVisible: Fusion.Value<boolean>?,
+    OutTransitionTransparency: Fusion.Value<number>?,
     [any]: any
 }
 
-local TransitionOffset = 4
+local TransitionOffset = 12
 local TransitionTweenInfo = TweenInfo.new(
     .2,
     Enum.EasingStyle.Quint,
@@ -111,6 +112,8 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
     local props, transparency = TableExtract(props, "Transparency", 0)
     local props, outRenderVisible =
         TableExtract(props, "OutRenderVisible")
+    local props, outTransitionTransparency =
+        TableExtract(props, "OutTransitionTransparency")
 
     local effectivePreferredPosition = Computed(scope, function(use): UDim2
         return use<<UDim2>>(preferredPosition)
@@ -171,6 +174,21 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
         if Peek<<boolean>>(outRenderVisible) == isRendering then return end
 
         outRenderVisible:set(isRendering)
+    end)
+
+    Observer(scope, transitionTransparency):onBind(function()
+        if not outTransitionTransparency then return end
+
+        local usedTransparency =
+            Peek<<number>>(transitionTransparency)
+        if
+            Peek<<number>>(outTransitionTransparency)
+                == usedTransparency
+        then
+            return
+        end
+
+        outTransitionTransparency:set(usedTransparency)
     end)
 
     local target = constructor(scope, CombineProps({

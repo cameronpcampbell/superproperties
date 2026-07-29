@@ -11,8 +11,9 @@ local New, Children, Value, Peek, Computed, OnEvent, Tween =
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, ChildrenTransform, Oktween =
-    FusionUtils.Component, FusionUtils.ChildrenTransform, FusionUtils.Oktween
+local Component, ChildrenTransform, ComposeTransparency, Oktween =
+    FusionUtils.Component, FusionUtils.ChildrenTransform,
+    FusionUtils.ComposeTransparency, FusionUtils.Oktween
 local ComputeTransforms = FusionUtils.ComputeTransforms
 local ComputeUDim2, ComputeUDim = ComputeTransforms.UDim2, ComputeTransforms.UDim
 
@@ -31,6 +32,7 @@ type ButtonProps = {
 	Variant: ThemeUtils.AccentVariant?,
 	Width: UDim?,
 	Disabled: Fusion.UsedAs<boolean>?,
+    Transparency: Fusion.UsedAs<number>?,
 	[string | Fusion.SpecialKey]: any
 }
 
@@ -81,6 +83,8 @@ return Component<<ButtonProps>>(function(scope, props)
     local props, variant = TableExtract(props, "Variant", "Primary")
     local props, width = TableExtract(props, "Width", UDim.new(1, 0))
     local props, disabled = TableExtract(props, "Disabled", false)
+    local props, transparency =
+        TableExtract(props, "Transparency", 0)
     local props, children = TableExtract(props, Children)
 
     local isHoverState, isFocusState = Value(scope, false), Value(scope, false)
@@ -94,6 +98,16 @@ return Component<<ButtonProps>>(function(scope, props)
                 else 0
         end),
         TransparencyTweenInfo
+    )
+    local visualTransparency = ComposeTransparency(
+        scope,
+        disabledTransparency,
+        transparency
+    )
+    local gradientTransparency = ComposeTransparency(
+        scope,
+        .82,
+        transparency
     )
 
     local theme = GetThemeForScope(scope)
@@ -109,15 +123,15 @@ return Component<<ButtonProps>>(function(scope, props)
         Button = true,
         Disabled = disabled,
         Enabled = gradientEnabled,
-        GradientTransparency = 0.82,
+        GradientTransparency = gradientTransparency,
         BackgroundColor3 = Oktween(
             scope, accentColor,
             TweenInfo.new(
                 .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
             )
         ),
-        BackgroundTransparency = disabledTransparency,
-        StrokeTransparency = disabledTransparency,
+        BackgroundTransparency = visualTransparency,
+        StrokeTransparency = visualTransparency,
         StrokeThickness = 1,
         Size = ComputeUDim2(scope, width, ComputeUDim(scope, 0, height)),
         CornerRadius = Peek<<number>>(cornerRadius),
@@ -147,7 +161,7 @@ return Component<<ButtonProps>>(function(scope, props)
                 return TransformChild(
                     childScope,
                     child,
-                    disabledTransparency
+                    visualTransparency
                 )
             end, children),
 

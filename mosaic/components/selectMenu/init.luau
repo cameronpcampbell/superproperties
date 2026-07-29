@@ -12,9 +12,10 @@ local New, Children, Value, Peek, Out, OnEvent, Computed, Observer, Tween =
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CombineProps, CoerceToValue, Oktween =
+local Component, CombineProps, CoerceToValue, ComposeTransparency, Oktween =
     FusionUtils.Component, FusionUtils.CombineProps,
-    FusionUtils.CoerceToValue, FusionUtils.Oktween
+    FusionUtils.CoerceToValue, FusionUtils.ComposeTransparency,
+    FusionUtils.Oktween
 local ComputeTransforms = FusionUtils.ComputeTransforms
 local ComputeUDim2, ComputeUDim =
     ComputeTransforms.UDim2, ComputeTransforms.UDim
@@ -66,6 +67,7 @@ type SelectMenuProps = {
 	DefaultIdx: Fusion.UsedAs<number>?,
 	Visible: Fusion.UsedAs<boolean>?,
 	Interactable: Fusion.UsedAs<boolean>?,
+    Transparency: Fusion.UsedAs<number>?,
     EmptyText: Fusion.UsedAs<string>?,
     OutRenderVisible: Fusion.Value<boolean>?,
     OnSearchFocused: (() -> ())?,
@@ -106,6 +108,8 @@ return Component<<SelectMenuProps>>(function(scope, props)
     local props = TableExtract(props, "DefaultIdx")
     local props, visible = TableExtract(props, "Visible", true)
     local props, interactable = TableExtract(props, "Interactable", true)
+    local props, transparency =
+        TableExtract(props, "Transparency", 0)
     local props, emptyText =
         TableExtract(props, "EmptyText", "No results found.")
     local props, outRenderVisible =
@@ -187,6 +191,21 @@ return Component<<SelectMenuProps>>(function(scope, props)
     local isVisible = Computed(scope, function(use): boolean
         return use<<boolean>>(visible)
     end)
+
+    local transitionTransparency = Value(
+        scope,
+        if Peek<<boolean>>(isVisible) then 0 else 1
+    )
+    local contentTransparency = ComposeTransparency(
+        scope,
+        transparency,
+        transitionTransparency
+    )
+    local composedStrokeTransparency = ComposeTransparency(
+        scope,
+        strokeTransparency,
+        contentTransparency
+    )
 
     local renderVisible = Value(
         scope,
@@ -297,6 +316,11 @@ return Component<<SelectMenuProps>>(function(scope, props)
         end),
         SearchHoverTweenInfo
     )
+    local composedSearchStrokeTransparency = ComposeTransparency(
+        scope,
+        animatedSearchStrokeTransparency,
+        contentTransparency
+    )
 
     local searchHeight = Computed(scope, function(use): number
         return math.max(use<<number>>(largeHeight) - 2, 0)
@@ -341,7 +365,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
         PlaceholderText = searchPlaceholderText,
         TextColor3 = textColor,
         PlaceholderColor3 = placeholderColor,
-        TextTransparency = 0,
+        TextTransparency = contentTransparency,
         TextSize = fontSize,
         FontFace = font,
         ClearTextOnFocus = false,
@@ -382,7 +406,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
             GatedTransparencyProperty = "ImageTransparency",
             BackgroundTransparency = 1,
             StrokeColor = animatedSearchStrokeColor,
-            StrokeTransparency = animatedSearchStrokeTransparency,
+            StrokeTransparency = composedSearchStrokeTransparency,
             StrokeThickness = 1,
             Size = UDim2.new(1, 2, 1, 2),
             ZIndex = 3,
@@ -402,7 +426,8 @@ return Component<<SelectMenuProps>>(function(scope, props)
         TopLeftRadius = searchCornerRadius,
         TopRightRadius = searchCornerRadius,
         BottomLeftRadius = 0,
-        BottomRightRadius = 0
+        BottomRightRadius = 0,
+        Transparency = contentTransparency
     })
 
     local searchChrome = CoreFrame(
@@ -451,8 +476,10 @@ return Component<<SelectMenuProps>>(function(scope, props)
         ContentZIndex = 4,
         Position = preferredPosition,
         AnchorPoint = preferredAnchorPoint,
+        Transparency = transparency,
         Visible = isVisible,
         OutRenderVisible = renderVisible,
+        OutTransitionTransparency = transitionTransparency,
 
         Name = "SelectMenu",
 
@@ -471,7 +498,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
 
             New(scope, "Frame") {
                 BackgroundColor3 = strokeColor,
-                BackgroundTransparency = strokeTransparency,
+                BackgroundTransparency = composedStrokeTransparency,
                 BorderSizePixel = 0,
                 Size = UDim2.new(1, 0, 0, SearchDividerHeight),
                 Visible = isSearchEnabled,
@@ -497,6 +524,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
                         AutomaticCanvasSize = Enum.AutomaticSize.Y,
                         ClipsDescendants = true,
                         PaddingRight = UDim.new(0, 3),
+                        Transparency = contentTransparency,
 
                         [Children] = {
                             Text(scope, {
@@ -508,7 +536,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
                                     ComputeUDim(scope, 0, emptyRowHeight)
                                 ),
                                 AutomaticSize = Enum.AutomaticSize.None,
-                                TextTransparency = 0,
+                                TextTransparency = contentTransparency,
                                 TextXAlignment = Enum.TextXAlignment.Center,
                                 TextYAlignment = Enum.TextYAlignment.Center,
                                 Visible = shouldShowEmptyText,
@@ -529,7 +557,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
                                     SelectedIdxValue = selectedIdxValue,
                                     Idx = usedItem.Idx,
                                     LayoutOrder = key,
-                                    Transparency = 0,
+                                    Transparency = contentTransparency,
                                     Interactable = effectiveInteractable
                                 })
                             end),

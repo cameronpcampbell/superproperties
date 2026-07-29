@@ -12,9 +12,10 @@ local New, Children, Value, Peek, Computed, Observer, OnEvent =
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CombineProps, CoerceToValue, Oktween =
+local Component, CombineProps, CoerceToValue, ComposeTransparency, Oktween =
     FusionUtils.Component, FusionUtils.CombineProps,
-    FusionUtils.CoerceToValue, FusionUtils.Oktween
+    FusionUtils.CoerceToValue, FusionUtils.ComposeTransparency,
+    FusionUtils.Oktween
 local ComputeTransforms = FusionUtils.ComputeTransforms
 local ComputeUDim2, ComputeUDim =
     ComputeTransforms.UDim2, ComputeTransforms.UDim
@@ -48,7 +49,8 @@ type SelectProps = {
     MenuMaxHeight: Fusion.UsedAs<number>?,
     OnFocusChanged: ((boolean, InputObject?) -> ())?,
     ParentPopoverFocus: PopoverFocus.Controller?,
-    ZIndex: Fusion.UsedAs<number>?
+    ZIndex: Fusion.UsedAs<number>?,
+    Transparency: Fusion.UsedAs<number>?
 }
 
 local ElevatedZIndexOffset = 4
@@ -76,6 +78,12 @@ return Component<<SelectProps>>(function(scope, props)
     local props, parentPopoverFocus =
         TableExtract(props, "ParentPopoverFocus")
     local props, zIndex = TableExtract(props, "ZIndex", 1)
+    local props, transparency =
+        TableExtract(props, "Transparency", 0)
+    local props, backgroundTransparency =
+        TableExtract(props, "BackgroundTransparency", 0)
+    local props, strokeTransparency =
+        TableExtract(props, "StrokeTransparency", 0)
 
     local selectedIdxState =
         CoerceToValue<<number?>>(scope, selectedIdx)
@@ -228,6 +236,21 @@ return Component<<SelectProps>>(function(scope, props)
             Enum.EasingDirection.InOut
         )
     )
+    local composedBackgroundTransparency = ComposeTransparency(
+        scope,
+        backgroundTransparency,
+        transparency
+    )
+    local composedStrokeTransparency = ComposeTransparency(
+        scope,
+        strokeTransparency,
+        transparency
+    )
+    local composedOpaqueTransparency = ComposeTransparency(
+        scope,
+        0,
+        transparency
+    )
 
     selectMenu = SelectMenu(scope, {
         Variant = variant,
@@ -238,6 +261,7 @@ return Component<<SelectProps>>(function(scope, props)
         Position = UDim2.new(0, -1, 1, MenuGap),
         Visible = isFocusState,
         Interactable = isFocusState,
+        Transparency = transparency,
         OutRenderVisible = menuRenderVisibleState,
         ZIndex = menuZIndex
     }) :: GuiObject
@@ -268,6 +292,7 @@ return Component<<SelectProps>>(function(scope, props)
                 AutomaticSize = Enum.AutomaticSize.None,
                 Text = displayedText,
                 TextColor3 = displayedTextColor,
+                TextTransparency = composedOpaqueTransparency,
                 FontWeight = Enum.FontWeight.Medium,
                 FontSize = "Title",
                 LayoutOrder = 1,
@@ -281,6 +306,7 @@ return Component<<SelectProps>>(function(scope, props)
 
             Icon(scope, {
                 Image = Assets.ChevronsThin,
+                ImageTransparency = composedOpaqueTransparency,
                 Width = 6,
                 LayoutOrder = 2,
 
@@ -331,8 +357,10 @@ return Component<<SelectProps>>(function(scope, props)
 
     return Supercorner.new(scope :: any, CombineProps({
         BackgroundColor3 = bgColor,
+        BackgroundTransparency = composedBackgroundTransparency,
         StrokeColor = tweenComputeStrokeColor,
         StrokeThickness = 1,
+        StrokeTransparency = composedStrokeTransparency,
         Size = ComputeUDim2(scope, width, ComputeUDim(scope, 0, height)),
         AutomaticSize = Enum.AutomaticSize.None,
         CornerRadius = Peek<<number>>(cornerRadius),
@@ -346,6 +374,7 @@ return Component<<SelectProps>>(function(scope, props)
 
             FocusRing(scope, {
                 IsFocus = isFocusState,
+                Transparency = transparency,
                 CornerRadius = Peek<<number>>(cornerRadius)
             })
         },

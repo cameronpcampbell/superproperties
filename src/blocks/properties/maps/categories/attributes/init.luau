@@ -323,6 +323,19 @@ return function(
         end,
         Name = "AttributesMenuFocusTarget"
     })
+    local attributeMenuRenderVisible = Value(
+        scope,
+        Peek<<boolean>>(popoverFocus.State)
+    )
+    local attributeMenuTransitionTransparency = Value(
+        scope,
+        if Peek<<boolean>>(popoverFocus.State) then 0 else 1
+    )
+    local attributeMenuShowOnTop = Computed(scope, function(use): boolean
+        return
+            use<<boolean>>(popoverFocus.State)
+            or use<<boolean>>(attributeMenuRenderVisible)
+    end)
     local createAttributeDisabled = Computed(scope, function(use): boolean
         return
             not use<<boolean>>(popoverFocus.State)
@@ -379,6 +392,9 @@ return function(
         Position = UDim2.new(1, -MENU_RIGHT_INSET, 1, MENU_OFFSET),
         AnchorPoint = Vector2.new(1, 0),
         Visible = popoverFocus.State,
+        OutRenderVisible = attributeMenuRenderVisible,
+        OutTransitionTransparency =
+            attributeMenuTransitionTransparency,
         ZIndex = 4,
         ContentZIndex = 4,
 
@@ -392,6 +408,8 @@ return function(
                 ParentPopoverFocus = popoverFocus,
                 FocusState = popoverFocus.State,
                 Interactable = popoverFocus.State,
+                Transparency =
+                    attributeMenuTransitionTransparency,
                 LayoutOrder = 1
             }),
 
@@ -401,12 +419,16 @@ return function(
                 SelectedIdx = selectedTypeIdxState,
                 ParentPopoverFocus = popoverFocus,
                 Interactable = popoverFocus.State,
+                Transparency =
+                    attributeMenuTransitionTransparency,
                 LayoutOrder = 2
             }),
 
             Button(scope, {
                 LayoutOrder = 3,
                 Disabled = createAttributeDisabled,
+                Transparency =
+                    attributeMenuTransitionTransparency,
 
                 [OnEvent "MouseButton1Click"] = createAttribute,
                 [Children] = "Create"
@@ -454,7 +476,7 @@ return function(
             attributeMenu,
             popoverFocus.Target
         } :: any),
-        ShowOnTop = popoverFocus.State,
+        ShowOnTop = attributeMenuShowOnTop,
         Items = attributeItemsState,
         Bookmarkable = true,
         EmptyText = "No Attributes have been added yet."

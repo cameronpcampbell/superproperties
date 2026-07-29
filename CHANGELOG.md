@@ -5,6 +5,7 @@
 - The tags select menu now omits tags that the selected instance(s) already have.
 - The tags select menu is now alphabetically sorted.
 - Name input of attributes container captures focus when visible.
+- Select menu's now have a subtle motion transition when fading in/out.
 
 # v0.3.0
 - Properties, attributes, and tags can now be bookmarked.

@@ -69,16 +69,7 @@ return Component<<ContainerProps>>(function(scope, props)
     )
 
     local automaticSizeContent: Fusion.Child? = nil
-    local regularContent: Fusion.Child? = New(scope, "CanvasGroup") {
-        Size = UDim2.fromScale(1, 1),
-        BackgroundTransparency = 1,
-        GroupTransparency = transparency,
-        ZIndex = contentZIndex,
-
-        Name = "ContainerContent",
-
-        [Children] = children
-    }
+    local regularContent: Fusion.Child? = children
 
     if automaticSize == Enum.AutomaticSize.Y
         or automaticSize == Enum.AutomaticSize.XY
@@ -86,14 +77,13 @@ return Component<<ContainerProps>>(function(scope, props)
         -- Supercorner places regular children in a full-size intermediate
         -- frame. Roblox cannot derive the root's automatic height through
         -- that scaled frame, so mount auto-sized content directly at root.
-        automaticSizeContent = New(scope, "CanvasGroup") {
+        automaticSizeContent = New(scope, "Frame") {
             Size =
                 if automaticSize == Enum.AutomaticSize.XY then
                     UDim2.fromOffset(0, 0)
                 else UDim2.new(1, 0, 0, 0),
             AutomaticSize = automaticSize,
             BackgroundTransparency = 1,
-            GroupTransparency = transparency,
             ZIndex = contentZIndex,
 
             Name = "ContainerContent",

@@ -11,8 +11,9 @@ local Tween, Computed, Observer, Peek =
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CombineProps =
-    FusionUtils.Component, FusionUtils.CombineProps
+local Component, CombineProps, ComposeTransparency =
+    FusionUtils.Component, FusionUtils.CombineProps,
+    FusionUtils.ComposeTransparency
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
@@ -35,6 +36,7 @@ type FocusRingProps = {
 	IsFocus: Fusion.UsedAs<boolean>,
 	CullWhenHidden: boolean?,
 	TransitionTweenInfo: Fusion.UsedAs<TweenInfo>?,
+    Transparency: Fusion.UsedAs<number>?,
 	AlphaOut: Fusion.Value<number>?
 }
 
@@ -57,6 +59,8 @@ return Component<<FocusRingProps>>(function(scope, props)
     local props, isFocus = TableExtract(props, "IsFocus")
     local props, cullWhenHidden = TableExtract(props, "CullWhenHidden", true)
     local props, alphaOut = TableExtract(props, "AlphaOut")
+    local props, transparency =
+        TableExtract(props, "Transparency", 0)
     local props, transitionTweenInfo =
         TableExtract(
             props,
@@ -115,6 +119,11 @@ return Component<<FocusRingProps>>(function(scope, props)
 
         return math.map(usedAlpha, 0, 1, 1, .6)
     end)
+    local composedTransparency = ComposeTransparency(
+        scope,
+        computeTransparency,
+        transparency
+    )
 
     local theme = GetThemeForScope(scope)
     local accentColor = theme:GetAccent(scope, "Primary")
@@ -124,7 +133,7 @@ return Component<<FocusRingProps>>(function(scope, props)
         Position = UDim2.fromScale(.5, .5),
         AnchorPoint = Vector2.new(.5, .5),
         StrokeThickness = ringThickness + ringInset,
-        StrokeTransparency = computeTransparency,
+        StrokeTransparency = composedTransparency,
         StrokeColor = accentColor,
         BackgroundTransparency = 1,
         ForceSupercorner = true,
