@@ -267,7 +267,44 @@ return Component<<SelectMenuProps>>(function(scope, props)
         visibilityTransparency
     )
 
-    return Placement(scope, Container, CombineProps({
+    local scopeAlive = true
+    table.insert(scope, function()
+        scopeAlive = false
+    end)
+
+    local searchInput = CoreInput(scope, {
+        Size = ComputeUDim2(
+            scope,
+            UDim.new(1, 0),
+            ComputeUDim(scope, 0, searchHeight)
+        ),
+        BackgroundTransparency = 1,
+        Text = searchState,
+        PlaceholderText = searchPlaceholderText,
+        TextColor3 = textColor,
+        PlaceholderColor3 = placeholderColor,
+        TextTransparency = composedOpaqueTransparency,
+        TextSize = fontSize,
+        FontFace = font,
+        ClearTextOnFocus = false,
+        Interactable = effectiveSearchInteractable,
+        TextEditable = effectiveSearchInteractable,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Visible = isSearchEnabled,
+
+        [Out "Text"] = searchState,
+        [OnEvent "Focused"] = onSearchFocused,
+        [OnEvent "FocusLost"] = onSearchFocusLost,
+
+        [Children] = New(scope, "UIPadding") {
+            PaddingLeft = UDim.new(0, 6),
+            PaddingRight = UDim.new(0, 6)
+        },
+
+        Name = "Search"
+    }) :: TextBox
+
+    local selectMenu = Placement(scope, Container, CombineProps({
         Variant = variant,
         BackgroundTransparency = composedBackgroundTransparency,
         StrokeColor = strokeColor,
@@ -292,37 +329,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
         },
 
         [Children] = {
-            CoreInput(scope, {
-                Size = ComputeUDim2(
-                    scope,
-                    UDim.new(1, 0),
-                    ComputeUDim(scope, 0, searchHeight)
-                ),
-                BackgroundTransparency = 1,
-                Text = searchState,
-                PlaceholderText = searchPlaceholderText,
-                TextColor3 = textColor,
-                PlaceholderColor3 = placeholderColor,
-                TextTransparency = composedOpaqueTransparency,
-                TextSize = fontSize,
-                FontFace = font,
-                ClearTextOnFocus = false,
-                Interactable = effectiveSearchInteractable,
-                TextEditable = effectiveSearchInteractable,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                Visible = isSearchEnabled,
-
-                [Out "Text"] = searchState,
-                [OnEvent "Focused"] = onSearchFocused,
-                [OnEvent "FocusLost"] = onSearchFocusLost,
-
-                [Children] = New(scope, "UIPadding") {
-                    PaddingLeft = UDim.new(0, 6),
-                    PaddingRight = UDim.new(0, 6)
-                },
-
-                Name = "Search"
-            }),
+            searchInput :: Fusion.Child,
 
             New(scope, "Frame") {
                 BackgroundColor3 = strokeColor,
@@ -421,5 +428,19 @@ return Component<<SelectMenuProps>>(function(scope, props)
                 PaddingBottom = UDim.new(0, 1),
             },
         }
-    }, props))
+    }, props)) :: GuiObject
+
+    Observer(scope, effectiveSearchInteractable):onBind(function()
+        if not Peek<<boolean>>(effectiveSearchInteractable) then return end
+
+        task.defer(function()
+            if not scopeAlive then return end
+            if not Peek<<boolean>>(effectiveSearchInteractable) then return end
+            if searchInput:IsFocused() then return end
+
+            searchInput:CaptureFocus()
+        end)
+    end)
+
+    return selectMenu
 end)

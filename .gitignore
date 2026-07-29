@@ -33,3 +33,5 @@ sourcemap.json
 # MacOS file system clutter.
 ._*
 .DS_STORE
+
+/TODO.md
