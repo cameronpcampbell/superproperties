@@ -2,6 +2,7 @@
 - Search bar of select menu captures focus when it becomes visible.
 - Search bar of select menu now has a hover border and focus ring.
 - The tags select menu now omits tags that the selected instance(s) already have.
+- The tags select menu is now alphabetically sorted.
 
 # v0.3.0
 - Properties, attributes, and tags can now be bookmarked.
