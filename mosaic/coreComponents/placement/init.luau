@@ -33,7 +33,7 @@ export type Props = {
     [any]: any
 }
 
-local TransitionOffset = 8
+local TransitionOffset = 6
 local TransitionTweenInfo = TweenInfo.new(
     .2,
     Enum.EasingStyle.Quint,
@@ -184,7 +184,7 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
         local isRendering = Peek<<boolean>>(shouldRender)
         if Peek<<boolean>>(outRenderVisible) == isRendering then return end
 
-        outRenderVisible:set(isRendering)
+        (outRenderVisible :: Fusion.Value<boolean>):set(isRendering)
     end)
 
     Observer(scope, transitionTransparency):onBind(function()
@@ -199,7 +199,7 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
             return
         end
 
-        outTransitionTransparency:set(usedTransparency)
+        (outTransitionTransparency :: Fusion.Value<number>):set(usedTransparency)
     end)
 
     local target = constructor(scope, CombineProps({
