@@ -26,8 +26,7 @@ local Scrollable = require(Components.scrollable)
 local Map = require(Components.map)
 
 local Virtualization = require(Components.map.virtualization)
-local CreateMapLayout, CreateLazyMapLayout, CreateMapSizeTween =
-    Virtualization.CreateMapLayout,
+local CreateLazyMapLayout, CreateMapSizeTween =
     Virtualization.CreateLazyMapLayout,
     Virtualization.CreateMapSizeTween
 local VirtualizationMath = require(Components.map.virtualization.math)
@@ -41,25 +40,16 @@ local FindVisibleMapRange =
     VirtualMapScrollableMath.FindVisibleMapRange
 
 type MapProps = Map.MapProps
-type MapLayout = Virtualization.MapLayout
 type LazyMapLayout = Virtualization.LazyMapLayout
 type RowGeometry = VirtualizationMath.RowGeometry
-
-type LayoutOrdered = {
-    LayoutOrder: number?
-}
 
 type MapRecord = {
     Top: Fusion.UsedAs<number>,
     Bottom: Fusion.UsedAs<number>,
-    Layout: MapLayout,
+    Layout: LazyMapLayout,
     ShowOnTop: Fusion.UsedAs<boolean>,
     Occluded: Fusion.Value<boolean>,
-    VisibleRootRange: Fusion.Value<Vector2>,
-    LoadRootRange: ((
-        firstRootRow: number,
-        lastRootRow: number
-    ) -> ())?
+    VisibleRootRange: Fusion.Value<Vector2>
 }
 
 export type MapShape = {
@@ -87,7 +77,8 @@ export type Detail = (
 type MapSource = {
     Props: MapProps,
     SourceMapIdx: number,
-    RootRowCount: number?
+    RowCount: number,
+    LayoutOrder: number
 }
 
 type MapIndexSet = { [number]: boolean }
@@ -98,9 +89,8 @@ type VirtualWindowRefreshOptions = {
 }
 
 type VirtualMapScrollableProps = {
-    Maps: Fusion.UsedAs<{ MapProps }>?,
-    Shape: Fusion.UsedAs<{ MapShape }>?,
-    Detail: Detail?,
+    Shape: Fusion.UsedAs<{ MapShape }>,
+    Detail: Detail,
     Overdraw: Fusion.UsedAs<number>?,
     Padding: Fusion.UsedAs<number>?
 }
@@ -116,18 +106,11 @@ local DefaultOverdrawRows = 6
 local MinimumBufferRows = 2
 local BottomPadding = 2
 
-local function GetLayoutOrder(mapProps: MapProps): number
-    -- Component props also carry Roblox instance properties, but MapProps only
-    -- describes Map's named API. Narrow that extra property at this boundary.
-    local layoutOrdered = (mapProps :: unknown) :: LayoutOrdered
-    return layoutOrdered.LayoutOrder or 0
-end
-
 local function SortMapSources(mapSources: { MapSource }): { MapSource }
     local layoutOrders = table.create(#mapSources) :: { number }
 
     for sourceIndex, source in mapSources do
-        layoutOrders[sourceIndex] = GetLayoutOrder(source.Props)
+        layoutOrders[sourceIndex] = source.LayoutOrder
     end
 
     local sortedSourceIndices =
@@ -141,23 +124,7 @@ local function SortMapSources(mapSources: { MapSource }): { MapSource }
     return sortedMapSources
 end
 
-local function CreateLegacyMapSources(
-    mapPropsList: { MapProps }
-): { MapSource }
-    local mapSources = table.create(#mapPropsList) :: { MapSource }
-
-    for sourceMapIdx, mapProps in mapPropsList do
-        mapSources[sourceMapIdx] = {
-            Props = mapProps,
-            SourceMapIdx = sourceMapIdx,
-            RootRowCount = nil
-        }
-    end
-
-    return mapSources
-end
-
-local function CreateLazyMapSources(
+local function CreateMapSources(
     shape: { MapShape }
 ): { MapSource }
     local mapSources = table.create(#shape) :: { MapSource }
@@ -184,7 +151,8 @@ local function CreateLazyMapSources(
         mapSources[sourceMapIdx] = {
             Props = mapProps :: MapProps,
             SourceMapIdx = sourceMapIdx,
-            RootRowCount = rowCount
+            RowCount = rowCount,
+            LayoutOrder = mapShape.LayoutOrder or 0
         }
     end
 
@@ -195,25 +163,21 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
     scope: Fusion.Scope,
     props: any
 ): Fusion.Child
-    local props, mapsProps = (TableExtract :: any)(props, "Maps")
     local props, shape = (TableExtract :: any)(props, "Shape")
     local props, detail = (TableExtract :: any)(props, "Detail")
     local props, overdraw = (TableExtract :: any)(props, "Overdraw")
     local props, padding =
         (TableExtract :: any)(props, "Padding", DefaultPadding)
 
-    local hasMaps = mapsProps ~= nil
-    local hasShape = shape ~= nil
-
     assert(
-        hasMaps ~= hasShape,
-        "VirtualMapScrollable requires either Maps or Shape, but not both."
+        shape ~= nil,
+        "VirtualMapScrollable requires Shape."
     )
     assert(
-        (hasShape and type(detail) == "function")
-            or (hasMaps and detail == nil),
-        "VirtualMapScrollable Detail must be supplied with Shape only."
+        type(detail) == "function",
+        "VirtualMapScrollable requires Detail."
     )
+    local detailCallback = detail :: Detail
 
     local viewportAbsoluteSizeState =
         Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
@@ -226,16 +190,9 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
     local computeSortedMapSources: Fusion.Computed<{ MapSource }> = Computed(
         scope,
         function(use: Fusion.Use): { MapSource }
-            local mapSources =
-                if hasMaps
-                then CreateLegacyMapSources(
-                    use<<{ MapProps }>>(mapsProps :: any)
-                )
-                else CreateLazyMapSources(
-                    use<<{ MapShape }>>(shape :: any)
-                )
-
-            return SortMapSources(mapSources)
+            return SortMapSources(CreateMapSources(
+                use<<{ MapShape }>>(shape :: any)
+            ))
         end
     )
 
@@ -282,7 +239,6 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
 
         for idx, mapSource in usedMapSources do
             local mapProps = mapSource.Props
-            local items = mapProps.Items
             local header = mapProps.Header
             local previousHeader =
                 mapProps.PreviousHeader or lastHeader
@@ -295,54 +251,34 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
                 if collapsible then mapProps.Collapsed or false else false
             )
 
-            local layout: MapLayout
-            local loadRootRange: ((
-                firstRootRow: number,
-                lastRootRow: number
-            ) -> ())? = nil
+            local sourceMapIdx = mapSource.SourceMapIdx
+            local layout: LazyMapLayout = CreateLazyMapLayout(
+                scope,
+                detailStateScope,
+                header,
+                mapSource.RowCount,
+                emptyText,
+                rowHeight,
+                function(
+                    detailScope: Fusion.Scope,
+                    itemIdx: number
+                ): Map.Item
+                    local item: any = detailCallback(
+                        detailScope,
+                        sourceMapIdx,
+                        itemIdx
+                    )
 
-            if mapSource.RootRowCount ~= nil then
-                local detailCallback = detail :: Detail
-                local sourceMapIdx = mapSource.SourceMapIdx
-                local lazyLayout: LazyMapLayout = CreateLazyMapLayout(
-                    scope,
-                    detailStateScope,
-                    header,
-                    mapSource.RootRowCount,
-                    emptyText,
-                    rowHeight,
-                    function(
-                        detailScope: Fusion.Scope,
-                        itemIdx: number
-                    ): Map.Item
-                        local item: any = detailCallback(
-                            detailScope,
-                            sourceMapIdx,
-                            itemIdx
-                        )
+                    assert(
+                        type(item) == "table"
+                            and type(item.Key) == "string",
+                        `Detail must return a Map.Item for map `
+                            .. `{sourceMapIdx}, row {itemIdx}.`
+                    )
 
-                        assert(
-                            type(item) == "table"
-                                and type(item.Key) == "string",
-                            `Detail must return a Map.Item for map `
-                                .. `{sourceMapIdx}, row {itemIdx}.`
-                        )
-
-                        return item :: Map.Item
-                    end
-                )
-
-                layout = lazyLayout
-                loadRootRange = lazyLayout.LoadRootRange
-            else
-                layout = CreateMapLayout(
-                    scope,
-                    header,
-                    items,
-                    emptyText,
-                    rowHeight
-                )
-            end
+                    return item :: Map.Item
+                end
+            )
 
             local animatedMapSize, mapReveal = CreateMapSizeTween(
                 scope,
@@ -386,8 +322,7 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
                 Layout = layout,
                 ShowOnTop = showOnTop,
                 Occluded = mapOccludedState,
-                VisibleRootRange = visibleRootRangeState,
-                LoadRootRange = loadRootRange
+                VisibleRootRange = visibleRootRangeState
             }
 
             mapChildren[idx] = Computed(scope, function(
@@ -596,9 +531,7 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
                             queryBottom - mapTop
                         )
 
-                    if record.LoadRootRange then
-                        record.LoadRootRange(firstRow, lastRow)
-                    end
+                    record.Layout.LoadRootRange(firstRow, lastRow)
 
                     visibleRootRange = Vector2.new(firstRow, lastRow)
                 end
