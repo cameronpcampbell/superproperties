@@ -164,7 +164,7 @@ local function SelectMenuItem(
             }
         },
 
-        Name = "SelectMenuItem"
+        Name = props.Text
     })
 end
 

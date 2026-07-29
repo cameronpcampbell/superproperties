@@ -62,6 +62,7 @@ type SelectMenuProps = {
 	EnableSearch: Fusion.UsedAs<boolean>?,
 	SearchState: Fusion.Value<string>?,
 	SearchPlaceholderText: Fusion.UsedAs<string>?,
+	SortOrder: Enum.SortOrder?,
 	SelectedIdx: Fusion.UsedAs<number?>?,
 	DefaultIdx: Fusion.UsedAs<number>?,
 	Visible: Fusion.UsedAs<boolean>?,
@@ -100,6 +101,8 @@ return Component<<SelectMenuProps>>(function(scope, props)
     local props, providedSearchState = TableExtract(props, "SearchState")
     local props, searchPlaceholderText =
         TableExtract(props, "SearchPlaceholderText", "Search Items")
+    local props, sortOrder =
+        TableExtract(props, "SortOrder", Enum.SortOrder.LayoutOrder)
     local props, selectedIdx = TableExtract(props, "SelectedIdx")
     local props = TableExtract(props, "DefaultIdx")
     local props, visible = TableExtract(props, "Visible", true)
@@ -127,6 +130,15 @@ return Component<<SelectMenuProps>>(function(scope, props)
             if use<<boolean>>(isSearchEnabled) then
                 use<<string>>(searchState)
             else ""
+    end)
+
+    local effectiveSortOrder = Computed(scope, function(use): Enum.SortOrder
+        local query = use<<string>>(effectiveSearchQuery)
+        local hasSearchFilter = query:find("%S") ~= nil
+
+        return
+            if hasSearchFilter then Enum.SortOrder.LayoutOrder
+            else sortOrder
     end)
 
     Observer(scope, isSearchEnabled):onChange(function()
@@ -552,7 +564,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
                             New(scope, "UIListLayout") {
                                 Padding = UDim.new(0, 1),
                                 FillDirection = Enum.FillDirection.Vertical,
-                                SortOrder = Enum.SortOrder.LayoutOrder,
+                                SortOrder = effectiveSortOrder,
 
                                 [Out "AbsoluteContentSize"] =
                                     listContentSizeState

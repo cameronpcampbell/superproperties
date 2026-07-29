@@ -255,6 +255,7 @@ return function(
     selectMenu = SelectMenu(scope, {
         Items = menuLabels,
         EnableSearch = true,
+        SortOrder = Enum.SortOrder.Name,
         SearchState = searchState,
         SearchPlaceholderText = "Search for or create a tag.",
         SelectedIdx = selectedIdxState,
