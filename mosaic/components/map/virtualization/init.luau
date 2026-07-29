@@ -109,11 +109,6 @@ type MountedRow = {
     Instance: Instance
 }
 
-local function CalculateMapHeight(rowCount: number, height: number): number
-    local rowHeight = height - 2
-    return rowHeight * rowCount + rowCount + 1
-end
-
 local function CreateHeaderContentCache(
     scope: Fusion.Scope,
     headerChildren: { Fusion.Child }?,
@@ -1128,7 +1123,6 @@ local function ComputeVirtualizedRows(
 end
 
 return {
-    CalculateMapHeight = CalculateMapHeight,
     CreateMapLayout = CreateMapLayout,
     CreateMapSizeTween = CreateMapSizeTween,
     ComputeVirtualListVisibleRootRange =

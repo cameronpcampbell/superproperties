@@ -2,16 +2,45 @@
 
 -- Pure scheduling and map-bound helpers for VirtualMapScrollable.
 
-export type GetMapBound = (mapIdx: number) -> number
+type GetMapBound = (mapIdx: number) -> number
 
-local function ShouldRefreshVirtualWindow(
-    lastRefreshY: number?,
-    currentY: number,
-    threshold: number
+local function ShouldRefreshBufferedWindow(
+    renderedTop: number?,
+    renderedBottom: number?,
+    viewportTop: number,
+    viewportBottom: number,
+    minimumBuffer: number
 ): boolean
-    if lastRefreshY == nil then return true end
+    if renderedTop == nil or renderedBottom == nil then
+        return true
+    end
 
-    return math.abs(currentY - lastRefreshY) >= math.max(threshold, 0)
+    local clampedMinimumBuffer = math.max(minimumBuffer, 0)
+    local topBuffer = viewportTop - renderedTop
+    local bottomBuffer = renderedBottom - viewportBottom
+
+    return topBuffer < clampedMinimumBuffer
+        or bottomBuffer < clampedMinimumBuffer
+end
+
+local function GetStableLayoutOrderIndices(
+    layoutOrders: { number }
+): { number }
+    local indices = table.create(#layoutOrders) :: { number }
+
+    for sourceIndex in layoutOrders do
+        indices[sourceIndex] = sourceIndex
+    end
+
+    table.sort(indices, function(a: number, b: number): boolean
+        local aOrder = layoutOrders[a]
+        local bOrder = layoutOrders[b]
+
+        if aOrder == bOrder then return a < b end
+        return aOrder < bOrder
+    end)
+
+    return indices
 end
 
 local function FindVisibleMapRange(
@@ -66,6 +95,7 @@ local function FindVisibleMapRange(
 end
 
 return {
-    ShouldRefreshVirtualWindow = ShouldRefreshVirtualWindow,
+    ShouldRefreshBufferedWindow = ShouldRefreshBufferedWindow,
+    GetStableLayoutOrderIndices = GetStableLayoutOrderIndices,
     FindVisibleMapRange = FindVisibleMapRange
 }
