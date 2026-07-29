@@ -144,6 +144,6 @@ return Component<<FocusRingProps>>(function(scope, props)
     end
 
     return TransparencyGated(scope, Supercorner.new :: any, CombineProps({
-        GatedTransparencyProperty = "StrokeTransparency",
+        GatedTransparencyProperty = "ImageTransparency",
     }, ringProps))
 end)

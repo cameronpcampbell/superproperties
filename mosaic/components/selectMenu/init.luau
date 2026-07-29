@@ -2,6 +2,7 @@
 --!nolint LocalShadow
 
 local Packages = script.Parent.Parent.Parent
+local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
 local New, Children, Value, Peek, Out, OnEvent, Computed, Observer, Tween =
@@ -11,28 +12,34 @@ local New, Children, Value, Peek, Out, OnEvent, Computed, Observer, Tween =
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CombineProps, CoerceToValue, ComposeTransparency =
+local Component, CombineProps, CoerceToValue, ComposeTransparency, Oktween =
     FusionUtils.Component, FusionUtils.CombineProps,
-    FusionUtils.CoerceToValue, FusionUtils.ComposeTransparency
+    FusionUtils.CoerceToValue, FusionUtils.ComposeTransparency,
+    FusionUtils.Oktween
 local ComputeTransforms = FusionUtils.ComputeTransforms
 local ComputeUDim2, ComputeUDim =
     ComputeTransforms.UDim2, ComputeTransforms.UDim
+local ComputeAdd = FusionUtils.ComputeMath.Add
 
 local CreateItemFilter = require(Utils.filterItems)
 
 local ThemeUtils = require(Utils.themeUtils)
-local GetThemeForScope, GetNextVariant =
-    ThemeUtils.GetThemeForScope, ThemeUtils.GetNextVariant
+local GetThemeForScope, GetNextVariant, CalcColorModifier =
+    ThemeUtils.GetThemeForScope, ThemeUtils.GetNextVariant,
+    ThemeUtils.CalcColorModifier
 
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
 local CoreComponents = script.Parent.Parent.coreComponents
+local CoreFrame = require(CoreComponents.frame)
 local CoreInput = require(CoreComponents.input)
 local Placement = require(CoreComponents.placement)
+local TransparencyGated = require(CoreComponents.transparencyGated)
 
 local Components = script.Parent.Parent.components
 local Container = require(Components.container)
+local FocusRing = require(Components.focusRing)
 local Scrollable = require(Components.scrollable)
 local Text = require(Components.text)
 
@@ -67,6 +74,12 @@ type SelectMenuProps = {
 
 local MenuPaddingHeight = 8
 local SearchDividerHeight = 1
+
+local SearchHoverTweenInfo = TweenInfo.new(
+    .18,
+    Enum.EasingStyle.Exponential,
+    Enum.EasingDirection.InOut
+)
 
 local VisibilityTweenInfo = TweenInfo.new(
     .23,
@@ -199,6 +212,26 @@ return Component<<SelectMenuProps>>(function(scope, props)
             and use<<boolean>>(effectiveInteractable)
     end)
 
+    local searchHoverState = Value(scope, false)
+    local searchFocusState = Value(scope, false)
+    local visualSearchHoverState = Computed(scope, function(use): boolean
+        return
+            use<<boolean>>(effectiveSearchInteractable)
+            and use<<boolean>>(searchHoverState)
+    end)
+    local visualSearchFocusState = Computed(scope, function(use): boolean
+        return
+            use<<boolean>>(effectiveSearchInteractable)
+            and use<<boolean>>(searchFocusState)
+    end)
+
+    Observer(scope, effectiveSearchInteractable):onChange(function()
+        if Peek<<boolean>>(effectiveSearchInteractable) then return end
+
+        searchHoverState:set(false)
+        searchFocusState:set(false)
+    end)
+
     local nextVariant = GetNextVariant(scope, variant)
     local scrollableVariant = Computed(scope, function(use)
         : ThemeUtils.BgVariantLayer
@@ -212,11 +245,54 @@ return Component<<SelectMenuProps>>(function(scope, props)
 
     local theme = GetThemeForScope(scope)
     local strokeColor = theme:GetBg(scope, nextVariant)
+    local searchStrokeColorModifier:
+        Fusion.UsedAs<ThemeUtils.ThemeColorModifier?> =
+        CalcColorModifier(
+            scope,
+            visualSearchHoverState,
+            visualSearchFocusState,
+            "Stroke"
+        )
+    local searchHoverStrokeColor = theme:GetBg(
+        scope,
+        nextVariant,
+        searchStrokeColorModifier
+    )
+    local searchAccentColor = theme:GetAccent(
+        scope,
+        "Primary",
+        searchStrokeColorModifier
+    )
     local textColor = theme:GetFg(scope, "Primary")
     local placeholderColor = theme:GetFg(scope, "Secondary")
     local largeHeight = theme:GetHeight(scope, "Lg")
+    local searchCornerRadius =
+        ComputeAdd(scope, theme:GetCornerRadius(scope, "Md"), -1)
     local font = theme:GetFont(scope, "Main", Enum.FontWeight.Medium)
     local fontSize = theme:GetFontSize(scope, "Main", "Title")
+
+    local animatedSearchStrokeColor = Oktween(
+        scope,
+        Computed(scope, function(use): Color3
+            return
+                if use<<boolean>>(visualSearchFocusState) then
+                    use<<Color3>>(searchAccentColor)
+                else use<<Color3>>(searchHoverStrokeColor)
+        end),
+        SearchHoverTweenInfo
+    )
+
+    local animatedSearchStrokeTransparency = Tween<<number>>(
+        scope,
+        Computed(scope, function(use): number
+            local shouldShow =
+                use<<boolean>>(visualSearchHoverState)
+                or use<<boolean>>(visualSearchFocusState)
+
+            return if shouldShow then 0 else 1
+        end),
+        SearchHoverTweenInfo
+    )
 
     local searchHeight = Computed(scope, function(use): number
         return math.max(use<<number>>(largeHeight) - 2, 0)
@@ -273,11 +349,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
     end)
 
     local searchInput = CoreInput(scope, {
-        Size = ComputeUDim2(
-            scope,
-            UDim.new(1, 0),
-            ComputeUDim(scope, 0, searchHeight)
-        ),
+        Size = UDim2.fromScale(1, 1),
         BackgroundTransparency = 1,
         Text = searchState,
         PlaceholderText = searchPlaceholderText,
@@ -290,11 +362,24 @@ return Component<<SelectMenuProps>>(function(scope, props)
         Interactable = effectiveSearchInteractable,
         TextEditable = effectiveSearchInteractable,
         TextXAlignment = Enum.TextXAlignment.Left,
-        Visible = isSearchEnabled,
 
         [Out "Text"] = searchState,
-        [OnEvent "Focused"] = onSearchFocused,
-        [OnEvent "FocusLost"] = onSearchFocusLost,
+        [OnEvent "Focused"] = function()
+            searchFocusState:set(true)
+            if onSearchFocused then onSearchFocused() end
+        end,
+        [OnEvent "FocusLost"] = function(
+            enterPressed: boolean,
+            inputThatCausedFocusLoss: InputObject?
+        )
+            searchFocusState:set(false)
+            if onSearchFocusLost then
+                onSearchFocusLost(
+                    enterPressed,
+                    inputThatCausedFocusLoss
+                )
+            end
+        end,
 
         [Children] = New(scope, "UIPadding") {
             PaddingLeft = UDim.new(0, 6),
@@ -304,6 +389,72 @@ return Component<<SelectMenuProps>>(function(scope, props)
         Name = "Search"
     }) :: TextBox
 
+    local searchBorder = TransparencyGated(
+        scope,
+        Supercorner.new :: any,
+        {
+            GatedTransparencyProperty = "ImageTransparency",
+            BackgroundTransparency = 1,
+            StrokeColor = animatedSearchStrokeColor,
+            StrokeTransparency = animatedSearchStrokeTransparency,
+            StrokeThickness = 1,
+            Size = UDim2.new(1, 2, 1, 2),
+            ZIndex = 3,
+            TopLeftRadius = searchCornerRadius,
+            TopRightRadius = searchCornerRadius,
+            BottomLeftRadius = 0,
+            BottomRightRadius = 0,
+            Position = UDim2.fromScale(.5, .5),
+            AnchorPoint = Vector2.new(.5, .5)
+        }
+    )
+
+    local searchFocusRing = FocusRing(scope, {
+        IsFocus = visualSearchFocusState,
+        TransitionTweenInfo = VisibilityTweenInfo,
+        BaseSize = UDim2.new(1, 2, 1, 2),
+        TopLeftRadius = searchCornerRadius,
+        TopRightRadius = searchCornerRadius,
+        BottomLeftRadius = 0,
+        BottomRightRadius = 0
+    })
+
+    local searchChrome = CoreFrame(
+        scope,
+        Supercorner.new :: any,
+        {
+            Size = ComputeUDim2(
+                scope,
+                UDim.new(1, 0),
+                ComputeUDim(scope, 0, searchHeight)
+            ),
+            BackgroundTransparency = 1,
+            TopLeftRadius = searchCornerRadius,
+            TopRightRadius = searchCornerRadius,
+            BottomLeftRadius = 0,
+            BottomRightRadius = 0,
+            Interactable = effectiveSearchInteractable,
+            Visible = isSearchEnabled,
+            ZIndex = 2,
+
+            Name = "SearchChrome",
+
+            [OnEvent "MouseEnter"] = function()
+                searchHoverState:set(true)
+            end,
+            [OnEvent "MouseLeave"] = function()
+                searchHoverState:set(false)
+            end,
+
+            RootChildren = {
+                searchBorder,
+                searchFocusRing
+            } :: { Fusion.Child },
+
+            [Children] = searchInput
+        }
+    )
+
     local selectMenu = Placement(scope, Container, CombineProps({
         Variant = variant,
         BackgroundTransparency = composedBackgroundTransparency,
@@ -311,6 +462,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
         StrokeTransparency = composedStrokeTransparency,
         Size = ComputeUDim2(scope, width, UDim.new(0, 0)),
         AutomaticSize = Enum.AutomaticSize.Y,
+        ContentZIndex = 4,
         Position = preferredPosition,
         AnchorPoint = preferredAnchorPoint,
         Enabled = shouldRender,
@@ -329,7 +481,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
         },
 
         [Children] = {
-            searchInput :: Fusion.Child,
+            searchChrome,
 
             New(scope, "Frame") {
                 BackgroundColor3 = strokeColor,
@@ -337,6 +489,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
                 BorderSizePixel = 0,
                 Size = UDim2.new(1, 0, 0, SearchDividerHeight),
                 Visible = isSearchEnabled,
+                ZIndex = 1,
 
                 Name = "Divider"
             },
