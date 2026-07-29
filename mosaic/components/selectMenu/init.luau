@@ -19,7 +19,6 @@ local Component, CombineProps, CoerceToValue, ComposeTransparency, Oktween =
 local ComputeTransforms = FusionUtils.ComputeTransforms
 local ComputeUDim2, ComputeUDim =
     ComputeTransforms.UDim2, ComputeTransforms.UDim
-local ComputeAdd = FusionUtils.ComputeMath.Add
 
 local CreateItemFilter = require(Utils.filterItems)
 
@@ -290,7 +289,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
     local placeholderColor = theme:GetFg(scope, "Secondary")
     local largeHeight = theme:GetHeight(scope, "Lg")
     local searchCornerRadius =
-        ComputeAdd(scope, theme:GetCornerRadius(scope, "Md"), -1)
+        Peek<<number>>(theme:GetCornerRadius(scope, "Md")) - 1
     local font = theme:GetFont(scope, "Main", Enum.FontWeight.Medium)
     local fontSize = theme:GetFontSize(scope, "Main", "Title")
 
