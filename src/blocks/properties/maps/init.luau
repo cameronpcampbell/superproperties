@@ -3,7 +3,9 @@
 local Packages = script.Parent.Parent.Parent.packages
 
 local Fusion = require(Packages.fusion)
-local Children, Computed = Fusion.Children, Fusion.Computed
+local Children, Computed, Observer, Peek, Value =
+    Fusion.Children, Fusion.Computed, Fusion.Observer,
+    Fusion.peek, Fusion.Value
 
 local Mosaic = require(Packages.mosaic)
 local Text, VirtualMapScrollable =
@@ -21,8 +23,8 @@ type PropertiesMapsProps = {
 }
 
 local ExtraCategories = require(script.extraCategories)
-local GetBookmarksOnlyState =
-    require(script.Parent.getBookmarksOnlyState)
+local GetAppliedBookmarksOnlyState =
+    require(script.Parent.getAppliedBookmarksOnlyState)
 local GetFilterState = require(script.Parent.getFilterState)
 local Categories = require(script.categories)
 
@@ -107,7 +109,7 @@ return function(
     local collapsedStateScope = Fusion.innerScope(outerScope)
     local mapsScope = Fusion.innerScope(outerScope)
     local bookmarksOnlyState =
-        GetBookmarksOnlyState(outerScope)
+        GetAppliedBookmarksOnlyState(outerScope)
     local filterState = GetFilterState(outerScope)
 
     local computeCategoryStates = Computed(mapsScope, function(
@@ -148,6 +150,46 @@ return function(
         return mapPropsList
     end)
 
+    local mapPropsRefreshPending = false
+    local mapPropsRefreshRevision = 0
+    local mapsAlive = true
+    local renderedMapProps: Fusion.Value<{ MapProps }>
+
+    -- A bookmark-mode change can reveal or hide many categories. Mark the
+    -- whole propagation as one refresh before category observers begin
+    -- publishing their individual visibility changes.
+    Observer(mapsScope, bookmarksOnlyState):onChange(function()
+        mapPropsRefreshRevision += 1
+        local queuedRevision = mapPropsRefreshRevision
+        mapPropsRefreshPending = true
+
+        task.defer(function()
+            if not mapsAlive
+                or mapPropsRefreshRevision ~= queuedRevision
+            then
+                return
+            end
+
+            mapPropsRefreshPending = false
+            renderedMapProps:set(Peek<<{ MapProps }>>(computeMapProps))
+        end)
+    end)
+
+    renderedMapProps = Value(
+        mapsScope,
+        Peek<<{ MapProps }>>(computeMapProps)
+    )
+
+    Observer(mapsScope, computeMapProps):onChange(function()
+        if mapPropsRefreshPending then return end
+
+        renderedMapProps:set(Peek<<{ MapProps }>>(computeMapProps))
+    end)
+
+    table.insert(mapsScope, function()
+        mapsAlive = false
+    end)
+
     local computeEmptyMessage = Computed(mapsScope, function(
         use,
         scope: Fusion.Scope
@@ -165,7 +207,7 @@ return function(
             return nil
         end
 
-        local mapProps = use<<{ MapProps }>>(computeMapProps)
+        local mapProps = use<<{ MapProps }>>(renderedMapProps)
         if #mapProps > 0 then return nil end
 
         return CreateEmptyMessage(
@@ -177,7 +219,7 @@ return function(
     end)
 
     return VirtualMapScrollable(mapsScope, {
-        Maps = computeMapProps,
+        Maps = renderedMapProps,
 
         [Children] = {
             computeEmptyMessage
