@@ -26,8 +26,9 @@ local Scrollable = require(Components.scrollable)
 local Map = require(Components.map)
 
 local Virtualization = require(Components.map.virtualization)
-local CreateMapLayout, CreateMapSizeTween =
+local CreateMapLayout, CreateLazyMapLayout, CreateMapSizeTween =
     Virtualization.CreateMapLayout,
+    Virtualization.CreateLazyMapLayout,
     Virtualization.CreateMapSizeTween
 local VirtualizationMath = require(Components.map.virtualization.math)
 
@@ -41,6 +42,7 @@ local FindVisibleMapRange =
 
 type MapProps = Map.MapProps
 type MapLayout = Virtualization.MapLayout
+type LazyMapLayout = Virtualization.LazyMapLayout
 type RowGeometry = VirtualizationMath.RowGeometry
 
 type LayoutOrdered = {
@@ -53,7 +55,39 @@ type MapRecord = {
     Layout: MapLayout,
     ShowOnTop: Fusion.UsedAs<boolean>,
     Occluded: Fusion.Value<boolean>,
-    VisibleRootRange: Fusion.Value<Vector2>
+    VisibleRootRange: Fusion.Value<Vector2>,
+    LoadRootRange: ((
+        firstRootRow: number,
+        lastRootRow: number
+    ) -> ())?
+}
+
+export type MapShape = {
+    RowCount: number,
+    Variant: ThemeUtils.BgVariantLayer?,
+    Width: UDim?,
+    Header: string?,
+    PreviousHeader: string?,
+    HeaderColorTint: Fusion.UsedAs<boolean>?,
+    HeaderChildren: Map.HeaderChildren?,
+    HeaderOverlay: Fusion.Child?,
+    ShowOnTop: Fusion.UsedAs<boolean>?,
+    EmptyText: string?,
+    Collapsible: boolean?,
+    Collapsed: Fusion.UsedAs<boolean>?,
+    LayoutOrder: number?
+}
+
+export type Detail = (
+    scope: Fusion.Scope,
+    mapIdx: number,
+    rowIdx: number
+) -> Map.Item
+
+type MapSource = {
+    Props: MapProps,
+    SourceMapIdx: number,
+    RootRowCount: number?
 }
 
 type MapIndexSet = { [number]: boolean }
@@ -64,7 +98,9 @@ type VirtualWindowRefreshOptions = {
 }
 
 type VirtualMapScrollableProps = {
-    Maps: Fusion.UsedAs<{ MapProps }>,
+    Maps: Fusion.UsedAs<{ MapProps }>?,
+    Shape: Fusion.UsedAs<{ MapShape }>?,
+    Detail: Detail?,
     Overdraw: Fusion.UsedAs<number>?,
     Padding: Fusion.UsedAs<number>?
 }
@@ -87,21 +123,72 @@ local function GetLayoutOrder(mapProps: MapProps): number
     return layoutOrdered.LayoutOrder or 0
 end
 
-local function SortMapProps(mapProps: { MapProps }): { MapProps }
-    local layoutOrders = table.create(#mapProps) :: { number }
+local function SortMapSources(mapSources: { MapSource }): { MapSource }
+    local layoutOrders = table.create(#mapSources) :: { number }
 
-    for sourceIndex, props in mapProps do
-        layoutOrders[sourceIndex] = GetLayoutOrder(props)
+    for sourceIndex, source in mapSources do
+        layoutOrders[sourceIndex] = GetLayoutOrder(source.Props)
     end
 
     local sortedSourceIndices =
         GetStableLayoutOrderIndices(layoutOrders)
-    local sortedMapProps = table.create(#mapProps) :: { MapProps }
+    local sortedMapSources =
+        table.create(#mapSources) :: { MapSource }
     for sortedIndex, sourceIndex in sortedSourceIndices do
-        sortedMapProps[sortedIndex] = mapProps[sourceIndex]
+        sortedMapSources[sortedIndex] = mapSources[sourceIndex]
     end
 
-    return sortedMapProps
+    return sortedMapSources
+end
+
+local function CreateLegacyMapSources(
+    mapPropsList: { MapProps }
+): { MapSource }
+    local mapSources = table.create(#mapPropsList) :: { MapSource }
+
+    for sourceMapIdx, mapProps in mapPropsList do
+        mapSources[sourceMapIdx] = {
+            Props = mapProps,
+            SourceMapIdx = sourceMapIdx,
+            RootRowCount = nil
+        }
+    end
+
+    return mapSources
+end
+
+local function CreateLazyMapSources(
+    shape: { MapShape }
+): { MapSource }
+    local mapSources = table.create(#shape) :: { MapSource }
+
+    for sourceMapIdx, mapShape in shape do
+        local rowCount = mapShape.RowCount
+
+        assert(
+            type(rowCount) == "number"
+                and rowCount >= 0
+                and rowCount % 1 == 0,
+            `Shape map {sourceMapIdx} RowCount must be a non-negative integer.`
+        )
+
+        local mapProps: any = table.clone(mapShape :: any)
+        mapProps.RowCount = nil
+
+        assert(
+            mapProps.Items == nil
+                and mapProps.VirtualListData == nil,
+            `Shape map {sourceMapIdx} cannot supply Items or VirtualListData.`
+        )
+
+        mapSources[sourceMapIdx] = {
+            Props = mapProps :: MapProps,
+            SourceMapIdx = sourceMapIdx,
+            RootRowCount = rowCount
+        }
+    end
+
+    return mapSources
 end
 
 local VirtualMapScrollableComponent = (Component :: any)(function(
@@ -109,9 +196,24 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
     props: any
 ): Fusion.Child
     local props, mapsProps = (TableExtract :: any)(props, "Maps")
+    local props, shape = (TableExtract :: any)(props, "Shape")
+    local props, detail = (TableExtract :: any)(props, "Detail")
     local props, overdraw = (TableExtract :: any)(props, "Overdraw")
     local props, padding =
         (TableExtract :: any)(props, "Padding", DefaultPadding)
+
+    local hasMaps = mapsProps ~= nil
+    local hasShape = shape ~= nil
+
+    assert(
+        hasMaps ~= hasShape,
+        "VirtualMapScrollable requires either Maps or Shape, but not both."
+    )
+    assert(
+        (hasShape and type(detail) == "function")
+            or (hasMaps and detail == nil),
+        "VirtualMapScrollable Detail must be supplied with Shape only."
+    )
 
     local viewportAbsoluteSizeState =
         Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
@@ -121,10 +223,19 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
 
     local paddingState: Fusion.UsedAs<number> = padding
 
-    local computeSortedMapsProps: Fusion.Computed<{ MapProps }> = Computed(
+    local computeSortedMapSources: Fusion.Computed<{ MapSource }> = Computed(
         scope,
-        function(use: Fusion.Use): { MapProps }
-            return SortMapProps(use<<{ MapProps }>>(mapsProps :: any))
+        function(use: Fusion.Use): { MapSource }
+            local mapSources =
+                if hasMaps
+                then CreateLegacyMapSources(
+                    use<<{ MapProps }>>(mapsProps :: any)
+                )
+                else CreateLazyMapSources(
+                    use<<{ MapShape }>>(shape :: any)
+                )
+
+            return SortMapSources(mapSources)
         end
     )
 
@@ -147,9 +258,12 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
         use: Fusion.Use,
         scope: Fusion.Scope
     ): { Fusion.Child }
-        local usedMapsProps = use<<{ MapProps }>>(computeSortedMapsProps)
-        local mapChildren = table.create(#usedMapsProps) :: { Fusion.Child }
-        local mapRecords = table.create(#usedMapsProps) :: { MapRecord }
+        local usedMapSources =
+            use<<{ MapSource }>>(computeSortedMapSources)
+        local mapChildren =
+            table.create(#usedMapSources) :: { Fusion.Child }
+        local mapRecords =
+            table.create(#usedMapSources) :: { MapRecord }
 
         -- Layout records live in this persistent scope, rather than inside the
         -- mounted Map scopes. An off-screen map can therefore keep animating
@@ -159,7 +273,8 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
         local lastMapCollapsed: Fusion.UsedAs<boolean>? = nil
         local lastHeader: string? = nil
 
-        for idx, mapProps in usedMapsProps do
+        for idx, mapSource in usedMapSources do
+            local mapProps = mapSource.Props
             local items = mapProps.Items
             local header = mapProps.Header
             local previousHeader =
@@ -173,13 +288,54 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
                 if collapsible then mapProps.Collapsed or false else false
             )
 
-            local layout = CreateMapLayout(
-                scope,
-                header,
-                items,
-                emptyText,
-                rowHeight
-            )
+            local layout: MapLayout
+            local loadRootRange: ((
+                firstRootRow: number,
+                lastRootRow: number
+            ) -> ())? = nil
+
+            if mapSource.RootRowCount ~= nil then
+                local detailCallback = detail :: Detail
+                local sourceMapIdx = mapSource.SourceMapIdx
+                local lazyLayout: LazyMapLayout = CreateLazyMapLayout(
+                    scope,
+                    header,
+                    mapSource.RootRowCount,
+                    emptyText,
+                    rowHeight,
+                    function(
+                        detailScope: Fusion.Scope,
+                        itemIdx: number
+                    ): Map.Item
+                        local item: any = detailCallback(
+                            detailScope,
+                            sourceMapIdx,
+                            itemIdx
+                        )
+
+                        assert(
+                            type(item) == "table"
+                                and type(item.Key) == "string",
+                            `Detail must return a Map.Item for map `
+                                .. `{sourceMapIdx}, row {itemIdx}.`
+                        )
+
+                        return item :: Map.Item
+                    end
+                )
+
+                layout = lazyLayout
+                loadRootRange = lazyLayout.LoadRootRange
+            else
+                layout = CreateMapLayout(
+                    scope,
+                    header,
+                    items,
+                    emptyText,
+                    rowHeight
+                )
+            end
+
             local animatedMapSize, mapReveal = CreateMapSizeTween(
                 scope,
                 width,
@@ -222,7 +378,8 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
                 Layout = layout,
                 ShowOnTop = showOnTop,
                 Occluded = mapOccludedState,
-                VisibleRootRange = visibleRootRangeState
+                VisibleRootRange = visibleRootRangeState,
+                LoadRootRange = loadRootRange
             }
 
             mapChildren[idx] = Computed(scope, function(
@@ -270,6 +427,10 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
         local retainedMapIndices = {} :: MapIndexSet
         local renderedWindowTop: number? = nil
         local renderedWindowBottom: number? = nil
+        local refreshInProgress = false
+        local refreshPending = false
+        local pendingBypassBuffer = false
+        local pendingRebuildRetention = false
 
         local function getMapTop(mapIdx: number): number
             return Peek<<number>>(mapRecords[mapIdx].Top)
@@ -325,6 +486,18 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
                 options ~= nil and options.BypassBuffer == true
             local rebuildRetention =
                 options ~= nil and options.RebuildRetention == true
+
+            if refreshInProgress then
+                refreshPending = true
+                pendingBypassBuffer =
+                    pendingBypassBuffer or bypassBuffer
+                pendingRebuildRetention =
+                    pendingRebuildRetention or rebuildRetention
+                return
+            end
+
+            refreshInProgress = true
+
             local currentCanvasY =
                 Peek<<Vector2>>(viewportCanvasPositionState).Y
             local usedOverdraw =
@@ -357,6 +530,7 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
                     minimumBuffer
                 )
             then
+                refreshInProgress = false
                 return
             end
 
@@ -414,6 +588,10 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
                             queryBottom - mapTop
                         )
 
+                    if record.LoadRootRange then
+                        record.LoadRootRange(firstRow, lastRow)
+                    end
+
                     visibleRootRange = Vector2.new(firstRow, lastRow)
                 end
 
@@ -425,6 +603,23 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
 
             activeMapIndices, nextActiveMapIndices =
                 nextActiveMapIndices, activeMapIndices
+
+            refreshInProgress = false
+
+            if refreshPending then
+                local nextBypassBuffer = pendingBypassBuffer
+                local nextRebuildRetention =
+                    pendingRebuildRetention
+
+                refreshPending = false
+                pendingBypassBuffer = false
+                pendingRebuildRetention = false
+
+                refreshVirtualWindow({
+                    BypassBuffer = nextBypassBuffer,
+                    RebuildRetention = nextRebuildRetention
+                })
+            end
         end
 
         -- Geometry changes are correctness invalidations rather than scroll

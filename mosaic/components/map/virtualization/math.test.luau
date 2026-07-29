@@ -73,6 +73,34 @@ AssertRange(12, 32, 2, 2)
 AssertRange(0, 100, 1, 3)
 AssertRange(63, 100, 1, 0)
 
+local function AssertItemRange(
+    firstRootRow: number,
+    lastRootRow: number,
+    hasHeader: boolean,
+    itemCount: number,
+    expectedFirst: number,
+    expectedLast: number,
+    label: string
+)
+    local firstItem, lastItem =
+        VirtualizationMath.RootRangeToItemRange(
+            firstRootRow,
+            lastRootRow,
+            hasHeader,
+            itemCount
+        )
+
+    AssertEqual(firstItem, expectedFirst, `{label} first item`)
+    AssertEqual(lastItem, expectedLast, `{label} last item`)
+end
+
+AssertItemRange(1, 4, false, 10, 1, 4, "headerless range")
+AssertItemRange(1, 4, true, 10, 1, 3, "range containing header")
+AssertItemRange(1, 1, true, 10, 1, 0, "header-only range")
+AssertItemRange(4, 8, true, 5, 3, 5, "range clamped to item count")
+AssertItemRange(1, 4, false, 0, 1, 0, "empty item range")
+AssertItemRange(20, 30, true, 5, 1, 0, "range after all items")
+
 local rowHeights = table.create(512) :: { number }
 for rowIdx = 1, 512 do
     rowHeights[rowIdx] = 20 + rowIdx % 7 * 3

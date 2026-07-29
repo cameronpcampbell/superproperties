@@ -121,8 +121,29 @@ local function CalculateTopSpacerHeight(
     return math.max(spacerHeight, 0)
 end
 
+local function RootRangeToItemRange(
+    firstRootRow: number,
+    lastRootRow: number,
+    hasHeader: boolean,
+    itemCount: number
+): (number, number)
+    local headerOffset = if hasHeader then 1 else 0
+    local firstItem = math.max(firstRootRow - headerOffset, 1)
+    local lastItem = math.min(
+        lastRootRow - headerOffset,
+        itemCount
+    )
+
+    if itemCount <= 0 or firstItem > lastItem then
+        return 1, 0
+    end
+
+    return firstItem, lastItem
+end
+
 return {
     BuildRowGeometry = BuildRowGeometry,
     FindVisibleRange = FindVisibleRange,
-    CalculateTopSpacerHeight = CalculateTopSpacerHeight
+    CalculateTopSpacerHeight = CalculateTopSpacerHeight,
+    RootRangeToItemRange = RootRangeToItemRange
 }

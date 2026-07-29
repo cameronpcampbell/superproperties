@@ -32,10 +32,20 @@ type IntrinsicItems = Types.IntrinsicItems
 type ItemDefinition = Item | IntrinsicItem
 type ItemLayout = Types.ItemLayout
 type RowMetadata = Types.RowMetadata
-type RootRowDescriptor = ItemLayout | string
+type LazyRootRowDescriptor = {
+    Kind: "LazyItem",
+    ItemIdx: number
+}
+type RootRowDescriptor =
+    ItemLayout | LazyRootRowDescriptor | string
 type RootRowDescriptors = { [number]: RootRowDescriptor }
 type RootRowGeometry = VirtualizationMath.RowGeometry
 type RenderedRows = { [number]: Instance }
+type LoadedItemLayouts = { [number]: ItemLayout }
+type LoadItem = (
+    scope: Fusion.Scope,
+    itemIdx: number
+) -> Item
 type HeaderContentCache = {
     CacheParent: Folder,
     ChildrenFrame: Frame,
@@ -76,6 +86,13 @@ export type MapLayout = {
     Metadata: Fusion.UsedAs<RowMetadata>,
     CornerRowCount: Fusion.UsedAs<number>,
     RowCount: Fusion.UsedAs<number>
+}
+
+export type LazyMapLayout = MapLayout & {
+    LoadRootRange: (
+        firstRootRow: number,
+        lastRootRow: number
+    ) -> ()
 }
 
 export type VirtualListData = {
@@ -396,7 +413,7 @@ local function CreateItemLayout(
     collapseStateNode: CollapseStateNode,
     resolvedItem: ResolvedItem,
     depth: number,
-    rowHeight: number,
+    rowHeight: Fusion.UsedAs<number>,
     canBecomeMapBottom: boolean
 ): ItemLayout
     local item = resolvedItem.Item
@@ -497,7 +514,8 @@ local function CreateItemLayout(
 
     if reveal then
         animatedHeight = Computed(scope, function(use: Fusion.Use): number
-            return rowHeight + use<<number>>(animatedChildrenHeight)
+            return use<<number>>(rowHeight)
+                + use<<number>>(animatedChildrenHeight)
         end)
     end
 
@@ -624,6 +642,12 @@ local function UseRootRowHeight(
 ): number
     if descriptor == HeaderRowDescriptor
         or descriptor == EmptyRowDescriptor
+    then
+        return rowHeight
+    end
+
+    if type(descriptor) == "table"
+        and (descriptor :: any).Kind == "LazyItem"
     then
         return rowHeight
     end
@@ -814,6 +838,286 @@ local function CreateMapLayout(
     }
 end
 
+local function ComputeLazyRowMetadata(
+    scope: Fusion.Scope,
+    loadedLayouts: Fusion.Value<LoadedItemLayouts>,
+    header: string?,
+    itemCount: number,
+    emptyText: string?,
+    useAnimatedCollapse: boolean
+): Fusion.Computed<RowMetadata>
+    return Computed(scope, function(use: Fusion.Use): RowMetadata
+        local usedLayouts =
+            use<<LoadedItemLayouts>>(loadedLayouts)
+        local rowIndices = {} :: { [ItemLayout]: number }
+        local rowCount = if header then 1 else 0
+
+        local function visit(layout: ItemLayout)
+            rowCount += 1
+            rowIndices[layout] = rowCount
+
+            local collapsedState =
+                if useAnimatedCollapse then layout.CornersCollapsed
+                else layout.CollapsedState
+
+            if collapsedState and use<<boolean>>(collapsedState) then
+                return
+            end
+
+            for _, child in layout.Children do visit(child) end
+        end
+
+        if itemCount > 0 then
+            for itemIdx = 1, itemCount do
+                local layout = usedLayouts[itemIdx]
+
+                if layout then
+                    visit(layout)
+                else
+                    rowCount += 1
+                end
+            end
+        elseif emptyText then
+            rowCount += 1
+        end
+
+        return {
+            RowCount = rowCount,
+            RowIndices = rowIndices
+        }
+    end)
+end
+
+local function CreateLazyMapLayout(
+    scope: Fusion.Scope,
+    header: string?,
+    itemCount: number,
+    emptyText: string?,
+    rowHeight: Fusion.UsedAs<number>,
+    loadItem: LoadItem
+): LazyMapLayout
+    -- Shape data is enough to position every root row. Detail layouts are
+    -- added sparsely as VirtualMapScrollable publishes visible ranges.
+    local collapseStateRoot: CollapseStateNode = {
+        IsCollapsed = nil,
+        Children = {}
+    }
+    local loadedLayouts = {} :: LoadedItemLayouts
+    local loadedLayoutsState =
+        Value<<LoadedItemLayouts>>(scope, {})
+    local lazyDescriptors =
+        table.create(itemCount) :: { LazyRootRowDescriptor }
+
+    for itemIdx = 1, itemCount do
+        lazyDescriptors[itemIdx] = {
+            Kind = "LazyItem",
+            ItemIdx = itemIdx
+        }
+    end
+
+    table.insert(scope, function()
+        table.clear(collapseStateRoot.Children)
+        table.clear(loadedLayouts)
+    end)
+
+    local rootRows = Computed(
+        scope,
+        function(use: Fusion.Use): RootRowDescriptors
+            local usedLayouts =
+                use<<LoadedItemLayouts>>(loadedLayoutsState)
+            local rows =
+                table.create(itemCount + 1) :: RootRowDescriptors
+
+            if header then table.insert(rows, HeaderRowDescriptor) end
+
+            if itemCount > 0 then
+                for itemIdx = 1, itemCount do
+                    table.insert(
+                        rows,
+                        usedLayouts[itemIdx]
+                            or lazyDescriptors[itemIdx]
+                    )
+                end
+            elseif emptyText then
+                table.insert(rows, EmptyRowDescriptor)
+            end
+
+            return rows
+        end
+    )
+
+    local focusedRootRange = Computed(
+        scope,
+        function(use: Fusion.Use): Vector2
+            local usedLayouts =
+                use<<LoadedItemLayouts>>(loadedLayoutsState)
+            local headerOffset = if header then 1 else 0
+            local firstRow, lastRow: number? = nil, nil
+
+            for itemIdx, layout in usedLayouts do
+                if not UseItemTreeFocus(use, layout) then continue end
+
+                local rootIdx = headerOffset + itemIdx
+                firstRow = if firstRow
+                    then math.min(firstRow, rootIdx)
+                    else rootIdx
+                lastRow = if lastRow
+                    then math.max(lastRow, rootIdx)
+                    else rootIdx
+            end
+
+            if not firstRow or not lastRow then
+                return Vector2.new(1, 0)
+            end
+
+            return Vector2.new(firstRow, lastRow)
+        end
+    )
+
+    local rootGeometry = Computed(
+        scope,
+        function(use: Fusion.Use): RootRowGeometry
+            local usedRootRows =
+                use<<RootRowDescriptors>>(rootRows)
+            local usedRowHeight = use<<number>>(rowHeight)
+            local rowHeights =
+                table.create(#usedRootRows) :: { number }
+
+            for rootIdx, descriptor in usedRootRows do
+                rowHeights[rootIdx] = UseRootRowHeight(
+                    use,
+                    descriptor,
+                    usedRowHeight
+                )
+            end
+
+            return VirtualizationMath.BuildRowGeometry(
+                rowHeights,
+                MapContentPadding,
+                RowGap
+            )
+        end
+    )
+
+    local animatedExpandedHeight = Computed(
+        scope,
+        function(use: Fusion.Use): number
+            return use<<RootRowGeometry>>(rootGeometry).TotalHeight
+        end
+    )
+    local targetMetadata = ComputeLazyRowMetadata(
+        scope,
+        loadedLayoutsState,
+        header,
+        itemCount,
+        emptyText,
+        false
+    )
+    local metadata = ComputeLazyRowMetadata(
+        scope,
+        loadedLayoutsState,
+        header,
+        itemCount,
+        emptyText,
+        true
+    )
+    local lastRowFocused = Computed(
+        scope,
+        function(use: Fusion.Use): boolean
+            local usedMetadata = use<<RowMetadata>>(metadata)
+            local lastRowIdx = usedMetadata.RowCount
+
+            for itemLayout, rowIdx in usedMetadata.RowIndices do
+                if rowIdx ~= lastRowIdx then continue end
+
+                local keyFocusState = itemLayout.KeyFocusState
+                local valueFocusState = itemLayout.ValueFocusState
+
+                return
+                    (
+                        keyFocusState ~= nil
+                        and use<<boolean>>(keyFocusState)
+                    )
+                    or (
+                        valueFocusState ~= nil
+                        and use<<boolean>>(valueFocusState)
+                    )
+            end
+
+            return false
+        end
+    )
+    local rowCount = Computed(scope, function(use: Fusion.Use): number
+        return use<<RowMetadata>>(targetMetadata).RowCount
+    end)
+    local cornerRowCount = Computed(
+        scope,
+        function(use: Fusion.Use): number
+            return use<<RowMetadata>>(metadata).RowCount
+        end
+    )
+
+    local function loadRootRange(
+        firstRootRow: number,
+        lastRootRow: number
+    )
+        local firstItem, lastItem =
+            VirtualizationMath.RootRangeToItemRange(
+                firstRootRow,
+                lastRootRow,
+                header ~= nil,
+                itemCount
+            )
+        local changed = false
+
+        for itemIdx = firstItem, lastItem do
+            if loadedLayouts[itemIdx] then continue end
+
+            local detailScope = Fusion.innerScope(scope)
+            local item = loadItem(detailScope, itemIdx)
+
+            assert(
+                type(item) == "table"
+                    and type(item.Key) == "string",
+                `Detail must return a Map.Item for row {itemIdx}.`
+            )
+
+            local collapseStateNode = GetCollapseStateNode(
+                collapseStateRoot,
+                item
+            )
+            loadedLayouts[itemIdx] = CreateItemLayout(
+                detailScope,
+                collapseStateNode,
+                ResolveItem(detailScope, item),
+                1,
+                rowHeight,
+                itemIdx == itemCount
+            )
+            changed = true
+        end
+
+        if changed then
+            -- Loaded rows remain cached for this shape's lifetime. This keeps
+            -- expanded, focused, and edited row state stable across scrolling.
+            loadedLayoutsState:set(table.clone(loadedLayouts))
+        end
+    end
+
+    return {
+        RootItems = (loadedLayoutsState :: any),
+        RootRows = rootRows,
+        RootGeometry = rootGeometry,
+        FocusedRootRange = focusedRootRange,
+        LastRowFocused = lastRowFocused,
+        AnimatedExpandedHeight = animatedExpandedHeight,
+        Metadata = metadata,
+        CornerRowCount = cornerRowCount,
+        RowCount = rowCount,
+        LoadRootRange = loadRootRange
+    }
+end
+
 local function CreateMapSizeTween(
     scope: Fusion.Scope,
     width: UDim,
@@ -921,6 +1225,14 @@ local function CreateRow(
             RowIdx = if config.Header then 2 else 1
         })
     end
+
+    assert(
+        not (
+            type(descriptor) == "table"
+            and (descriptor :: any).Kind == "LazyItem"
+        ),
+        `Lazy map row {rootIdx} was rendered before its detail was loaded.`
+    )
 
     return MapItem(scope, {
         Variant = config.Variant,
@@ -1124,6 +1436,7 @@ end
 
 return {
     CreateMapLayout = CreateMapLayout,
+    CreateLazyMapLayout = CreateLazyMapLayout,
     CreateMapSizeTween = CreateMapSizeTween,
     ComputeVirtualListVisibleRootRange =
         ComputeVirtualListVisibleRootRange,
