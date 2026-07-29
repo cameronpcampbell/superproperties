@@ -1,6 +1,8 @@
 --!strict
 --!nolint LocalShadow
 
+local RunService = game:GetService("RunService")
+
 local Packages = script.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
@@ -31,7 +33,7 @@ export type Props = {
     [any]: any
 }
 
-local TransitionOffset = 12
+local TransitionOffset = 8
 local TransitionTweenInfo = TweenInfo.new(
     .2,
     Enum.EasingStyle.Quint,
@@ -131,6 +133,15 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
     local effectiveVisible = Computed(scope, function(use): boolean
         return use<<boolean>>(visible)
     end)
+    local entranceReady = Value(
+        scope,
+        Peek<<boolean>>(effectiveVisible)
+    )
+    local transitionVisible = Computed(scope, function(use): boolean
+        return
+            use<<boolean>>(effectiveVisible)
+            and use<<boolean>>(entranceReady)
+    end)
 
     local renderedPosition =
         Value(scope, Peek<<UDim2>>(effectivePreferredPosition))
@@ -140,7 +151,7 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
     local transitionTransparency = Tween<<number>>(
         scope,
         Computed(scope, function(use): number
-            return if use<<boolean>>(effectiveVisible) then 0 else 1
+            return if use<<boolean>>(transitionVisible) then 0 else 1
         end),
         TransitionTweenInfo
     )
@@ -200,6 +211,8 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
 
     local scopeAlive = true
     local placementQueued = false
+    local openingRevision = 0
+    local geometryRevision = 0
     local observedParent: GuiBase2d? = nil
     local observedViewport: GuiBase2d? = nil
     local observedClipAncestors: { GuiObject } = {}
@@ -270,7 +283,7 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
         end
     end
 
-    local function UpdatePlacement()
+    local function UpdatePlacement(): boolean
         RefreshGeometryConnections()
 
         local usedPreferredPosition =
@@ -282,14 +295,14 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
             if not Peek<<boolean>>(effectiveVisible)
                 and Peek<<boolean>>(shouldRender)
             then
-                return
+                return false
             end
 
             SetPlacement(
                 usedPreferredPosition,
                 usedPreferredAnchorPoint
             )
-            return
+            return true
         end
 
         local parent = observedParent
@@ -307,7 +320,7 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
                 usedPreferredPosition,
                 usedPreferredAnchorPoint
             )
-            return
+            return false
         end
 
         local positionOffsetScale =
@@ -317,7 +330,7 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
                 usedPreferredPosition,
                 usedPreferredAnchorPoint
             )
-            return
+            return false
         end
 
         local placement = Fit({
@@ -334,9 +347,40 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
         })
 
         SetPlacement(placement.Position, placement.AnchorPoint)
+        return true
+    end
+
+    local function QueueEntranceReadyConfirmation()
+        if Peek<<boolean>>(entranceReady) then return end
+        if not Peek<<boolean>>(effectiveVisible) then return end
+
+        local usedOpeningRevision = openingRevision
+        local usedGeometryRevision = geometryRevision
+
+        task.spawn(function()
+            -- GUI layouts and AutomaticSize settle on frame boundaries rather
+            -- than task scheduler turns. Require two unchanged frames before
+            -- beginning the visible transition.
+            RunService.Heartbeat:Wait()
+            if not scopeAlive then return end
+            if usedOpeningRevision ~= openingRevision then return end
+            if usedGeometryRevision ~= geometryRevision then return end
+            if not Peek<<boolean>>(effectiveVisible) then return end
+
+            RunService.Heartbeat:Wait()
+            if not scopeAlive then return end
+            if usedOpeningRevision ~= openingRevision then return end
+            if usedGeometryRevision ~= geometryRevision then return end
+            if not Peek<<boolean>>(effectiveVisible) then return end
+            if not UpdatePlacement() then return end
+            if usedGeometryRevision ~= geometryRevision then return end
+
+            entranceReady:set(true)
+        end)
     end
 
     QueuePlacement = function()
+        geometryRevision += 1
         if placementQueued then return end
         placementQueued = true
 
@@ -344,12 +388,15 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
             placementQueued = false
             if not scopeAlive then return end
 
-            UpdatePlacement()
+            if UpdatePlacement() then
+                QueueEntranceReadyConfirmation()
+            end
         end)
     end
 
     table.insert(scope, function()
         scopeAlive = false
+        openingRevision += 1
         DisconnectGeometryConnections()
     end)
 
@@ -364,6 +411,14 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
     Observer(scope, effectivePreferredAnchorPoint):onChange(QueuePlacement)
     Observer(scope, effectiveEnabled):onBind(QueuePlacement)
     Observer(scope, effectiveStickToViewport):onChange(QueuePlacement)
+    Observer(scope, effectiveVisible):onChange(function()
+        openingRevision += 1
+        entranceReady:set(false)
+
+        if Peek<<boolean>>(effectiveVisible) then
+            QueuePlacement()
+        end
+    end)
     Observer(scope, shouldRender):onChange(QueuePlacement)
 
     return target
