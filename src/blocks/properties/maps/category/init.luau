@@ -188,11 +188,13 @@ local function FilterItems(
     items: Fusion.UsedAs<{ Item }>,
     itemFilter: Fusion.UsedAs<ItemFilter>
 ): Fusion.Computed<{ Item }>
-    return Computed(scope, function(use)
+    return Computed(scope, function(use: Fusion.Use): { Item }
         local usedItems = use<<{ Item }>>(items)
         local bookmarksOnly =
             use<<boolean>>(bookmarksOnlyState)
-        if bookmarksOnly and not bookmarkable then return {} end
+        if bookmarksOnly and not bookmarkable then
+            return {} :: { Item }
+        end
 
         local usedItemFilter = use<<ItemFilter>>(itemFilter)
         local usedFilter = use<<string?>>(filterState)

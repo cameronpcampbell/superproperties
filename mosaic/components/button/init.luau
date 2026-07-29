@@ -161,8 +161,9 @@ return Component<<ButtonProps>>(function(scope, props)
                 return TransformChild(
                     childScope,
                     child,
-                    visualTransparency
-                )
+                    visualTransparency,
+                    variant
+                ) :: Fusion.Child
             end, children),
 
             New(scope, "UIListLayout") {

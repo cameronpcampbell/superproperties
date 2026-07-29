@@ -114,7 +114,9 @@ return Component<<FocusRingProps>>(function(scope, props)
         return usedBaseSize + animatedOffset
     end)
 
-    local computeTransparency = Computed(scope, function(use, scope)
+    local computeTransparency = Computed(scope, function(
+        use: Fusion.Use
+    ): number
         local usedAlpha = use<<number>>(computeAlpha)
 
         return math.map(usedAlpha, 0, 1, 1, .6)

@@ -207,8 +207,8 @@ return Component<<InputProps>>(function(scope, props)
         and focusState == parentPopoverFocus.State
     then
         table.insert(
-            scope,
-            parentPopoverFocus.RegisterDefaultChild(input)
+            scope :: { Fusion.Task },
+            parentPopoverFocus.RegisterDefaultChild(input) :: any
         )
     elseif focusState then
         Observer(scope, focusState):onBind(function()

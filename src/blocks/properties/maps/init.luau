@@ -171,7 +171,10 @@ return function(
     local mapRefreshPending = false
     local mapRefreshRevision = 0
     local mapsAlive = true
-    local renderedMaps: Fusion.Value<RenderedMaps>
+    local renderedMaps: Fusion.Value<RenderedMaps> = Value(
+        mapsScope,
+        Peek<<RenderedMaps>>(computeRenderedMaps)
+    )
     local bookmarkButtonVisualState =
         GetBookmarkButtonVisualState(outerScope)
 
@@ -212,11 +215,6 @@ return function(
         end)
     end)
 
-    renderedMaps = Value(
-        mapsScope,
-        Peek<<RenderedMaps>>(computeRenderedMaps)
-    )
-
     Observer(mapsScope, computeRenderedMaps):onChange(function()
         if mapRefreshPending then return end
 
@@ -234,7 +232,7 @@ return function(
         return use<<RenderedMaps>>(renderedMaps).Shape
     end)
 
-    local function loadDetail(
+    local loadDetail: VirtualMapScrollable.Detail = function(
         detailScope: Fusion.Scope,
         mapIdx: number,
         rowIdx: number
