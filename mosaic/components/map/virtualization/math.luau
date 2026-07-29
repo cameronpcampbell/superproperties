@@ -9,6 +9,11 @@ export type RowGeometry = {
     TotalHeight: number
 }
 
+export type RootRange = {
+    First: number,
+    Last: number
+}
+
 local function BuildRowGeometry(
     rowHeights: { number },
     contentPadding: number,
@@ -121,6 +126,92 @@ local function CalculateTopSpacerHeight(
     return math.max(spacerHeight, 0)
 end
 
+local function MergeRootRanges(
+    rowCount: number,
+    ranges: { RootRange }
+): { RootRange }
+    local clampedRowCount = math.max(rowCount, 0)
+    local sortedRanges = {} :: { RootRange }
+
+    for _, range in ranges do
+        local firstRow = math.max(range.First, 1)
+        local lastRow = math.min(range.Last, clampedRowCount)
+
+        if firstRow <= lastRow then
+            table.insert(sortedRanges, {
+                First = firstRow,
+                Last = lastRow
+            })
+        end
+    end
+
+    table.sort(sortedRanges, function(a: RootRange, b: RootRange): boolean
+        if a.First == b.First then return a.Last < b.Last end
+        return a.First < b.First
+    end)
+
+    local mergedRanges = {} :: { RootRange }
+
+    for _, range in sortedRanges do
+        local previousRange = mergedRanges[#mergedRanges]
+
+        if previousRange
+            and range.First <= previousRange.Last + 1
+        then
+            previousRange.Last = math.max(
+                previousRange.Last,
+                range.Last
+            )
+        else
+            table.insert(mergedRanges, {
+                First = range.First,
+                Last = range.Last
+            })
+        end
+    end
+
+    return mergedRanges
+end
+
+-- Only omitted rows before and between rendered ranges need spacers. The map
+-- owns its full numeric height, so an omitted suffix can remain empty.
+local function FindRootRangeGaps(
+    renderedRanges: { RootRange }
+): { RootRange }
+    local gaps = {} :: { RootRange }
+    local previousLastRow = 0
+
+    for _, range in renderedRanges do
+        local firstSkippedRow = previousLastRow + 1
+        local lastSkippedRow = range.First - 1
+
+        if firstSkippedRow <= lastSkippedRow then
+            table.insert(gaps, {
+                First = firstSkippedRow,
+                Last = lastSkippedRow
+            })
+        end
+
+        previousLastRow = math.max(previousLastRow, range.Last)
+    end
+
+    return gaps
+end
+
+local function CalculateGapSpacerHeight(
+    geometry: RowGeometry,
+    firstSkippedRow: number,
+    lastSkippedRow: number
+): number
+    if firstSkippedRow > lastSkippedRow then return 0 end
+
+    local gapTop = geometry.Tops[firstSkippedRow]
+    local gapBottom = geometry.Bottoms[lastSkippedRow]
+
+    if gapTop == nil or gapBottom == nil then return 0 end
+    return math.max(gapBottom - gapTop, 0)
+end
+
 local function RootRangeToItemRange(
     firstRootRow: number,
     lastRootRow: number,
@@ -145,5 +236,8 @@ return {
     BuildRowGeometry = BuildRowGeometry,
     FindVisibleRange = FindVisibleRange,
     CalculateTopSpacerHeight = CalculateTopSpacerHeight,
+    MergeRootRanges = MergeRootRanges,
+    FindRootRangeGaps = FindRootRangeGaps,
+    CalculateGapSpacerHeight = CalculateGapSpacerHeight,
     RootRangeToItemRange = RootRangeToItemRange
 }

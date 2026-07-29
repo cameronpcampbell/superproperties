@@ -6,6 +6,8 @@ local Fusion = require(Packages.fusion)
 local Children, Computed, New, Observer, Peek, Tween, Value =
     Fusion.Children, Fusion.Computed, Fusion.New, Fusion.Observer,
     Fusion.peek, Fusion.Tween, Fusion.Value
+local ProfileBegin, ProfileEnd =
+    (debug :: any).profilebegin, (debug :: any).profileend
 
 local Utils = script.Parent.Parent.Parent.utils
 local ThemeUtils = require(Utils.themeUtils)
@@ -40,7 +42,12 @@ type RootRowDescriptor =
     ItemLayout | LazyRootRowDescriptor | string
 type RootRowDescriptors = { [number]: RootRowDescriptor }
 type RootRowGeometry = VirtualizationMath.RowGeometry
+type RootRange = VirtualizationMath.RootRange
 type RenderedRows = { [number]: Instance }
+type RenderedRootPlan = {
+    Descriptors: RootRowDescriptors,
+    Gaps: { RootRange }
+}
 type LoadedItemLayouts = { [number]: ItemLayout }
 type LoadItem = (
     scope: Fusion.Scope,
@@ -100,7 +107,8 @@ export type VirtualListData = {
     AnimatedMapSize: Fusion.UsedAs<UDim2>?,
     MapReveal: Fusion.UsedAs<number>?,
     GeometryReady: Fusion.UsedAs<boolean>,
-    VisibleRootRange: Fusion.UsedAs<Vector2>
+    VisibleRootRange: Fusion.UsedAs<Vector2>,
+    _PerformanceSink: ((event: string, rootIdx: number?) -> ())?
 }
 
 export type VirtualRowsConfig = {
@@ -117,12 +125,18 @@ export type VirtualRowsConfig = {
     CollapsedState: Fusion.Value<boolean>,
     AnimatedMapSize: Fusion.UsedAs<UDim2>,
     VisibleRootRange: Fusion.UsedAs<Vector2>?,
-    RowHeight: Fusion.UsedAs<number>
+    RowHeight: Fusion.UsedAs<number>,
+    _PerformanceSink: ((event: string, rootIdx: number?) -> ())?
 }
 
 type MountedRow = {
     Scope: Fusion.Scope,
     Descriptor: RootRowDescriptor,
+    Instance: Instance
+}
+type MountedSpacer = {
+    Scope: Fusion.Scope,
+    LastRow: number,
     Instance: Instance
 }
 
@@ -978,6 +992,8 @@ local function CreateLazyMapLayout(
     local rootGeometry = Computed(
         scope,
         function(use: Fusion.Use): RootRowGeometry
+            ProfileBegin("VirtualMapScrollable.RootGeometry")
+
             local usedRootRows =
                 use<<RootRowDescriptors>>(rootRows)
             local usedRowHeight = use<<number>>(rowHeight)
@@ -992,11 +1008,14 @@ local function CreateLazyMapLayout(
                 )
             end
 
-            return VirtualizationMath.BuildRowGeometry(
+            local geometry = VirtualizationMath.BuildRowGeometry(
                 rowHeights,
                 MapContentPadding,
                 RowGap
             )
+
+            ProfileEnd()
+            return geometry
         end
     )
 
@@ -1140,39 +1159,18 @@ local function CreateMapSizeTween(
     return size, reveal
 end
 
-local function IsEmptyRootRange(range: Vector2): boolean
-    return range.X > range.Y
-end
-
-local function UnionRootRanges(a: Vector2, b: Vector2): Vector2
-    if IsEmptyRootRange(a) then return b end
-    if IsEmptyRootRange(b) then return a end
-
-    return Vector2.new(
-        math.min(a.X, b.X),
-        math.max(a.Y, b.Y)
-    )
-end
-
 local function ComputeVirtualListVisibleRootRange(
     scope: Fusion.Scope,
-    virtualListData: VirtualListData?,
-    layout: MapLayout
+    virtualListData: VirtualListData?
 ): Fusion.Computed<Vector2>?
     if not virtualListData then return nil end
 
     return Computed(scope, function(use: Fusion.Use): Vector2
-        local focusedRootRange =
-            use<<Vector2>>(layout.FocusedRootRange)
-
         if not use<<boolean>>(virtualListData.GeometryReady) then
-            return focusedRootRange
+            return Vector2.new(1, 0)
         end
 
-        local visibleRootRange =
-            use<<Vector2>>(virtualListData.VisibleRootRange)
-
-        return UnionRootRanges(visibleRootRange, focusedRootRange)
+        return use<<Vector2>>(virtualListData.VisibleRootRange)
     end)
 end
 
@@ -1243,48 +1241,80 @@ local function CreateRow(
     })
 end
 
-local function ComputeVisibleRootDescriptors(
+local function ComputeRenderedRootPlan(
     scope: Fusion.Scope,
     config: VirtualRowsConfig
-): Fusion.Computed<RootRowDescriptors>
-    return Computed(scope, function(use: Fusion.Use): RootRowDescriptors
+): Fusion.Computed<RenderedRootPlan>
+    return Computed(scope, function(use: Fusion.Use): RenderedRootPlan
         local rootRows = use<<RootRowDescriptors>>(config.Layout.RootRows)
-        local firstRow, lastRow = 1, #rootRows
+        local rowCount = #rootRows
+        local candidateRanges = {} :: { RootRange }
 
         if config.VisibleRootRange then
             local visibleRange = use<<Vector2>>(config.VisibleRootRange)
-            firstRow, lastRow = visibleRange.X, visibleRange.Y
+            table.insert(candidateRanges, {
+                First = visibleRange.X,
+                Last = visibleRange.Y
+            })
+        else
+            table.insert(candidateRanges, {
+                First = 1,
+                Last = rowCount
+            })
         end
 
+        local focusedRange =
+            use<<Vector2>>(config.Layout.FocusedRootRange)
+        table.insert(candidateRanges, {
+            First = focusedRange.X,
+            Last = focusedRange.Y
+        })
+
+        if config.Header and use<<boolean>>(config.ShowOnTop) then
+            table.insert(candidateRanges, {
+                First = 1,
+                Last = 1
+            })
+        end
+
+        local renderedRanges =
+            VirtualizationMath.MergeRootRanges(
+                rowCount,
+                candidateRanges
+            )
         local descriptors = {} :: RootRowDescriptors
 
-        if firstRow <= lastRow then
-            for rootIdx = firstRow, lastRow do
+        for _, range in renderedRanges do
+            for rootIdx = range.First, range.Last do
                 local descriptor = rootRows[rootIdx]
                 if descriptor then descriptors[rootIdx] = descriptor end
             end
         end
 
-        if config.Header and use<<boolean>>(config.ShowOnTop) then
-            local headerDescriptor = rootRows[1]
-            if headerDescriptor then descriptors[1] = headerDescriptor end
-        end
-
-        return descriptors
+        return {
+            Descriptors = descriptors,
+            Gaps = VirtualizationMath.FindRootRangeGaps(
+                renderedRanges
+            )
+        }
     end)
 end
 
 local function CreateRenderedRows(
     scope: Fusion.Scope,
     config: VirtualRowsConfig,
-    visibleDescriptors: Fusion.Computed<RootRowDescriptors>,
+    renderedRootPlan: Fusion.Computed<RenderedRootPlan>,
     headerContentCache: HeaderContentCache?
 ): Fusion.Value<RenderedRows>
     local renderedRows = Fusion.Value<<RenderedRows>>(scope, {})
     local mountedRows = {} :: { [number]: MountedRow }
 
     local function reconcileRows()
-        local descriptors = Peek<<RootRowDescriptors>>(visibleDescriptors)
+        ProfileBegin("VirtualMapScrollable.ReconcileRows")
+
+        local descriptors = Peek<<RenderedRootPlan>>(
+            renderedRootPlan
+        ).Descriptors
         local nextMountedRows = {} :: { [number]: MountedRow }
         local nextRenderedRows = {} :: RenderedRows
 
@@ -1300,6 +1330,10 @@ local function CreateRenderedRows(
             -- Clean up replaced rows before mounting their replacements so an
             -- old [Children] cleanup cannot unparent them from the new row.
             Fusion.doCleanup(mountedRow.Scope)
+
+            if config._PerformanceSink then
+                config._PerformanceSink("RowUnmount", rootIdx)
+            end
         end
 
         for rootIdx, descriptor in descriptors do
@@ -1320,64 +1354,119 @@ local function CreateRenderedRows(
                 Instance = rowInstance
             }
             nextRenderedRows[rootIdx] = rowInstance
+
+            if config._PerformanceSink then
+                config._PerformanceSink("RowMount", rootIdx)
+            end
         end
 
         renderedRows:set(nextRenderedRows)
         mountedRows = nextMountedRows
+
+        ProfileEnd()
     end
 
-    Observer(scope, visibleDescriptors):onBind(reconcileRows)
+    Observer(scope, renderedRootPlan):onBind(reconcileRows)
+    table.insert(scope, function()
+        if not config._PerformanceSink then return end
+
+        for rootIdx in mountedRows do
+            config._PerformanceSink("RowUnmount", rootIdx)
+        end
+    end)
+
     return renderedRows
 end
 
-local function ComputeTopSpacerHeight(
-    scope: Fusion.Scope,
-    config: VirtualRowsConfig
-): Fusion.Computed<number>
-    return Computed(scope, function(use: Fusion.Use): number
-        if not config.VisibleRootRange then return 0 end
-
-        local visibleRange = use<<Vector2>>(config.VisibleRootRange)
-        if visibleRange.X > visibleRange.Y then return 0 end
-
-        local skippedCount = math.max(visibleRange.X - 1, 0)
-        if skippedCount == 0 then return 0 end
-
-        local rootGeometry =
-            use<<RootRowGeometry>>(config.Layout.RootGeometry)
-
-        local headerPinned =
-            config.Header ~= nil
-            and use<<boolean>>(config.ShowOnTop)
-
-        return VirtualizationMath.CalculateTopSpacerHeight(
-            rootGeometry,
-            visibleRange.X,
-            headerPinned,
-            RowGap
-        )
-    end)
-end
-
-local function CreateTopSpacer(
+local function CreateGapSpacer(
     scope: Fusion.Scope,
     config: VirtualRowsConfig,
-    height: Fusion.Computed<number>
+    gap: RootRange
 ): Instance
     return New(scope, "Frame") {
         Size = Computed(scope, function(use: Fusion.Use): UDim2
-            return UDim2.new(1, 0, 0, use<<number>>(height))
+            local geometry = use<<RootRowGeometry>>(
+                config.Layout.RootGeometry
+            )
+            local height =
+                VirtualizationMath.CalculateGapSpacerHeight(
+                    geometry,
+                    gap.First,
+                    gap.Last
+                )
+
+            return UDim2.new(1, 0, 0, height)
         end),
         BackgroundTransparency = 1,
-        LayoutOrder = Computed(scope, function(use: Fusion.Use): number
-            if not config.VisibleRootRange then return 0 end
-            return use<<Vector2>>(config.VisibleRootRange).X - 1
-        end),
-        Visible = Computed(scope, function(use: Fusion.Use): boolean
-            return use<<number>>(height) > 0
-        end),
-        Name = "CulledMapRowsSpacer"
+        LayoutOrder = gap.First,
+        Name = `CulledMapRowsSpacer [{gap.First}-{gap.Last}]`
     }
+end
+
+local function CreateRenderedGapSpacers(
+    scope: Fusion.Scope,
+    config: VirtualRowsConfig,
+    renderedRootPlan: Fusion.Computed<RenderedRootPlan>
+): Fusion.Value<RenderedRows>
+    local renderedSpacers = Fusion.Value<<RenderedRows>>(scope, {})
+    local mountedSpacers = {} :: { [number]: MountedSpacer }
+
+    local function reconcileSpacers()
+        local gaps = Peek<<RenderedRootPlan>>(
+            renderedRootPlan
+        ).Gaps
+        local nextMountedSpacers =
+            {} :: { [number]: MountedSpacer }
+        local nextRenderedSpacers = {} :: RenderedRows
+        local changed = false
+
+        for _, gap in gaps do
+            local mountedSpacer = mountedSpacers[gap.First]
+
+            if mountedSpacer
+                and mountedSpacer.LastRow == gap.Last
+            then
+                nextMountedSpacers[gap.First] = mountedSpacer
+                nextRenderedSpacers[gap.First] =
+                    mountedSpacer.Instance
+                continue
+            end
+
+            if mountedSpacer then
+                Fusion.doCleanup(mountedSpacer.Scope)
+            end
+
+            local spacerScope = Fusion.innerScope(scope)
+            local spacerInstance = CreateGapSpacer(
+                spacerScope,
+                config,
+                gap
+            )
+
+            nextMountedSpacers[gap.First] = {
+                Scope = spacerScope,
+                LastRow = gap.Last,
+                Instance = spacerInstance
+            }
+            nextRenderedSpacers[gap.First] = spacerInstance
+            changed = true
+        end
+
+        for firstRow, mountedSpacer in mountedSpacers do
+            if nextMountedSpacers[firstRow] then continue end
+
+            Fusion.doCleanup(mountedSpacer.Scope)
+            changed = true
+        end
+
+        if not changed then return end
+
+        renderedSpacers:set(nextRenderedSpacers)
+        mountedSpacers = nextMountedSpacers
+    end
+
+    Observer(scope, renderedRootPlan):onBind(reconcileSpacers)
+    return renderedSpacers
 end
 
 local function ComputeRows(
@@ -1392,19 +1481,24 @@ local function ComputeRows(
             config.HeaderOverlay
         )
         else nil
-    local visibleDescriptors = ComputeVisibleRootDescriptors(scope, config)
+    local renderedRootPlan = ComputeRenderedRootPlan(scope, config)
     local renderedRows = CreateRenderedRows(
         scope,
         config,
-        visibleDescriptors,
+        renderedRootPlan,
         headerContentCache
     )
-    local spacerHeight = ComputeTopSpacerHeight(scope, config)
-    local topSpacer = CreateTopSpacer(scope, config, spacerHeight)
+    local renderedSpacers = CreateRenderedGapSpacers(
+        scope,
+        config,
+        renderedRootPlan
+    )
 
     local renderedRowsChild = (renderedRows :: unknown) :: Fusion.Child
+    local renderedSpacersChild =
+        (renderedSpacers :: unknown) :: Fusion.Child
     local rowChildren: { [unknown]: Fusion.Child } = {
-        topSpacer,
+        renderedSpacersChild,
         renderedRowsChild
     }
 

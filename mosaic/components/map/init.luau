@@ -136,8 +136,7 @@ local MapComponent = (Component :: any)(function(
 
     local visibleRootRange = ComputeVirtualListVisibleRootRange(
         scope,
-        virtualListData,
-        layout
+        virtualListData
     )
 
     -- The parent supplies these states so unmounted maps continue animating.
@@ -202,7 +201,11 @@ local MapComponent = (Component :: any)(function(
         CollapsedState = collapsedState,
         AnimatedMapSize = animatedMapSize,
         VisibleRootRange = visibleRootRange,
-        RowHeight = height
+        RowHeight = height,
+        _PerformanceSink =
+            if virtualListData
+            then virtualListData._PerformanceSink
+            else nil
     })
 
     local mapZIndex = Computed(scope, function(use: Fusion.Use): number

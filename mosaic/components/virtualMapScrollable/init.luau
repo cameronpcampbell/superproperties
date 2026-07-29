@@ -1,11 +1,15 @@
 --!strict
 --!nolint LocalShadow
 
+local RunService = game:GetService("RunService")
+
 local Packages = script.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
 local Children, Computed, Observer, Peek =
     Fusion.Children, Fusion.Computed, Fusion.Observer, Fusion.peek
+local ProfileBegin, ProfileEnd =
+    (debug :: any).profilebegin, (debug :: any).profileend
 
 local Utils = script.Parent.Parent.utils
 
@@ -38,6 +42,7 @@ local GetStableLayoutOrderIndices =
     VirtualMapScrollableMath.GetStableLayoutOrderIndices
 local FindVisibleMapRange =
     VirtualMapScrollableMath.FindVisibleMapRange
+local FrameScheduler = require(script.scheduler)
 
 type MapProps = Map.MapProps
 type LazyMapLayout = Virtualization.LazyMapLayout
@@ -88,11 +93,29 @@ type VirtualWindowRefreshOptions = {
     RebuildRetention: boolean?
 }
 
+type PerformanceEvent =
+    "RefreshRequest"
+    | "RefreshExecution"
+    | "RefreshCommit"
+    | "RangePublished"
+    | "MapMount"
+    | "MapUnmount"
+    | "RowMount"
+    | "RowUnmount"
+    | "DetailLoaded"
+
+type PerformanceSink = (
+    event: PerformanceEvent,
+    mapIdx: number?,
+    rowIdx: number?
+) -> ()
+
 type VirtualMapScrollableProps = {
     Shape: Fusion.UsedAs<{ MapShape }>,
     Detail: Detail,
     Overdraw: Fusion.UsedAs<number>?,
-    Padding: Fusion.UsedAs<number>?
+    Padding: Fusion.UsedAs<number>?,
+    _PerformanceSink: PerformanceSink?
 }
 
 type VirtualMapScrollableComponent = (
@@ -105,6 +128,7 @@ local DefaultPadding = 4
 local DefaultOverdrawRows = 6
 local MinimumBufferRows = 2
 local BottomPadding = 2
+local PersistentMapShellLimit = 16
 
 local function SortMapSources(mapSources: { MapSource }): { MapSource }
     local layoutOrders = table.create(#mapSources) :: { number }
@@ -168,6 +192,8 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
     local props, overdraw = (TableExtract :: any)(props, "Overdraw")
     local props, padding =
         (TableExtract :: any)(props, "Padding", DefaultPadding)
+    local props, performanceSink =
+        (TableExtract :: any)(props, "_PerformanceSink")
 
     assert(
         shape ~= nil,
@@ -178,6 +204,18 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
         "VirtualMapScrollable requires Detail."
     )
     local detailCallback = detail :: Detail
+    local debugPerformanceSink =
+        performanceSink :: PerformanceSink?
+
+    local function emitPerformanceEvent(
+        event: PerformanceEvent,
+        mapIdx: number?,
+        rowIdx: number?
+    )
+        if debugPerformanceSink then
+            debugPerformanceSink(event, mapIdx, rowIdx)
+        end
+    end
 
     local viewportAbsoluteSizeState =
         Fusion.Value<<Vector2>>(scope, Vector2.new(0, 0))
@@ -224,6 +262,8 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
 
         local usedMapSources =
             use<<{ MapSource }>>(computeSortedMapSources)
+        local persistMapShells =
+            #usedMapSources <= PersistentMapShellLimit
         local mapChildren =
             table.create(#usedMapSources) :: { Fusion.Child }
         local mapRecords =
@@ -276,6 +316,12 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
                             .. `{sourceMapIdx}, row {itemIdx}.`
                     )
 
+                    emitPerformanceEvent(
+                        "DetailLoaded",
+                        idx,
+                        itemIdx
+                    )
+
                     return item :: Map.Item
                 end
             )
@@ -312,7 +358,7 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
             end)
 
             local mapOccludedState =
-                Fusion.Value<<boolean>>(scope, true)
+                Fusion.Value<<boolean>>(scope, not persistMapShells)
             local visibleRootRangeState =
                 Fusion.Value<<Vector2>>(scope, Vector2.new(1, 0))
 
@@ -331,6 +377,11 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
             ): Fusion.Child
                 if use<<boolean>>(mapOccludedState) then return {} end
 
+                emitPerformanceEvent("MapMount", idx, nil)
+                table.insert(mapScope, function()
+                    emitPerformanceEvent("MapUnmount", idx, nil)
+                end)
+
                 -- Component overrides include Fusion special keys and values
                 -- created in a different inner scope. Keep that polymorphism
                 -- isolated at the component boundary.
@@ -347,7 +398,20 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
                         -- The parent publishes a numeric range before mounting
                         -- the Map, so no engine rectangle is needed here.
                         GeometryReady = true,
-                        VisibleRootRange = visibleRootRangeState
+                        VisibleRootRange = visibleRootRangeState,
+                        _PerformanceSink =
+                            if debugPerformanceSink
+                            then function(
+                                event: string,
+                                rootIdx: number?
+                            )
+                                emitPerformanceEvent(
+                                    event :: PerformanceEvent,
+                                    idx,
+                                    rootIdx
+                                )
+                            end
+                            else nil
                     }
                 }
 
@@ -389,6 +453,7 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
         end
 
         local function setVisibleRootRange(
+            mapIdx: number,
             record: MapRecord,
             visibleRootRange: Vector2
         )
@@ -399,6 +464,11 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
             end
 
             record.VisibleRootRange:set(visibleRootRange)
+            emitPerformanceEvent(
+                "RangePublished",
+                mapIdx,
+                nil
+            )
         end
 
         local function rebuildRetainedMapIndices()
@@ -440,6 +510,7 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
             end
 
             refreshInProgress = true
+            emitPerformanceEvent("RefreshExecution", nil, nil)
 
             local currentCanvasY =
                 Peek<<Vector2>>(viewportCanvasPositionState).Y
@@ -477,6 +548,11 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
                 return
             end
 
+            emitPerformanceEvent("RefreshCommit", nil, nil)
+            ProfileBegin(
+                "VirtualMapScrollable.RefreshVirtualWindow"
+            )
+
             if viewportReady then
                 renderedWindowTop = viewportTop - usedOverdraw
                 renderedWindowBottom = viewportBottom + usedOverdraw
@@ -511,7 +587,17 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
 
             for mapIdx in activeMapIndices do
                 if nextActiveMapIndices[mapIdx] then continue end
-                setOccluded(mapRecords[mapIdx], true)
+
+                local record = mapRecords[mapIdx]
+                setVisibleRootRange(
+                    mapIdx,
+                    record,
+                    emptyRootRange
+                )
+
+                if not persistMapShells then
+                    setOccluded(record, true)
+                end
             end
 
             for mapIdx in nextActiveMapIndices do
@@ -538,13 +624,18 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
 
                 -- Publish the range before mounting a newly visible map so its
                 -- first row reconciliation starts with the correct window.
-                setVisibleRootRange(record, visibleRootRange)
+                setVisibleRootRange(
+                    mapIdx,
+                    record,
+                    visibleRootRange
+                )
                 setOccluded(record, false)
             end
 
             activeMapIndices, nextActiveMapIndices =
                 nextActiveMapIndices, activeMapIndices
 
+            ProfileEnd()
             refreshInProgress = false
 
             if refreshPending then
@@ -562,6 +653,45 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
                 })
             end
         end
+
+        local scrollRefreshScheduler = FrameScheduler.Create(
+            function(callback: () -> ()): () -> ()
+                local connection: RBXScriptConnection? = nil
+                connection = RunService.PreRender:Connect(function()
+                    local currentConnection = connection
+                    connection = nil
+
+                    if currentConnection then
+                        currentConnection:Disconnect()
+                    end
+
+                    callback()
+                end)
+
+                return function()
+                    local currentConnection = connection
+                    connection = nil
+
+                    if currentConnection then
+                        currentConnection:Disconnect()
+                    end
+                end
+            end,
+            function()
+                refreshVirtualWindow()
+            end
+        )
+
+        local function refreshVirtualWindowImmediately(
+            options: VirtualWindowRefreshOptions
+        )
+            scrollRefreshScheduler.Cancel()
+            refreshVirtualWindow(options)
+        end
+
+        table.insert(scope, function()
+            scrollRefreshScheduler.Destroy()
+        end)
 
         -- Geometry changes are correctness invalidations rather than scroll
         -- traffic, so they bypass buffer hysteresis without rescanning focus
@@ -596,17 +726,18 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
 
         rebuildRetainedMapIndices()
         Observer(scope, computeGeometryInputs):onBind(function()
-            refreshVirtualWindow({
+            refreshVirtualWindowImmediately({
                 BypassBuffer = true
             })
         end)
         Observer(scope, computeRetentionInputs):onChange(function()
-            refreshVirtualWindow({
+            refreshVirtualWindowImmediately({
                 RebuildRetention = true
             })
         end)
         Observer(scope, viewportCanvasPositionState):onChange(function()
-            refreshVirtualWindow()
+            emitPerformanceEvent("RefreshRequest", nil, nil)
+            scrollRefreshScheduler.Request()
         end)
 
         local finalBottom = previousBottom
