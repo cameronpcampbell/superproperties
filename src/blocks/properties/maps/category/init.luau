@@ -91,7 +91,7 @@ local function CreateRowsFromItems(
                     (item :: any).BookmarkKey :: string?
                 local wrappedItem = item
 
-                row = {
+                local newRow: RowDescriptor = {
                     Id = bookmarkKey or item.Key,
                     Key = item.Key,
                     BookmarkKey = bookmarkKey,
@@ -104,7 +104,8 @@ local function CreateRowsFromItems(
                         return wrappedItem
                     end
                 }
-                rowsByItem[item] = row
+                row = newRow
+                rowsByItem[item] = newRow
             end
 
             rows[itemIdx] = row

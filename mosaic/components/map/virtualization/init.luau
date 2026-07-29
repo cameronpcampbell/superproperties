@@ -1309,6 +1309,7 @@ local function CreateRenderedRows(
     local rowLifetimeScope = Fusion.innerScope(scope)
     local renderedRows = Fusion.Value<<RenderedRows>>(scope, {})
     local mountedRows = {} :: { [number]: MountedRow }
+    local performanceSink = config._PerformanceSink
     local alive = true
     local reconciling = false
     local reconcilePending = false
@@ -1340,8 +1341,8 @@ local function CreateRenderedRows(
                 return
             end
 
-            if config._PerformanceSink then
-                config._PerformanceSink("RowUnmount", rootIdx)
+            if performanceSink then
+                performanceSink("RowUnmount", rootIdx)
             end
         end
 
@@ -1372,8 +1373,8 @@ local function CreateRenderedRows(
             }
             nextRenderedRows[rootIdx] = rowInstance
 
-            if config._PerformanceSink then
-                config._PerformanceSink("RowMount", rootIdx)
+            if performanceSink then
+                performanceSink("RowMount", rootIdx)
             end
         end
 
@@ -1406,10 +1407,10 @@ local function CreateRenderedRows(
         Observer(scope, renderedRootPlan)
     table.insert(scope, function()
         alive = false
-        if not config._PerformanceSink then return end
+        if not performanceSink then return end
 
         for rootIdx in mountedRows do
-            config._PerformanceSink("RowUnmount", rootIdx)
+            performanceSink("RowUnmount", rootIdx)
         end
     end)
     -- Register the teardown guard before onBind queues its initial callback.
