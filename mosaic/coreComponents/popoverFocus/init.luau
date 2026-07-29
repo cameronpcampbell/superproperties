@@ -16,6 +16,7 @@ export type Controller = {
     Target: TextBox,
     Capture: () -> (),
     Release: () -> (),
+    RegisterDefaultChild: (TextBox) -> (() -> ()),
     CaptureChild: (TextBox) -> (),
     ChildFocused: (TextBox?) -> (),
     ChildFocusLost: (InputObject?) -> ()
@@ -35,6 +36,7 @@ return function(scope: Fusion.Scope, props: Props): Controller
     local focusState = Value(scope, false)
     local scopeAlive = true
     local childFocusTarget: TextBox? = nil
+    local defaultChildFocusTarget: TextBox? = nil
     local isChildFocused = false
     local childFocusTransferPending = false
     local focusTarget: TextBox
@@ -136,15 +138,6 @@ return function(scope: Fusion.Scope, props: Props): Controller
         end
     } :: TextBox
 
-    local function capture()
-        cancelPendingFocusLoss()
-        childFocusTransferPending = false
-        isChildFocused = false
-
-        if not focusTarget:IsFocused() then focusTarget:CaptureFocus() end
-        setFocused(true, nil)
-    end
-
     local function release()
         cancelPendingFocusLoss()
         childFocusTransferPending = false
@@ -183,6 +176,40 @@ return function(scope: Fusion.Scope, props: Props): Controller
         end)
     end
 
+    local function capture()
+        local wasFocused = Peek<<boolean>>(focusState)
+        local defaultChild =
+            if wasFocused then nil else defaultChildFocusTarget
+
+        cancelPendingFocusLoss()
+        childFocusTransferPending = false
+        isChildFocused = false
+        setFocused(true, nil)
+
+        if defaultChild then
+            task.spawn(function()
+                if not scopeAlive then return end
+                if defaultChildFocusTarget ~= defaultChild then return end
+                if not Peek<<boolean>>(focusState) then return end
+
+                captureChild(defaultChild)
+            end)
+            return
+        end
+
+        if not focusTarget:IsFocused() then focusTarget:CaptureFocus() end
+    end
+
+    local function registerDefaultChild(child: TextBox): () -> ()
+        defaultChildFocusTarget = child
+
+        return function()
+            if defaultChildFocusTarget == child then
+                defaultChildFocusTarget = nil
+            end
+        end
+    end
+
     local function childFocused(child: TextBox?)
         cancelPendingFocusLoss()
         if child then childFocusTarget = child end
@@ -204,6 +231,7 @@ return function(scope: Fusion.Scope, props: Props): Controller
         Target = focusTarget,
         Capture = capture,
         Release = release,
+        RegisterDefaultChild = registerDefaultChild,
         CaptureChild = captureChild,
         ChildFocused = childFocused,
         ChildFocusLost = childFocusLost

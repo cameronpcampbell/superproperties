@@ -5,9 +5,9 @@ local Packages = script.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local New, Children, Value, Peek, Out, OnEvent, Computed =
+local New, Children, Value, Peek, Out, OnEvent, Computed, Observer =
     Fusion.New, Fusion.Children, Fusion.Value, Fusion.peek,
-    Fusion.Out, Fusion.OnEvent, Fusion.Computed
+    Fusion.Out, Fusion.OnEvent, Fusion.Computed, Fusion.Observer
 
 local Utils = script.Parent.Parent.utils
 
@@ -43,6 +43,7 @@ type InputProps = {
 	LeftChildren: Fusion.Child?,
 	RightChildren: Fusion.Child?,
 	ParentPopoverFocus: PopoverFocus.Controller?,
+	FocusState: Fusion.Value<boolean>?,
 }
 
 local function CreateAccessoryContainer(
@@ -84,6 +85,7 @@ return Component<<InputProps>>(function(scope, props)
     local props, rightChildren = TableExtract(props, "RightChildren")
     local props, parentPopoverFocus =
         TableExtract(props, "ParentPopoverFocus")
+    local props, focusState = TableExtract(props, "FocusState")
 
     local isHoverState, isFocusState = Value(scope, false), Value(scope, false)
     local themeColorModifier =
@@ -173,6 +175,22 @@ return Component<<InputProps>>(function(scope, props)
             FlexMode = Enum.UIFlexMode.Shrink
         }
     }) :: TextBox
+
+    if parentPopoverFocus
+        and focusState == parentPopoverFocus.State
+    then
+        table.insert(
+            scope,
+            parentPopoverFocus.RegisterDefaultChild(input)
+        )
+    elseif focusState then
+        Observer(scope, focusState):onBind(function()
+            if not Peek<<boolean>>(focusState) then return end
+            if input:IsFocused() then return end
+
+            input:CaptureFocus()
+        end)
+    end
 
     return CoreFrame(scope, Supercorner.new :: any, CombineProps({
         BackgroundColor3 = bgColor,

@@ -391,6 +391,7 @@ return function(
                 Text = nameState,
                 PlaceholderText = "Name",
                 ParentPopoverFocus = popoverFocus,
+                FocusState = popoverFocus.State,
                 Interactable = popoverFocus.State,
                 LayoutOrder = 1
             }),
