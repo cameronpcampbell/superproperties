@@ -13,18 +13,32 @@ local CreateItemFilter = require(Packages.mosaic.utils.filterItems)
 local GetFlattenedDefinitionsList =
     IntrinsicSubItems.GetFlattenedDefinitionsList
 
-type Item = Map.Item
-type ItemFilter = (query: string?, items: { Item }) -> { Item }
-type ItemFilterFactory = (items: { Item }) -> ItemFilter
+type SearchableItem = {
+    Key: string,
+    Value: any?,
+    ValueType: Map.ValueType?
+}
+type ItemFilter = (
+    query: string?,
+    items: { SearchableItem }
+) -> { SearchableItem }
+type ItemFilterFactory = (items: { SearchableItem }) -> ItemFilter
 
 local IntrinsicSearchTextsByType: { [string]: { string } } = {}
 
-local function GetIntrinsicSearchTexts(item: Item): { string }
+local function GetIntrinsicSearchTexts(item: SearchableItem): { string }
     local valueType = item.ValueType
     if type(valueType) == "function" then return {} end
 
-    local typeName =
-        valueType or typeof(Peek(item.Value))
+    local typeName: string
+    if type(valueType) == "string" then
+        typeName = valueType
+    else
+        local value = item.Value
+        if value == nil then return {} end
+        typeName = typeof(Peek(value))
+    end
+
     local existingSearchTexts = IntrinsicSearchTextsByType[typeName]
     if existingSearchTexts then return existingSearchTexts end
 
@@ -39,10 +53,12 @@ local function GetIntrinsicSearchTexts(item: Item): { string }
     return searchTexts
 end
 
-local function CreatePropertyItemFilter(items: { Item }): ItemFilter
+local function CreatePropertyItemFilter(
+    items: { SearchableItem }
+): ItemFilter
     return CreateItemFilter(
         items,
-        function(item: Item): string return item.Key end,
+        function(item: SearchableItem): string return item.Key end,
         GetIntrinsicSearchTexts
     )
 end

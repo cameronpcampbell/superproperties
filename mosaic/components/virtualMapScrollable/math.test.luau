@@ -8,6 +8,8 @@ local GetStableLayoutOrderIndices =
     VirtualMapScrollableMath.GetStableLayoutOrderIndices
 local FindVisibleMapRange =
     VirtualMapScrollableMath.FindVisibleMapRange
+local ResolveMapRootRange =
+    VirtualMapScrollableMath.ResolveMapRootRange
 
 local function AssertEqual(actual: number, expected: number, label: string)
     assert(
@@ -220,6 +222,89 @@ AssertEqual(largeLast, 509, "large map list last map")
 assert(
     boundLookupCount <= 22,
     `large map lookup should be logarithmic, got {boundLookupCount} reads`
+)
+
+local function AssertResolvedRootRange(
+    firstRootRow: number,
+    lastRootRow: number,
+    hasHeader: boolean,
+    collapsed: boolean,
+    collapseReveal: number,
+    expectedFirstRootRow: number,
+    expectedLastRootRow: number,
+    expectedShouldLoadDetails: boolean,
+    label: string
+)
+    local resolvedFirstRootRow,
+        resolvedLastRootRow,
+        shouldLoadDetails = ResolveMapRootRange(
+            firstRootRow,
+            lastRootRow,
+            hasHeader,
+            collapsed,
+            collapseReveal
+        )
+
+    AssertEqual(
+        resolvedFirstRootRow,
+        expectedFirstRootRow,
+        `{label} first root row`
+    )
+    AssertEqual(
+        resolvedLastRootRow,
+        expectedLastRootRow,
+        `{label} last root row`
+    )
+    assert(
+        shouldLoadDetails == expectedShouldLoadDetails,
+        `{label}: expected detail loading to be `
+            .. `{expectedShouldLoadDetails}, got {shouldLoadDetails}`
+    )
+end
+
+AssertResolvedRootRange(
+    1,
+    8,
+    true,
+    true,
+    0,
+    1,
+    1,
+    false,
+    "fully collapsed map with a header"
+)
+AssertResolvedRootRange(
+    1,
+    8,
+    false,
+    true,
+    0,
+    1,
+    0,
+    false,
+    "fully collapsed map without a header"
+)
+AssertResolvedRootRange(
+    2,
+    8,
+    true,
+    true,
+    0.5,
+    2,
+    8,
+    true,
+    "map partway through its collapse tween"
+)
+AssertResolvedRootRange(
+    1,
+    8,
+    true,
+    false,
+    0,
+    1,
+    8,
+    true,
+    "map beginning its expansion tween"
 )
 
 print("virtualMapScrollableMath verification passed")

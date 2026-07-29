@@ -21,6 +21,7 @@ local Assets = require(script.Parent.Parent.Parent.Parent.Parent.assets)
 local Bookmarks = require(script.Parent.Parent.Parent.bookmarks)
 local Category = require(script.Parent.Parent.category)
 type CategoryState = Category.State
+type RowDescriptor = Category.RowDescriptor
 
 local CommitAddTag = require(script.commitAddTag)
 local CommitRemoveTag = require(script.commitRemoveTag)
@@ -47,14 +48,23 @@ return function(
     collapsedStateScope: Fusion.Scope,
     instances: { Instance }
 ): CategoryState
-    local tagItemsState = Value<<{ Item }>>(scope, {})
+    local tagRowsState = Value<<{ RowDescriptor }>>(scope, {})
     local commonTagsState = Value<<TagSet>>(scope, {})
     local refreshTagItems: () -> ()
+    local refreshEventRevision = 0
+    local handledRefreshEventRevision = 0
+    local refreshPending = false
+    local tagsAlive = true
+    local syncTagSnapshotsByInstance: {
+        [Instance]: (TagSet) -> ()
+    } = {}
 
     refreshTagItems = function()
         local instancesByTag: { [string]: { Instance } } = {}
         for _, instance in instances do
+            local instanceTags = {} :: TagSet
             for _, tag in instance:GetTags() do
+                instanceTags[tag] = true
                 local tagInstances = instancesByTag[tag]
                 if not tagInstances then
                     tagInstances = {}
@@ -62,58 +72,108 @@ return function(
                 end
                 table.insert(tagInstances, instance)
             end
+
+            local syncTagSnapshot =
+                syncTagSnapshotsByInstance[instance]
+            if syncTagSnapshot then
+                syncTagSnapshot(instanceTags)
+            end
         end
 
-        local tagItems = {} :: { Item }
+        local tagRows = {} :: { RowDescriptor }
         local commonTags = {} :: TagSet
         for tag, tagInstances in instancesByTag do
             if #tagInstances == #instances then
                 commonTags[tag] = true
             end
 
-            table.insert(tagItems, ({
-                Key = tag,
-                BookmarkKey = Bookmarks.CreateKey(
-                    BookmarkCategoryName,
-                    BookmarkOwnerName,
-                    tag
-                ),
-                DisplayAsWritable = true,
-                KeyChildren = function(
-                    childScope: Fusion.Scope<typeof(Fusion)>,
-                    transparency: Fusion.UsedAs<number>
-                ): { Fusion.Child }
-                    return {
-                        IconButton(childScope, {
-                            Image = Assets.Cross,
-                            ImageTransparency = transparency,
+            local usedTag = tag
+            local usedTagInstances = tagInstances
+            local bookmarkKey = Bookmarks.CreateKey(
+                BookmarkCategoryName,
+                BookmarkOwnerName,
+                usedTag
+            )
 
-                            [OnEvent "MouseButton1Click"] = function()
-                                local success, err =
-                                    CommitRemoveTag(tagInstances, tag)
-                                refreshTagItems()
+            table.insert(tagRows, {
+                Id = bookmarkKey,
+                Key = usedTag,
+                BookmarkKey = bookmarkKey,
+                Hydrate = function(
+                    _hydrationScope: Fusion.Scope
+                ): Item
+                    return ({
+                        Key = usedTag,
+                        BookmarkKey = bookmarkKey,
+                        DisplayAsWritable = true,
+                        KeyChildren = function(
+                            childScope: Fusion.Scope<typeof(Fusion)>,
+                            transparency: Fusion.UsedAs<number>
+                        ): { Fusion.Child }
+                            return {
+                                IconButton(childScope, {
+                                    Image = Assets.Cross,
+                                    ImageTransparency = transparency,
 
-                                if not success then
-                                    warn(`Could not remove tag {tag}: {err}`)
-                                end
-                            end
-                        })
-                    }
+                                    [OnEvent "MouseButton1Click"] = function()
+                                        local success, err =
+                                            CommitRemoveTag(
+                                                usedTagInstances,
+                                                usedTag
+                                            )
+                                        refreshTagItems()
+
+                                        if not success then
+                                            warn(
+                                                `Could not remove tag {usedTag}: {err}`
+                                            )
+                                        end
+                                    end
+                                })
+                            }
+                        end
+                    } :: any) :: Item
                 end
-            } :: any) :: Item)
+            })
         end
 
         commonTagsState:set(commonTags)
-        tagItemsState:set(tagItems)
+        tagRowsState:set(tagRows)
+        handledRefreshEventRevision = refreshEventRevision
+    end
+
+    local function queueRefreshTagItems()
+        refreshEventRevision += 1
+        if refreshPending then return end
+        refreshPending = true
+
+        task.defer(function()
+            refreshPending = false
+            if not tagsAlive
+                or handledRefreshEventRevision
+                    == refreshEventRevision
+            then
+                return
+            end
+
+            refreshTagItems()
+        end)
     end
 
     refreshTagItems()
-    local allTagsState = Value(scope, GetAllTags())
+    table.insert(scope, function()
+        tagsAlive = false
+    end)
+    local allTagsState = Value(scope, {} :: { string })
     local menuOpenState = Value(scope, false)
     local menuElevatedState = Value(scope, false)
     local searchState = Value(scope, "")
     local selectedIdxState = Value<<number?>>(scope, nil)
     local menuOptions = Computed(scope, function(use): { TagOption }
+        if not use<<boolean>>(menuElevatedState) then
+            return {} :: { TagOption }
+        end
+
         return TagOptions.Create(
             use<<{ string }>>(allTagsState),
             use<<TagSet>>(commonTagsState),
@@ -131,22 +191,46 @@ return function(
         return labels
     end)
 
-    local function refreshAllTags()
+    Observer(scope, menuElevatedState):onChange(function()
+        if Peek<<boolean>>(menuElevatedState) then return end
+        allTagsState:set({})
+    end)
+
+    local function refreshAllTags(force: boolean?)
+        if force ~= true
+            and not Peek<<boolean>>(menuOpenState)
+        then
+            return
+        end
+
         allTagsState:set(GetAllTags())
     end
 
-    table.insert(scope, CollectionService.TagAdded:Connect(refreshAllTags))
-    table.insert(scope, CollectionService.TagRemoved:Connect(refreshAllTags))
+    table.insert(
+        scope,
+        CollectionService.TagAdded:Connect(function()
+            refreshAllTags()
+        end)
+    )
+    table.insert(
+        scope,
+        CollectionService.TagRemoved:Connect(function()
+            refreshAllTags()
+        end)
+    )
 
     for _, instance in instances do
-        table.insert(
-            scope,
+        local disconnect, syncTagSnapshot =
             TagChanged(instance, function(
                 _tag: string,
                 _removed: boolean
             )
-                refreshTagItems()
+                queueRefreshTagItems()
             end)
+        syncTagSnapshotsByInstance[instance] = syncTagSnapshot
+        table.insert(
+            scope,
+            disconnect
         )
     end
 
@@ -311,7 +395,7 @@ return function(
 
                     selectedIdxState:set(nil)
                     searchState:set("")
-                    refreshAllTags()
+                    refreshAllTags(true)
                     refreshTagItems()
                     popoverFocus.Capture()
                 end
@@ -324,7 +408,7 @@ return function(
             popoverFocus.Target
         } :: any),
         ShowOnTop = menuElevatedState,
-        Items = tagItemsState,
+        Rows = tagRowsState,
         Bookmarkable = true,
         EmptyText = "No Tags have been added yet."
     })

@@ -25,6 +25,7 @@ local Assets = require(script.Parent.Parent.Parent.Parent.Parent.assets)
 local Bookmarks = require(script.Parent.Parent.Parent.bookmarks)
 local Category = require(script.Parent.Parent.category)
 type CategoryState = Category.State
+type RowDescriptor = Category.RowDescriptor
 
 local CommitAttribute = require(script.commitAttribute)
 local CommitRenameAttribute = require(script.commitRenameAttribute)
@@ -105,9 +106,13 @@ return function(
     instances: { Instance },
     props: AttributesMapProps
 ): CategoryState
-    local attributeItemsState = Value<<{ Item }>>(scope, {})
+    local attributeRowsState = Value<<{ RowDescriptor }>>(scope, {})
     local groupsByName: { [string]: AttributeGroup } = {}
     local refreshItems: () -> ()
+    local refreshEventRevision = 0
+    local handledRefreshEventRevision = 0
+    local refreshPending = false
+    local alive = true
 
     local function getTargetInstances(
         group: AttributeGroup
@@ -216,86 +221,118 @@ return function(
         end
 
         groupsByName = nextGroupsByName
-        local attributeItems = {} :: { Item }
+        local attributeRows = {} :: { RowDescriptor }
 
         for _, group in groupsByName do
-            local comparisonValues =
-                table.create(#group.Targets) :: { Fusion.UsedAs<any?> }
-            for targetIdx, target in group.Targets do
-                comparisonValues[targetIdx] = target.Value
-            end
+            local usedGroup = group
+            local valueType =
+                if usedGroup.CompatibleTypes
+                then usedGroup.ValueType
+                else "MixedAttributeTypes"
+            local bookmarkKey = Bookmarks.CreateKey(
+                BookmarkCategoryName,
+                BookmarkOwnerName,
+                usedGroup.Name
+            )
 
-            local item = ({
-                Key = group.Name,
-                BookmarkKey = Bookmarks.CreateKey(
-                    BookmarkCategoryName,
-                    BookmarkOwnerName,
-                    group.Name
-                ),
-                KeyWritable = true,
-                TrySetKey = function(
-                    requestedName: string
-                ): (boolean, string?, string?)
-                    return renameAttribute(group, requestedName)
-                end,
-                Value = group.Targets[1].Value,
-                ComparisonValues = comparisonValues,
-                ValueType =
-                    if group.CompatibleTypes then group.ValueType
-                    else "MixedAttributeTypes",
-                ValueWritable = group.CompatibleTypes
-            } :: any) :: Item
-            if group.CompatibleTypes then
-                item.TrySetValue = function(
-                    value: any
-                ): (boolean, string?, any?)
-                    return commitGroupTransform(
-                        group,
-                        function(): any return value end
-                    )
-                end
-                item.TryTransformValue = function(
-                    transformValue: TransformValue
-                ): (boolean, string?, any?)
-                    return commitGroupTransform(group, transformValue)
-                end
-            end
-            item.KeyChildren = function(
-                childScope: Fusion.Scope<typeof(Fusion)>,
-                transparency: Fusion.UsedAs<number>
-            ): { Fusion.Child }
-                return {
-                    IconButton(childScope, {
-                        Image = Assets.Cross,
-                        ImageTransparency = transparency,
+            table.insert(attributeRows, {
+                Id = bookmarkKey,
+                Key = usedGroup.Name,
+                BookmarkKey = bookmarkKey,
+                ValueType = valueType,
+                Hydrate = function(
+                    _hydrationScope: Fusion.Scope
+                ): Item
+                    local comparisonValues =
+                        table.create(#usedGroup.Targets)
+                            :: { Fusion.UsedAs<any?> }
+                    for targetIdx, target in usedGroup.Targets do
+                        comparisonValues[targetIdx] = target.Value
+                    end
 
-                        [OnEvent "MouseButton1Click"] = function()
-                            removeAttribute(group)
+                    local item = ({
+                        Key = usedGroup.Name,
+                        BookmarkKey = bookmarkKey,
+                        KeyWritable = true,
+                        TrySetKey = function(
+                            requestedName: string
+                        ): (boolean, string?, string?)
+                            return renameAttribute(
+                                usedGroup,
+                                requestedName
+                            )
+                        end,
+                        Value = usedGroup.Targets[1].Value,
+                        ComparisonValues = comparisonValues,
+                        ValueType = valueType,
+                        ValueWritable = usedGroup.CompatibleTypes
+                    } :: any) :: Item
+
+                    if usedGroup.CompatibleTypes then
+                        item.TrySetValue = function(
+                            value: any
+                        ): (boolean, string?, any?)
+                            return commitGroupTransform(
+                                usedGroup,
+                                function(): any return value end
+                            )
                         end
-                    })
-                }
-            end
-            table.insert(attributeItems, item)
+                        item.TryTransformValue = function(
+                            transformValue: TransformValue
+                        ): (boolean, string?, any?)
+                            return commitGroupTransform(
+                                usedGroup,
+                                transformValue
+                            )
+                        end
+                    end
+
+                    item.KeyChildren = function(
+                        childScope: Fusion.Scope<typeof(Fusion)>,
+                        transparency: Fusion.UsedAs<number>
+                    ): { Fusion.Child }
+                        return {
+                            IconButton(childScope, {
+                                Image = Assets.Cross,
+                                ImageTransparency = transparency,
+
+                                [OnEvent "MouseButton1Click"] = function()
+                                    removeAttribute(usedGroup)
+                                end
+                            })
+                        }
+                    end
+
+                    return item
+                end
+            })
         end
 
-        attributeItemsState:set(attributeItems)
+        attributeRowsState:set(attributeRows)
+        handledRefreshEventRevision = refreshEventRevision
     end
 
     refreshItems()
 
-    local refreshPending = false
-    local alive = true
     local function queueRefresh()
+        refreshEventRevision += 1
         if refreshPending then return end
         refreshPending = true
 
         task.defer(function()
             refreshPending = false
-            if alive then refreshItems() end
+            if alive
+                and handledRefreshEventRevision
+                    ~= refreshEventRevision
+            then
+                refreshItems()
+            end
         end)
     end
 
-    table.insert(scope, function() alive = false end)
+    table.insert(scope, function()
+        alive = false
+    end)
     for _, instance in instances do
         table.insert(
             scope,
@@ -477,7 +514,7 @@ return function(
             popoverFocus.Target
         } :: any),
         ShowOnTop = attributeMenuShowOnTop,
-        Items = attributeItemsState,
+        Rows = attributeRowsState,
         Bookmarkable = true,
         EmptyText = "No Attributes have been added yet."
     })

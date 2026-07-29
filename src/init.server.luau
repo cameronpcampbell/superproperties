@@ -81,7 +81,7 @@ local Widget = Scope:Widget {
             BackgroundTransparency = 1,
             Name = "Content",
 
-            [Children] = {
+            [Children] = ({
                 Scope:New "Frame" {
                     Size = UDim2.fromScale(1, 0),
                     AutomaticSize = Enum.AutomaticSize.Y,
@@ -100,6 +100,7 @@ local Widget = Scope:Widget {
 
                 Properties.Maps(Scope, {
                     SelectedInstancesValue = SelectedInstancesValue,
+                    Active = WidgetEnabled,
                     OmitRbxAttributes = true,
                     TintHeaders = SettingsState.TintHeaders,
                     ShowNonScriptableProperties =
@@ -118,7 +119,7 @@ local Widget = Scope:Widget {
                     VerticalFlex = Enum.UIFlexAlignment.Fill,
                     Padding = UDim.new(0, 4)
                 }
-            }
+            } :: { Fusion.Child })
         }
     }
 } :: DockWidgetPluginGui

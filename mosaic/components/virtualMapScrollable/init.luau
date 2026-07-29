@@ -42,6 +42,8 @@ local GetStableLayoutOrderIndices =
     VirtualMapScrollableMath.GetStableLayoutOrderIndices
 local FindVisibleMapRange =
     VirtualMapScrollableMath.FindVisibleMapRange
+local ResolveMapRootRange =
+    VirtualMapScrollableMath.ResolveMapRootRange
 local FrameScheduler = require(script.scheduler)
 
 type MapProps = Map.MapProps
@@ -53,6 +55,9 @@ type MapRecord = {
     Bottom: Fusion.UsedAs<number>,
     Layout: LazyMapLayout,
     ShowOnTop: Fusion.UsedAs<boolean>,
+    Collapsed: Fusion.UsedAs<boolean>,
+    CollapseReveal: Fusion.UsedAs<number>,
+    HasHeader: boolean,
     Occluded: Fusion.Value<boolean>,
     VisibleRootRange: Fusion.Value<Vector2>
 }
@@ -367,6 +372,9 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
                 Bottom = mapBottom,
                 Layout = layout,
                 ShowOnTop = showOnTop,
+                Collapsed = collapsedState,
+                CollapseReveal = mapReveal,
+                HasHeader = header ~= nil,
                 Occluded = mapOccludedState,
                 VisibleRootRange = visibleRootRangeState
             }
@@ -616,8 +624,19 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
                             queryTop - mapTop,
                             queryBottom - mapTop
                         )
+                    local shouldLoadDetails: boolean
+                    firstRow, lastRow, shouldLoadDetails =
+                        ResolveMapRootRange(
+                            firstRow,
+                            lastRow,
+                            record.HasHeader,
+                            Peek<<boolean>>(record.Collapsed),
+                            Peek<<number>>(record.CollapseReveal)
+                        )
 
-                    record.Layout.LoadRootRange(firstRow, lastRow)
+                    if shouldLoadDetails then
+                        record.Layout.LoadRootRange(firstRow, lastRow)
+                    end
 
                     visibleRootRange = Vector2.new(firstRow, lastRow)
                 end
@@ -707,6 +726,8 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
                     use<<number>>(record.Top)
                     use<<number>>(record.Bottom)
                     use<<RowGeometry>>(record.Layout.RootGeometry)
+                    use<<boolean>>(record.Collapsed)
+                    use<<number>>(record.CollapseReveal)
                 end
 
                 return {}

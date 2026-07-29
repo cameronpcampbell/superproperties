@@ -39,6 +39,16 @@ type ClassPlan = {
 	Categories: { CategoryPlan },
 }
 
+export type PropertyMetadata = {
+	Plan: PropertyPlan,
+	CategoryName: string,
+	ValueType: string,
+	-- Instance-dependent constraints (notably Parent) are checked when the
+	-- row is hydrated. This is the static reflection capability only.
+	Writable: boolean,
+	Warning: boolean,
+}
+
 export type CategorySnapshot = {
 	Name: string,
 	Items: { Item },
@@ -270,6 +280,72 @@ local function WritePlannedProperty(instance: Instance, propertyPlan: PropertyPl
 	return pcall(WriteProperty, instance, propertyPlan.Name, value)
 end
 
+local function GetPropertyMetadata(
+	instance: Instance,
+	showNonScriptableProperties: boolean?
+): { PropertyMetadata }
+	local classPlan = GetClassPlan(instance.ClassName)
+	local metadata = {} :: { PropertyMetadata }
+	local showNonScriptableProperties =
+		showNonScriptableProperties ~= false
+
+	for _, categoryPlan in classPlan.Categories do
+		for _, propertyPlan in categoryPlan.Properties do
+			local readSecurity = propertyPlan.ReadSecurity
+			local warning = readSecurity ~= nil
+
+			if warning then
+				if showNonScriptableProperties then
+					table.insert(metadata, {
+						Plan = propertyPlan,
+						CategoryName = categoryPlan.Name,
+						ValueType = "string",
+						Writable = false,
+						Warning = true,
+					})
+				end
+				continue
+			end
+
+			-- A property which cannot be read cannot produce an editor value.
+			-- Non-scriptable properties take the warning path above.
+			if not propertyPlan.Readable then
+				continue
+			end
+
+			local valueType = propertyPlan.ValueType
+			local visibility = propertyPlan.Visibility
+			local needsValue =
+				valueType == nil or type(visibility) == "function"
+
+			if needsValue then
+				local readSuccess, value =
+					ReadPlannedProperty(instance, propertyPlan)
+				if not readSuccess then
+					continue
+				end
+				if not IsPropertyVisible(visibility, instance, value) then
+					continue
+				end
+
+				if valueType == nil then
+					valueType = typeof(value)
+				end
+			end
+
+			table.insert(metadata, {
+				Plan = propertyPlan,
+				CategoryName = categoryPlan.Name,
+				ValueType = valueType :: string,
+				Writable = propertyPlan.Writable,
+				Warning = false,
+			})
+		end
+	end
+
+	return metadata
+end
+
 local function GetProperties(
 	instance: Instance,
 	showNonScriptableProperties: boolean?
@@ -355,7 +431,9 @@ local function GetProperties(
 end
 
 return {
+	GetMetadata = GetPropertyMetadata,
 	Read = GetProperties,
 	ReadProperty = ReadPlannedProperty,
+	IsPropertyWritable = IsPropertyWritable,
 	WriteProperty = WritePlannedProperty,
 }

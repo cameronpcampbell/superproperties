@@ -94,8 +94,28 @@ local function FindVisibleMapRange(
     return firstMap, lastMap
 end
 
+local function ResolveMapRootRange(
+    firstRootRow: number,
+    lastRootRow: number,
+    hasHeader: boolean,
+    collapsed: boolean,
+    collapseReveal: number
+): (number, number, boolean)
+    local isFullyCollapsed = collapsed and collapseReveal <= 0
+
+    if not isFullyCollapsed then
+        return firstRootRow, lastRootRow, true
+    end
+
+    -- A fully collapsed map only needs its header. Avoid forwarding the
+    -- expanded root geometry to the lazy layout: doing so would hydrate item
+    -- details which cannot be rendered until the map is expanded again.
+    return 1, if hasHeader then 1 else 0, false
+end
+
 return {
     ShouldRefreshBufferedWindow = ShouldRefreshBufferedWindow,
     GetStableLayoutOrderIndices = GetStableLayoutOrderIndices,
-    FindVisibleMapRange = FindVisibleMapRange
+    FindVisibleMapRange = FindVisibleMapRange,
+    ResolveMapRootRange = ResolveMapRootRange
 }

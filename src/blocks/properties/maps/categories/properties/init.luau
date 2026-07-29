@@ -8,18 +8,27 @@ local Peek, Value = Fusion.peek, Fusion.Value
 local Map = require(Packages.mosaic.components.map)
 type Item = Map.Item
 type TransformValue = Map.TransformValue
+type ValueType = Map.ValueType
 
 local Bookmarks = require(script.Parent.Parent.Parent.bookmarks)
 local Category = require(script.Parent.Parent.category)
+type RowDescriptor = Category.RowDescriptor
 type CategoryState = Category.State
 
 local GetProperties = require(script.Parent.Parent.getProperties)
 type PropertyPlan = GetProperties.PropertyPlan
-type Snapshot = GetProperties.Snapshot
+type PropertyMetadata = GetProperties.PropertyMetadata
 local CommitProperty = require(script.commitProperty)
 type CommitTarget = CommitProperty.Target
 local LongPoll = require(script.Parent.Parent.longPoll)
 type LongPollOptions = LongPoll.Options
+
+type PropertyTargetPlan = {
+    Instance: Instance,
+    Plan: PropertyPlan,
+    Writable: boolean,
+    Warning: boolean
+}
 
 type PropertyTarget = {
     Instance: Instance,
@@ -27,11 +36,24 @@ type PropertyTarget = {
     ValueState: Fusion.Value<any?>
 }
 
+type ObservePropertyChanges = (
+    scope: Fusion.Scope,
+    targets: { PropertyTarget }
+) -> ()
+
+type ChangedRouter = {
+    TargetsByName: { [string]: { PropertyTarget } }
+}
+
+type PollRouter = {
+    Targets: { PropertyTarget }
+}
+
 local GroupPropertyTargets = require(script.groupPropertyTargets)
 type PropertyCandidate =
-    GroupPropertyTargets.Candidate<PropertyTarget>
+    GroupPropertyTargets.Candidate<PropertyTargetPlan>
 type PropertyGroup =
-    GroupPropertyTargets.Group<PropertyTarget>
+    GroupPropertyTargets.Group<PropertyTargetPlan>
 local NotScriptableValue = require(script.notScriptableValue)
 
 local PollOptions: LongPollOptions = {
@@ -54,55 +76,6 @@ local function ConnectToPropertyChange(
     return connection
 end
 
-local function ObservePropertyChanges(
-    scope: Fusion.Scope,
-    instance: Instance,
-    snapshot: Snapshot,
-    refreshProperty: (propertyName: string) -> boolean
-)
-    local polledPropertyNames = {} :: { string }
-    for propertyName, location in snapshot.LocationsByName do
-        if not location.Plan.Readable then continue end
-        if location.Plan.Poll then
-            table.insert(polledPropertyNames, propertyName)
-        end
-    end
-
-    if instance:IsA("ValueBase") then
-        for propertyName, location in snapshot.LocationsByName do
-            if not location.Plan.Readable then continue end
-            if location.Plan.Poll then continue end
-
-            local connection = ConnectToPropertyChange(instance, propertyName, function()
-                refreshProperty(propertyName)
-            end)
-            if connection then table.insert(scope, connection) end
-        end
-    else
-        table.insert(
-            scope,
-            instance.Changed:Connect(function(propertyName: string)
-                refreshProperty(propertyName)
-            end)
-        )
-    end
-
-    if #polledPropertyNames > 0 then
-        table.insert(
-            scope,
-            LongPoll(PollOptions, function(): boolean
-                local foundChanges = false
-                for _, propertyName in polledPropertyNames do
-                    if refreshProperty(propertyName) then
-                        foundChanges = true
-                    end
-                end
-                return foundChanges
-            end)
-        )
-    end
-end
-
 local function RefreshTarget(target: PropertyTarget): (boolean, any?)
     if not target.Plan.Readable then return false, nil end
 
@@ -117,13 +90,131 @@ local function RefreshTarget(target: PropertyTarget): (boolean, any?)
     return true, value
 end
 
-local function CreatePropertyItem(group: PropertyGroup): Item
-    local comparisonValues =
-        table.create(#group.Targets) :: { Fusion.UsedAs<any?> }
-    local commitTargets =
-        table.create(#group.Targets) :: { CommitTarget }
+local function CreatePropertyObserver(
+    lifetimeScope: Fusion.Scope
+): ObservePropertyChanges
+    local changedRoutersByInstance: {
+        [Instance]: ChangedRouter
+    } = {}
+    local pollRoutersByInstance: {
+        [Instance]: PollRouter
+    } = {}
 
-    for targetIdx, target in group.Targets do
+    return function(
+        scope: Fusion.Scope,
+        targets: { PropertyTarget }
+    )
+        for _, target in targets do
+            local plan = target.Plan
+            if not plan.Readable then continue end
+
+            if plan.Poll then
+                local instance = target.Instance
+                local pollRouter = pollRoutersByInstance[instance]
+                if not pollRouter then
+                    local newPollRouter: PollRouter = {
+                        Targets = {}
+                    }
+                    pollRoutersByInstance[instance] = newPollRouter
+                    pollRouter = newPollRouter
+
+                    table.insert(
+                        lifetimeScope,
+                        LongPoll(PollOptions, function(): boolean
+                            local foundChanges = false
+                            for _, polledTarget in newPollRouter.Targets do
+                                local changed =
+                                    RefreshTarget(polledTarget)
+                                if changed then
+                                    foundChanges = true
+                                end
+                            end
+                            return foundChanges
+                        end)
+                    )
+                end
+
+                table.insert(pollRouter.Targets, target)
+                continue
+            end
+
+            local instance = target.Instance
+            if instance:IsA("ValueBase") then
+                local connection = ConnectToPropertyChange(
+                    instance,
+                    plan.Name,
+                    function()
+                        RefreshTarget(target)
+                    end
+                )
+                if connection then table.insert(scope, connection) end
+                continue
+            end
+
+            local router = changedRoutersByInstance[instance]
+            if not router then
+                local newRouter: ChangedRouter = {
+                    TargetsByName = {}
+                }
+                changedRoutersByInstance[instance] = newRouter
+                router = newRouter
+
+                local usedRouter = newRouter
+                table.insert(
+                    lifetimeScope,
+                    instance.Changed:Connect(function(propertyName: string)
+                        local changedTargets =
+                            usedRouter.TargetsByName[propertyName]
+                        if not changedTargets then return end
+
+                        for _, changedTarget in changedTargets do
+                            RefreshTarget(changedTarget)
+                        end
+                    end)
+                )
+            end
+
+            local targetsByName = router.TargetsByName
+            local changedTargets = targetsByName[plan.Name]
+            if not changedTargets then
+                changedTargets = {}
+                targetsByName[plan.Name] = changedTargets
+            end
+            table.insert(changedTargets, target)
+        end
+    end
+end
+
+local function GetBookmarkKey(group: PropertyGroup): string
+    return Bookmarks.CreateKey(
+        group.CategoryName,
+        group.OwnerName,
+        group.Name
+    )
+end
+
+local function CreateUnavailableItem(group: PropertyGroup): Item
+    return ({
+        Key = group.Name,
+        BookmarkKey = GetBookmarkKey(group),
+        Warning = true,
+        Value = "Unavailable",
+        ValueType = "string",
+        ValueWritable = false
+    } :: any) :: Item
+end
+
+local function CreatePropertyItem(
+    group: PropertyGroup,
+    targets: { PropertyTarget },
+    allWritable: boolean
+): Item
+    local comparisonValues =
+        table.create(#targets) :: { Fusion.UsedAs<any?> }
+    local commitTargets =
+        table.create(#targets) :: { CommitTarget }
+
+    for targetIdx, target in targets do
         comparisonValues[targetIdx] = target.ValueState
         commitTargets[targetIdx] = {
             Instance = target.Instance,
@@ -132,8 +223,8 @@ local function CreatePropertyItem(group: PropertyGroup): Item
     end
 
     local function refreshTargets(): any?
-        for _, target in group.Targets do RefreshTarget(target) end
-        return Peek<<any?>>(group.Targets[1].ValueState)
+        for _, target in targets do RefreshTarget(target) end
+        return Peek<<any?>>(targets[1].ValueState)
     end
 
     local function tryTransformValue(
@@ -147,22 +238,63 @@ local function CreatePropertyItem(group: PropertyGroup): Item
 
     return ({
         Key = group.Name,
-        BookmarkKey = Bookmarks.CreateKey(
-            group.CategoryName,
-            group.OwnerName,
-            group.Name
-        ),
+        BookmarkKey = GetBookmarkKey(group),
         Warning = group.Warning,
-        Value = group.Targets[1].ValueState,
+        Value = targets[1].ValueState,
         ComparisonValues = comparisonValues,
         ValueType =
             if group.Warning then NotScriptableValue else group.ValueType,
-        ValueWritable = group.AllWritable,
+        ValueWritable = allWritable,
         TrySetValue = function(value: any): (boolean, string?, any?)
             return tryTransformValue(function(): any return value end)
         end,
         TryTransformValue = tryTransformValue
     } :: any) :: Item
+end
+
+local function HydratePropertyGroup(
+    scope: Fusion.Scope,
+    group: PropertyGroup,
+    observePropertyChanges: ObservePropertyChanges
+): Item
+    local targets = table.create(#group.Targets) :: { PropertyTarget }
+    local allWritable = true
+
+    for _, targetPlan in group.Targets do
+        local value: any
+
+        if targetPlan.Warning then
+            value = targetPlan.Plan.ReadSecurity or "Unknown capability"
+        else
+            local readSuccess
+            readSuccess, value = GetProperties.ReadProperty(
+                targetPlan.Instance,
+                targetPlan.Plan
+            )
+            if not readSuccess then continue end
+        end
+
+        table.insert(targets, {
+            Instance = targetPlan.Instance,
+            Plan = targetPlan.Plan,
+            ValueState = Value<<any?>>(scope, value)
+        })
+        if not targetPlan.Writable
+            or not GetProperties.IsPropertyWritable(
+                targetPlan.Instance,
+                targetPlan.Plan
+            )
+        then
+            allWritable = false
+        end
+    end
+
+    if #targets == 0 then
+        return CreateUnavailableItem(group)
+    end
+
+    observePropertyChanges(scope, targets)
+    return CreatePropertyItem(group, targets, allWritable)
 end
 
 return function(
@@ -172,67 +304,71 @@ return function(
     instances: { Instance },
     showNonScriptableProperties: boolean
 ): { CategoryState }
-    local snapshotsByInstance: { [Instance]: Snapshot } = {}
-    local targetsByInstance: {
-        [Instance]: { [string]: PropertyTarget }
-    } = {}
     local propertyCandidates = {} :: { PropertyCandidate }
+    local observePropertyChanges = CreatePropertyObserver(scope)
 
     for _, instance in instances do
-        local snapshot = GetProperties.Read(
+        local metadata: { PropertyMetadata } = GetProperties.GetMetadata(
             instance,
             showNonScriptableProperties
         )
-        local instanceTargets: { [string]: PropertyTarget } = {}
-        snapshotsByInstance[instance] = snapshot
-        targetsByInstance[instance] = instanceTargets
 
-        for propertyName, location in snapshot.LocationsByName do
-            local categorySnapshot =
-                snapshot.Categories[location.CategoryIndex]
-            local item = categorySnapshot.Items[location.ItemIndex]
-            local plan = location.Plan
-
-            local target: PropertyTarget = {
+        for _, property in metadata do
+            local plan = property.Plan
+            local target: PropertyTargetPlan = {
                 Instance = instance,
                 Plan = plan,
-                ValueState = Value<<any?>>(scope, item.Value)
+                Writable = property.Writable,
+                Warning = property.Warning
             }
-            instanceTargets[propertyName] = target
 
-            local itemValueType = item.ValueType
             table.insert(propertyCandidates, {
                 Id = plan.Id,
                 OwnerName = plan.Owner,
                 Name = plan.Name,
-                CategoryName = categorySnapshot.Name,
-                ValueType =
-                    if type(itemValueType) == "string"
-                    then itemValueType
-                    else typeof(item.Value),
+                CategoryName = property.CategoryName,
+                ValueType = property.ValueType,
                 Target = target,
-                Writable = item.ValueWritable == true,
-                Warning = item.Warning == true
+                Writable = property.Writable,
+                Warning = property.Warning
             })
         end
     end
 
     local groups, categoryNames =
         GroupPropertyTargets(propertyCandidates)
-    local itemsByCategory: { [string]: { Item } } = {}
+    local rowsByCategory: { [string]: { RowDescriptor } } = {}
     for _, categoryName in categoryNames do
-        itemsByCategory[categoryName] = {}
+        rowsByCategory[categoryName] = {}
     end
     for _, group in groups do
+        local usedGroup = group
+        local valueType: ValueType =
+            if usedGroup.Warning
+            then NotScriptableValue
+            else usedGroup.ValueType
+
         table.insert(
-            itemsByCategory[group.CategoryName],
-            CreatePropertyItem(group)
+            rowsByCategory[usedGroup.CategoryName],
+            {
+                Id = usedGroup.Id,
+                Key = usedGroup.Name,
+                BookmarkKey = GetBookmarkKey(usedGroup),
+                ValueType = valueType,
+                Hydrate = function(hydrationScope: Fusion.Scope): Item
+                    return HydratePropertyGroup(
+                        hydrationScope,
+                        usedGroup,
+                        observePropertyChanges
+                    )
+                end
+            }
         )
     end
 
     local categoryStates = table.create(#categoryNames) :: { CategoryState }
     for categoryIdx, categoryName in categoryNames do
-        local items = itemsByCategory[categoryName]
+        local rows = rowsByCategory[categoryName]
 
         categoryStates[categoryIdx] = Category(
             scope,
@@ -240,28 +376,10 @@ return function(
             collapsedStateScope,
             {
                 Name = categoryName,
-                Items = items,
+                Rows = rows,
                 Bookmarkable = true,
                 StableKeys = true
             }
-        )
-    end
-
-    for _, instance in instances do
-        local instanceTargets = targetsByInstance[instance]
-        local function refreshProperty(propertyName: string): boolean
-            local target = instanceTargets[propertyName]
-            if not target then return false end
-
-            local changed = RefreshTarget(target)
-            return changed
-        end
-
-        ObservePropertyChanges(
-            scope,
-            instance,
-            snapshotsByInstance[instance],
-            refreshProperty
         )
     end
 

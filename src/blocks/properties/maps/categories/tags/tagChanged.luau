@@ -11,7 +11,7 @@ local PollOptions: LongPollOptions = {
     BackoffFactor = 1.5
 }
 
-type TagSet = { [string]: boolean }
+export type TagSet = { [string]: boolean }
 
 local function GetTagSet(instance: Instance): TagSet
     local tags: TagSet = {}
@@ -25,10 +25,10 @@ end
 local function TagChanged(
     instance: Instance,
     callback: (tag: string, removed: boolean) -> ()
-): () -> ()
+): (() -> (), (TagSet) -> ())
     local previousTags = GetTagSet(instance)
 
-    return LongPoll(PollOptions, function(): boolean
+    local disconnect = LongPoll(PollOptions, function(): boolean
         local foundChanges = false
         local currentTags = GetTagSet(instance)
         for tag in currentTags do
@@ -48,6 +48,14 @@ local function TagChanged(
         previousTags = currentTags
         return foundChanges
     end)
+
+    local function sync(tags: TagSet)
+        -- A caller which already reconciled a local tag mutation can advance
+        -- the poll snapshot and avoid reporting that same mutation again.
+        previousTags = table.clone(tags)
+    end
+
+    return disconnect, sync
 end
 
 return TagChanged

@@ -25,6 +25,7 @@ type RenderedMaps = {
 
 type PropertiesMapsProps = {
     SelectedInstancesValue: Fusion.Value<{ Instance }>,
+    Active: Fusion.UsedAs<boolean>?,
     OmitRbxAttributes: boolean?,
     TintHeaders: Fusion.UsedAs<boolean>,
     ShowNonScriptableProperties: Fusion.UsedAs<boolean>
@@ -114,6 +115,8 @@ return function(
     props: PropertiesMapsProps
 )
     local selectedInstancesValue = props.SelectedInstancesValue
+    local activeState: Fusion.UsedAs<boolean> =
+        if props.Active == nil then true else props.Active
     local omitRbxAttributes = props.OmitRbxAttributes ~= false
     local outerScope = scope
     local collapsedStateScope = Fusion.innerScope(outerScope)
@@ -125,6 +128,8 @@ return function(
         use,
         scope: Fusion.Scope
     ): { CategoryState }
+        if not use<<boolean>>(activeState) then return {} end
+
         local instances = use<<{ Instance }>>(selectedInstancesValue)
         local showNonScriptableProperties =
             use<<boolean>>(props.ShowNonScriptableProperties)
@@ -168,8 +173,6 @@ return function(
         }
     end)
 
-    local mapRefreshPending = false
-    local mapRefreshRevision = 0
     local mapsAlive = true
     local renderedMaps: Fusion.Value<RenderedMaps> = Value(
         mapsScope,
@@ -177,53 +180,79 @@ return function(
     )
     local bookmarkButtonVisualState =
         GetBookmarkButtonVisualState(outerScope)
+    local mapCommitQueued = false
+    local mapCommitRevision = 0
+    local committedMapRevision = 0
+    local pendingBookmarkVisual: boolean? = nil
 
-    -- Hold the map list while the shared filter change propagates. This keeps
-    -- the refresh atomic: every category switches modes before one map commit.
-    Observer(mapsScope, bookmarksOnlyState):onChange(function()
-        mapRefreshRevision += 1
-        local queuedRevision = mapRefreshRevision
-        local bookmarksOnly =
-            Peek<<boolean>>(bookmarksOnlyState)
-        mapRefreshPending = true
+    local function commitRenderedMaps()
+        renderedMaps:set(
+            Peek<<RenderedMaps>>(computeRenderedMaps)
+        )
+        committedMapRevision = mapCommitRevision
 
-        task.defer(function()
-            if not mapsAlive
-                or mapRefreshRevision ~= queuedRevision
-                or Peek<<boolean>>(bookmarksOnlyState) ~= bookmarksOnly
-            then
-                return
-            end
-
-            mapRefreshPending = false
-            renderedMaps:set(
-                Peek<<RenderedMaps>>(computeRenderedMaps)
-            )
-
+        local bookmarkVisual = pendingBookmarkVisual
+        pendingBookmarkVisual = nil
+        if bookmarkVisual ~= nil then
             -- Start the icon crossfade only after the expensive map refresh
             -- has completed, so the refresh cannot consume its tween frames.
             task.defer(function()
                 if not mapsAlive
-                    or mapRefreshRevision ~= queuedRevision
-                    or Peek<<boolean>>(bookmarksOnlyState) ~= bookmarksOnly
+                    or Peek<<boolean>>(bookmarksOnlyState)
+                        ~= bookmarkVisual
                 then
                     return
                 end
 
-                bookmarkButtonVisualState:set(bookmarksOnly)
+                bookmarkButtonVisualState:set(bookmarkVisual)
             end)
+        end
+    end
+
+    local function queueRenderedMapsCommit()
+        mapCommitRevision += 1
+        if mapCommitQueued then return end
+        mapCommitQueued = true
+
+        task.defer(function()
+            mapCommitQueued = false
+            if not mapsAlive
+                or committedMapRevision == mapCommitRevision
+            then
+                return
+            end
+
+            commitRenderedMaps()
         end)
+    end
+
+    local function commitRenderedMapsImmediately()
+        mapCommitRevision += 1
+        if not mapsAlive then return end
+        commitRenderedMaps()
+    end
+
+    -- Hold the map list while the shared filter change propagates. This keeps
+    -- the refresh atomic: every category switches modes before one map commit.
+    Observer(mapsScope, bookmarksOnlyState):onChange(function()
+        pendingBookmarkVisual =
+            Peek<<boolean>>(bookmarksOnlyState)
+        queueRenderedMapsCommit()
     end)
 
     Observer(mapsScope, computeRenderedMaps):onChange(function()
-        if mapRefreshPending then return end
+        queueRenderedMapsCommit()
+    end)
 
-        renderedMaps:set(Peek<<RenderedMaps>>(computeRenderedMaps))
+    -- A selection, activity, or settings change replaces the category scope.
+    -- Publish synchronously so mounted rows never retain state from a scope
+    -- that Fusion has already cleaned up.
+    Observer(mapsScope, computeCategoryStates):onChange(function()
+        commitRenderedMapsImmediately()
     end)
 
     table.insert(mapsScope, function()
         mapsAlive = false
-        mapRefreshRevision += 1
     end)
 
     local computeShape = Computed(mapsScope, function(
@@ -250,6 +279,8 @@ return function(
         use,
         scope: Fusion.Scope
     ): Fusion.Child?
+        if not use<<boolean>>(activeState) then return nil end
+
         if #use<<{ Instance }>>(selectedInstancesValue) == 0 then
             return CreateEmptyMessage(scope, "No instances selected.")
         end
