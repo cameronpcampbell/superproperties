@@ -16,8 +16,8 @@ local Bookmarks = require(script.Parent.Parent.bookmarks)
 local CategoryOrder = require(script.categoryOrder)
 local CreateItemFilter = require(script.filterItems)
 local GetCollapsedState = require(script.getCollapsedState)
-local GetAppliedBookmarksOnlyState =
-    require(script.Parent.Parent.getAppliedBookmarksOnlyState)
+local GetBookmarksOnlyState =
+    require(script.Parent.Parent.getBookmarksOnlyState)
 local GetFilterState = require(script.Parent.Parent.getFilterState)
 local SortItemList = require(script.sortItems)
 
@@ -223,7 +223,7 @@ return function(
         else SortItems(scope, preparedItems)
 
     local bookmarksOnlyState =
-        GetAppliedBookmarksOnlyState(outerScope)
+        GetBookmarksOnlyState(outerScope)
     local filterState = GetFilterState(outerScope)
     local itemFilter: Fusion.UsedAs<ItemFilter> =
         if props.StableKeys then

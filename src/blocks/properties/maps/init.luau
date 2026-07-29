@@ -23,8 +23,10 @@ type PropertiesMapsProps = {
 }
 
 local ExtraCategories = require(script.extraCategories)
-local GetAppliedBookmarksOnlyState =
-    require(script.Parent.getAppliedBookmarksOnlyState)
+local GetBookmarkButtonVisualState =
+    require(script.Parent.getBookmarkButtonVisualState)
+local GetBookmarksOnlyState =
+    require(script.Parent.getBookmarksOnlyState)
 local GetFilterState = require(script.Parent.getFilterState)
 local Categories = require(script.categories)
 
@@ -108,8 +110,7 @@ return function(
     local outerScope = scope
     local collapsedStateScope = Fusion.innerScope(outerScope)
     local mapsScope = Fusion.innerScope(outerScope)
-    local bookmarksOnlyState =
-        GetAppliedBookmarksOnlyState(outerScope)
+    local bookmarksOnlyState = GetBookmarksOnlyState(outerScope)
     local filterState = GetFilterState(outerScope)
 
     local computeCategoryStates = Computed(mapsScope, function(
@@ -154,24 +155,43 @@ return function(
     local mapPropsRefreshRevision = 0
     local mapsAlive = true
     local renderedMapProps: Fusion.Value<{ MapProps }>
+    local bookmarkButtonVisualState =
+        GetBookmarkButtonVisualState(outerScope)
 
-    -- A bookmark-mode change can reveal or hide many categories. Mark the
-    -- whole propagation as one refresh before category observers begin
-    -- publishing their individual visibility changes.
+    -- Hold the map list while the shared filter change propagates. This keeps
+    -- the refresh atomic: every category switches modes before one map commit.
     Observer(mapsScope, bookmarksOnlyState):onChange(function()
         mapPropsRefreshRevision += 1
         local queuedRevision = mapPropsRefreshRevision
+        local bookmarksOnly =
+            Peek<<boolean>>(bookmarksOnlyState)
         mapPropsRefreshPending = true
 
         task.defer(function()
             if not mapsAlive
                 or mapPropsRefreshRevision ~= queuedRevision
+                or Peek<<boolean>>(bookmarksOnlyState) ~= bookmarksOnly
             then
                 return
             end
 
             mapPropsRefreshPending = false
-            renderedMapProps:set(Peek<<{ MapProps }>>(computeMapProps))
+            renderedMapProps:set(
+                Peek<<{ MapProps }>>(computeMapProps)
+            )
+
+            -- Start the icon crossfade only after the expensive map refresh
+            -- has completed, so the refresh cannot consume its tween frames.
+            task.defer(function()
+                if not mapsAlive
+                    or mapPropsRefreshRevision ~= queuedRevision
+                    or Peek<<boolean>>(bookmarksOnlyState) ~= bookmarksOnly
+                then
+                    return
+                end
+
+                bookmarkButtonVisualState:set(bookmarksOnly)
+            end)
         end)
     end)
 
@@ -188,6 +208,7 @@ return function(
 
     table.insert(mapsScope, function()
         mapsAlive = false
+        mapPropsRefreshRevision += 1
     end)
 
     local computeEmptyMessage = Computed(mapsScope, function(
