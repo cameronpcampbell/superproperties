@@ -8,12 +8,20 @@ local Children, Computed, Observer, Peek, Value =
     Fusion.peek, Fusion.Value
 
 local Mosaic = require(Packages.mosaic)
-local Text, VirtualMapScrollable =
-    Mosaic.Text, Mosaic.VirtualMapScrollable
+local Text = Mosaic.Text
+local VirtualMapScrollable =
+    require(Packages.mosaic.components.virtualMapScrollable)
+type MapShape = VirtualMapScrollable.MapShape
 
 local Category = require(script.category)
+type CategoryDetail = Category.Detail
+type CategoryModel = Category.Model
 type CategoryState = Category.State
-type MapProps = Category.MapProps
+
+type RenderedMaps = {
+    Shape: { MapShape },
+    Detail: { CategoryDetail }
+}
 
 type PropertiesMapsProps = {
     SelectedInstancesValue: Fusion.Value<{ Instance }>,
@@ -132,59 +140,68 @@ return function(
         )
     end)
 
-    local computeMapProps = Computed(mapsScope, function(use): { MapProps }
+    local computeRenderedMaps = Computed(mapsScope, function(
+        use
+    ): RenderedMaps
         local categoryStates =
             use<<{ CategoryState }>>(computeCategoryStates)
-        local mapPropsList = table.create(#categoryStates) :: { MapProps }
+        local shapes =
+            table.create(#categoryStates) :: { MapShape }
+        local details =
+            table.create(#categoryStates) :: { CategoryDetail }
         local mapCount = 0
 
         for _, categoryState in categoryStates do
-            local mapProps = use<<MapProps?>>(categoryState)
-            if not mapProps then continue end
+            local category = use<<CategoryModel?>>(categoryState)
+            if not category then continue end
 
             mapCount += 1
-            local styledMapProps = table.clone(mapProps)
-            styledMapProps.HeaderColorTint = props.TintHeaders
-            mapPropsList[mapCount] = styledMapProps
+            local styledShape = table.clone(category.Shape)
+            styledShape.HeaderColorTint = props.TintHeaders
+            shapes[mapCount] = styledShape
+            details[mapCount] = category.Detail
         end
 
-        return mapPropsList
+        return {
+            Shape = shapes,
+            Detail = details
+        }
     end)
 
-    local mapPropsRefreshPending = false
-    local mapPropsRefreshRevision = 0
+    local mapRefreshPending = false
+    local mapRefreshRevision = 0
     local mapsAlive = true
-    local renderedMapProps: Fusion.Value<{ MapProps }>
+    local renderedMaps: Fusion.Value<RenderedMaps>
     local bookmarkButtonVisualState =
         GetBookmarkButtonVisualState(outerScope)
 
     -- Hold the map list while the shared filter change propagates. This keeps
     -- the refresh atomic: every category switches modes before one map commit.
     Observer(mapsScope, bookmarksOnlyState):onChange(function()
-        mapPropsRefreshRevision += 1
-        local queuedRevision = mapPropsRefreshRevision
+        mapRefreshRevision += 1
+        local queuedRevision = mapRefreshRevision
         local bookmarksOnly =
             Peek<<boolean>>(bookmarksOnlyState)
-        mapPropsRefreshPending = true
+        mapRefreshPending = true
 
         task.defer(function()
             if not mapsAlive
-                or mapPropsRefreshRevision ~= queuedRevision
+                or mapRefreshRevision ~= queuedRevision
                 or Peek<<boolean>>(bookmarksOnlyState) ~= bookmarksOnly
             then
                 return
             end
 
-            mapPropsRefreshPending = false
-            renderedMapProps:set(
-                Peek<<{ MapProps }>>(computeMapProps)
+            mapRefreshPending = false
+            renderedMaps:set(
+                Peek<<RenderedMaps>>(computeRenderedMaps)
             )
 
             -- Start the icon crossfade only after the expensive map refresh
             -- has completed, so the refresh cannot consume its tween frames.
             task.defer(function()
                 if not mapsAlive
-                    or mapPropsRefreshRevision ~= queuedRevision
+                    or mapRefreshRevision ~= queuedRevision
                     or Peek<<boolean>>(bookmarksOnlyState) ~= bookmarksOnly
                 then
                     return
@@ -195,21 +212,41 @@ return function(
         end)
     end)
 
-    renderedMapProps = Value(
+    renderedMaps = Value(
         mapsScope,
-        Peek<<{ MapProps }>>(computeMapProps)
+        Peek<<RenderedMaps>>(computeRenderedMaps)
     )
 
-    Observer(mapsScope, computeMapProps):onChange(function()
-        if mapPropsRefreshPending then return end
+    Observer(mapsScope, computeRenderedMaps):onChange(function()
+        if mapRefreshPending then return end
 
-        renderedMapProps:set(Peek<<{ MapProps }>>(computeMapProps))
+        renderedMaps:set(Peek<<RenderedMaps>>(computeRenderedMaps))
     end)
 
     table.insert(mapsScope, function()
         mapsAlive = false
-        mapPropsRefreshRevision += 1
+        mapRefreshRevision += 1
     end)
+
+    local computeShape = Computed(mapsScope, function(
+        use
+    ): { MapShape }
+        return use<<RenderedMaps>>(renderedMaps).Shape
+    end)
+
+    local function loadDetail(
+        detailScope: Fusion.Scope,
+        mapIdx: number,
+        rowIdx: number
+    )
+        local rendered = Peek<<RenderedMaps>>(renderedMaps)
+        local detail = assert(
+            rendered.Detail[mapIdx],
+            `Missing detail provider for map {mapIdx}.`
+        )
+
+        return detail(detailScope, rowIdx)
+    end
 
     local computeEmptyMessage = Computed(mapsScope, function(
         use,
@@ -228,8 +265,8 @@ return function(
             return nil
         end
 
-        local mapProps = use<<{ MapProps }>>(renderedMapProps)
-        if #mapProps > 0 then return nil end
+        local rendered = use<<RenderedMaps>>(renderedMaps)
+        if #rendered.Shape > 0 then return nil end
 
         return CreateEmptyMessage(
             scope,
@@ -240,7 +277,8 @@ return function(
     end)
 
     return VirtualMapScrollable(mapsScope, {
-        Maps = renderedMapProps,
+        Shape = computeShape,
+        Detail = loadDetail,
 
         [Children] = {
             computeEmptyMessage

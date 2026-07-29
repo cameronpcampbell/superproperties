@@ -10,6 +10,9 @@ local Mosaic = require(Packages.mosaic)
 local BooleanIconButton = Mosaic.BooleanIconButton
 local Map = require(Packages.mosaic.components.map)
 type Item = Map.Item
+local VirtualMapScrollable =
+    require(Packages.mosaic.components.virtualMapScrollable)
+type MapShape = VirtualMapScrollable.MapShape
 
 local Assets = require(script.Parent.Parent.Parent.Parent.assets)
 local Bookmarks = require(script.Parent.Parent.bookmarks)
@@ -25,8 +28,17 @@ local DefaultCategoryLayoutOrder = 999997
 
 type ItemFilter = (query: string?, items: { Item }) -> { Item }
 
-export type MapProps = Map.MapProps
-export type State = Fusion.Value<MapProps?>
+export type Detail = (
+    scope: Fusion.Scope,
+    rowIdx: number
+) -> Item
+
+export type Model = {
+    Shape: MapShape,
+    Detail: Detail
+}
+
+export type State = Fusion.Value<Model?>
 
 type CategoryProps = {
     Name: string,
@@ -243,24 +255,23 @@ return function(
         then SortItems(scope, filteredItems)
         else filteredItems
 
-    -- Keep this table stable so item changes update the existing map layout.
-    -- The category state only changes when its visibility changes.
-    local mapProps = {
+    local shapeTemplate: MapShape = {
+        RowCount = 0,
         Header = name,
         HeaderChildren = props.HeaderChildren,
         HeaderOverlay = props.HeaderOverlay,
         ShowOnTop = props.ShowOnTop,
-        Items = displayItems,
         LayoutOrder =
             CategoryOrder[name] or
             DefaultCategoryLayoutOrder,
         Collapsed = GetCollapsedState(collapsedStateScope, name),
-        EmptyText = props.EmptyText,
+        EmptyText = props.EmptyText
     }
-    local categoryState = Value<<MapProps?>>(scope, nil)
+    local categoryState = Value<<Model?>>(scope, nil)
     local categoryVisible = false
+    local previousDisplayItems: { Item }? = nil
 
-    local function refreshVisibility()
+    local function refreshCategory()
         local usedDisplayItems = Peek<<{ Item }>>(displayItems)
         local usedFilter = Peek<<string?>>(filterState)
         local hasActiveFilter =
@@ -274,17 +285,41 @@ return function(
             (not props.EmptyText or hasActiveFilter)
         )
 
-        if visible == categoryVisible then return end
+        if visible then
+            if not categoryVisible
+                or usedDisplayItems ~= previousDisplayItems
+            then
+                local shape = table.clone(shapeTemplate)
+                shape.RowCount = #usedDisplayItems
+                local detailItems = usedDisplayItems
+
+                categoryState:set({
+                    Shape = shape,
+                    Detail = function(
+                        _detailScope: Fusion.Scope,
+                        rowIdx: number
+                    ): Item
+                        return assert(
+                            detailItems[rowIdx],
+                            `Missing {name} detail for row {rowIdx}.`
+                        )
+                    end
+                })
+            end
+        elseif categoryVisible then
+            categoryState:set(nil)
+        end
+
         categoryVisible = visible
-        categoryState:set(if visible then mapProps else nil)
+        previousDisplayItems = usedDisplayItems
     end
 
     -- Empty sorted lists can keep their identity across filter changes.
     -- Observe all inputs that determine category visibility.
-    Observer(scope, displayItems):onChange(refreshVisibility)
-    Observer(scope, bookmarksOnlyState):onChange(refreshVisibility)
-    Observer(scope, filterState):onChange(refreshVisibility)
-    refreshVisibility()
+    Observer(scope, displayItems):onChange(refreshCategory)
+    Observer(scope, bookmarksOnlyState):onChange(refreshCategory)
+    Observer(scope, filterState):onChange(refreshCategory)
+    refreshCategory()
 
     return categoryState
 end

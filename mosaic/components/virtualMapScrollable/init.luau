@@ -258,6 +258,13 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
         use: Fusion.Use,
         scope: Fusion.Scope
     ): { Fusion.Child }
+        -- Detail states are loaded after the map-level Computeds that use
+        -- them. Keep the two lifetime groups in ordered sibling scopes:
+        -- layout consumers clean up first, followed by their detail states.
+        local detailStateScope = Fusion.innerScope(scope)
+        local layoutScope = Fusion.innerScope(scope)
+        scope = layoutScope
+
         local usedMapSources =
             use<<{ MapSource }>>(computeSortedMapSources)
         local mapChildren =
@@ -299,6 +306,7 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
                 local sourceMapIdx = mapSource.SourceMapIdx
                 local lazyLayout: LazyMapLayout = CreateLazyMapLayout(
                     scope,
+                    detailStateScope,
                     header,
                     mapSource.RootRowCount,
                     emptyText,

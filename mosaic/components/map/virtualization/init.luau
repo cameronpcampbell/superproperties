@@ -890,6 +890,7 @@ end
 
 local function CreateLazyMapLayout(
     scope: Fusion.Scope,
+    detailStateScope: Fusion.Scope,
     header: string?,
     itemCount: number,
     emptyText: string?,
@@ -1073,8 +1074,7 @@ local function CreateLazyMapLayout(
         for itemIdx = firstItem, lastItem do
             if loadedLayouts[itemIdx] then continue end
 
-            local detailScope = Fusion.innerScope(scope)
-            local item = loadItem(detailScope, itemIdx)
+            local item = loadItem(detailStateScope, itemIdx)
 
             assert(
                 type(item) == "table"
@@ -1087,9 +1087,9 @@ local function CreateLazyMapLayout(
                 item
             )
             loadedLayouts[itemIdx] = CreateItemLayout(
-                detailScope,
+                detailStateScope,
                 collapseStateNode,
-                ResolveItem(detailScope, item),
+                ResolveItem(detailStateScope, item),
                 1,
                 rowHeight,
                 itemIdx == itemCount
