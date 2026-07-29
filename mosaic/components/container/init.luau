@@ -10,8 +10,9 @@ local Children, New, Peek = Fusion.Children, Fusion.New, Fusion.peek
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CombineProps, ComputeAdd =
-    FusionUtils.Component, FusionUtils.CombineProps, FusionUtils.ComputeMath.Add
+local Component, CombineProps, ComposeTransparency, ComputeAdd =
+    FusionUtils.Component, FusionUtils.CombineProps,
+    FusionUtils.ComposeTransparency, FusionUtils.ComputeMath.Add
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope, GetNextVariant =
@@ -26,6 +27,7 @@ type ContainerProps = {
 	CornerRadiusOffset: number?,
 	AutomaticSize: Enum.AutomaticSize?,
 	ContentZIndex: Fusion.UsedAs<number>?,
+	Transparency: Fusion.UsedAs<number>?,
 	[string | Fusion.SpecialKey]: any
 }
 
@@ -39,6 +41,11 @@ return Component<<ContainerProps>>(function(scope, props)
         TableExtract(props, "AutomaticSize", Enum.AutomaticSize.None)
     local props, contentZIndex =
         TableExtract(props, "ContentZIndex", 2)
+    local props, transparency = TableExtract(props, "Transparency", 0)
+    local props, backgroundTransparency =
+        TableExtract(props, "BackgroundTransparency", 0)
+    local props, strokeTransparency =
+        TableExtract(props, "StrokeTransparency", 0)
     local props, children = TableExtract(props, Children)
     local props, rootChildren = TableExtract(props, "RootChildren")
 
@@ -50,9 +57,28 @@ return Component<<ContainerProps>>(function(scope, props)
         theme:GetCornerRadius(scope, cornerRadiusVariant),
         cornerRadiusOffset
     )
+    local composedBackgroundTransparency = ComposeTransparency(
+        scope,
+        backgroundTransparency,
+        transparency
+    )
+    local composedStrokeTransparency = ComposeTransparency(
+        scope,
+        strokeTransparency,
+        transparency
+    )
 
     local automaticSizeContent: Fusion.Child? = nil
-    local regularContent: Fusion.Child? = children
+    local regularContent: Fusion.Child? = New(scope, "CanvasGroup") {
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        GroupTransparency = transparency,
+        ZIndex = contentZIndex,
+
+        Name = "ContainerContent",
+
+        [Children] = children
+    }
 
     if automaticSize == Enum.AutomaticSize.Y
         or automaticSize == Enum.AutomaticSize.XY
@@ -60,13 +86,14 @@ return Component<<ContainerProps>>(function(scope, props)
         -- Supercorner places regular children in a full-size intermediate
         -- frame. Roblox cannot derive the root's automatic height through
         -- that scaled frame, so mount auto-sized content directly at root.
-        automaticSizeContent = New(scope, "Frame") {
+        automaticSizeContent = New(scope, "CanvasGroup") {
             Size =
                 if automaticSize == Enum.AutomaticSize.XY then
                     UDim2.fromOffset(0, 0)
                 else UDim2.new(1, 0, 0, 0),
             AutomaticSize = automaticSize,
             BackgroundTransparency = 1,
+            GroupTransparency = transparency,
             ZIndex = contentZIndex,
 
             Name = "ContainerContent",
@@ -80,8 +107,10 @@ return Component<<ContainerProps>>(function(scope, props)
         Name = "Container",
 
         BackgroundColor3 = bgColor,
+        BackgroundTransparency = composedBackgroundTransparency,
         StrokeColor = strokeColor,
         StrokeThickness = 1,
+        StrokeTransparency = composedStrokeTransparency,
         Size = UDim2.fromScale(1, 1),
         AutomaticSize = automaticSize,
         CornerRadius = Peek<<number>>(cornerRadius),

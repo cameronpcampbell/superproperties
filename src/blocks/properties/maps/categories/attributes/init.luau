@@ -378,7 +378,6 @@ return function(
         AutomaticSize = Enum.AutomaticSize.Y,
         Position = UDim2.new(1, -MENU_RIGHT_INSET, 1, MENU_OFFSET),
         AnchorPoint = Vector2.new(1, 0),
-        Enabled = popoverFocus.State,
         Visible = popoverFocus.State,
         ZIndex = 4,
         ContentZIndex = 4,

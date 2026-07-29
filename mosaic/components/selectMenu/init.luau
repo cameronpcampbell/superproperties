@@ -12,10 +12,9 @@ local New, Children, Value, Peek, Out, OnEvent, Computed, Observer, Tween =
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CombineProps, CoerceToValue, ComposeTransparency, Oktween =
+local Component, CombineProps, CoerceToValue, Oktween =
     FusionUtils.Component, FusionUtils.CombineProps,
-    FusionUtils.CoerceToValue, FusionUtils.ComposeTransparency,
-    FusionUtils.Oktween
+    FusionUtils.CoerceToValue, FusionUtils.Oktween
 local ComputeTransforms = FusionUtils.ComputeTransforms
 local ComputeUDim2, ComputeUDim =
     ComputeTransforms.UDim2, ComputeTransforms.UDim
@@ -82,7 +81,7 @@ local SearchHoverTweenInfo = TweenInfo.new(
     Enum.EasingDirection.InOut
 )
 
-local VisibilityTweenInfo = TweenInfo.new(
+local FocusTransitionTweenInfo = TweenInfo.new(
     .23,
     Enum.EasingStyle.Quint,
     Enum.EasingDirection.InOut
@@ -189,25 +188,18 @@ return Component<<SelectMenuProps>>(function(scope, props)
         return use<<boolean>>(visible)
     end)
 
-    local visibilityTransparency = Tween<<number>>(
+    local renderVisible = Value(
         scope,
-        Computed(scope, function(use): number
-            return if use<<boolean>>(isVisible) then 0 else 1
-        end),
-        VisibilityTweenInfo
+        Peek<<boolean>>(isVisible)
     )
-
-    local shouldRender = Computed(scope, function(use): boolean
-        return
-            use<<boolean>>(visible)
-            or use<<number>>(visibilityTransparency) < .999
-    end)
-
-    Observer(scope, shouldRender):onBind(function()
-        local isRendering = Peek<<boolean>>(shouldRender)
+    Observer(scope, renderVisible):onBind(function()
+        local isRendering = Peek<<boolean>>(renderVisible)
 
         if outRenderVisible then
-            (outRenderVisible :: Fusion.Value<boolean>):set(isRendering)
+            local output = outRenderVisible :: Fusion.Value<boolean>
+            if Peek<<boolean>>(output) ~= isRendering then
+                output:set(isRendering)
+            end
         end
         if not isRendering then searchState:set("") end
     end)
@@ -337,24 +329,6 @@ return Component<<SelectMenuProps>>(function(scope, props)
         )
     end)
 
-    local composedBackgroundTransparency = ComposeTransparency(
-        scope,
-        backgroundTransparency,
-        visibilityTransparency
-    )
-
-    local composedStrokeTransparency = ComposeTransparency(
-        scope,
-        strokeTransparency,
-        visibilityTransparency
-    )
-
-    local composedOpaqueTransparency = ComposeTransparency(
-        scope,
-        0,
-        visibilityTransparency
-    )
-
     local scopeAlive = true
     table.insert(scope, function()
         scopeAlive = false
@@ -367,7 +341,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
         PlaceholderText = searchPlaceholderText,
         TextColor3 = textColor,
         PlaceholderColor3 = placeholderColor,
-        TextTransparency = composedOpaqueTransparency,
+        TextTransparency = 0,
         TextSize = fontSize,
         FontFace = font,
         ClearTextOnFocus = false,
@@ -423,7 +397,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
 
     local searchFocusRing = FocusRing(scope, {
         IsFocus = visualSearchFocusState,
-        TransitionTweenInfo = VisibilityTweenInfo,
+        TransitionTweenInfo = FocusTransitionTweenInfo,
         BaseSize = UDim2.new(1, 2, 1, 2),
         TopLeftRadius = searchCornerRadius,
         TopRightRadius = searchCornerRadius,
@@ -469,16 +443,16 @@ return Component<<SelectMenuProps>>(function(scope, props)
 
     local selectMenu = Placement(scope, Container, CombineProps({
         Variant = variant,
-        BackgroundTransparency = composedBackgroundTransparency,
+        BackgroundTransparency = backgroundTransparency,
         StrokeColor = strokeColor,
-        StrokeTransparency = composedStrokeTransparency,
+        StrokeTransparency = strokeTransparency,
         Size = ComputeUDim2(scope, width, UDim.new(0, 0)),
         AutomaticSize = Enum.AutomaticSize.Y,
         ContentZIndex = 4,
         Position = preferredPosition,
         AnchorPoint = preferredAnchorPoint,
-        Enabled = shouldRender,
-        Visible = shouldRender,
+        Visible = isVisible,
+        OutRenderVisible = renderVisible,
 
         Name = "SelectMenu",
 
@@ -497,7 +471,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
 
             New(scope, "Frame") {
                 BackgroundColor3 = strokeColor,
-                BackgroundTransparency = composedStrokeTransparency,
+                BackgroundTransparency = strokeTransparency,
                 BorderSizePixel = 0,
                 Size = UDim2.new(1, 0, 0, SearchDividerHeight),
                 Visible = isSearchEnabled,
@@ -523,7 +497,6 @@ return Component<<SelectMenuProps>>(function(scope, props)
                         AutomaticCanvasSize = Enum.AutomaticSize.Y,
                         ClipsDescendants = true,
                         PaddingRight = UDim.new(0, 3),
-                        Transparency = visibilityTransparency,
 
                         [Children] = {
                             Text(scope, {
@@ -535,7 +508,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
                                     ComputeUDim(scope, 0, emptyRowHeight)
                                 ),
                                 AutomaticSize = Enum.AutomaticSize.None,
-                                TextTransparency = composedOpaqueTransparency,
+                                TextTransparency = 0,
                                 TextXAlignment = Enum.TextXAlignment.Center,
                                 TextYAlignment = Enum.TextYAlignment.Center,
                                 Visible = shouldShowEmptyText,
@@ -556,7 +529,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
                                     SelectedIdxValue = selectedIdxValue,
                                     Idx = usedItem.Idx,
                                     LayoutOrder = key,
-                                    Transparency = visibilityTransparency,
+                                    Transparency = 0,
                                     Interactable = effectiveInteractable
                                 })
                             end),

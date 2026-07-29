@@ -4,14 +4,15 @@
 local Packages = script.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
-local Computed, Observer, Peek, Value =
-    Fusion.Computed, Fusion.Observer, Fusion.peek, Fusion.Value
+local Computed, Observer, Peek, Tween, Value =
+    Fusion.Computed, Fusion.Observer, Fusion.peek, Fusion.Tween, Fusion.Value
 
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local CombineProps, ConstructorComponent =
-    FusionUtils.CombineProps, FusionUtils.ConstructorComponent
+local CombineProps, ComposeTransparency, ConstructorComponent =
+    FusionUtils.CombineProps, FusionUtils.ComposeTransparency,
+    FusionUtils.ConstructorComponent
 
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
@@ -23,8 +24,18 @@ export type Props = {
     AnchorPoint: Fusion.UsedAs<Vector2>?,
     Enabled: Fusion.UsedAs<boolean>?,
     StickToViewport: Fusion.UsedAs<boolean>?,
+    Visible: Fusion.UsedAs<boolean>?,
+    Transparency: Fusion.UsedAs<number>?,
+    OutRenderVisible: Fusion.Value<boolean>?,
     [any]: any
 }
+
+local TransitionOffset = 4
+local TransitionTweenInfo = TweenInfo.new(
+    .2,
+    Enum.EasingStyle.Quint,
+    Enum.EasingDirection.InOut
+)
 
 local function GetGuiParent(instance: Instance): GuiBase2d?
     local parent = instance.Parent
@@ -96,6 +107,10 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
     local props, enabled = TableExtract(props, "Enabled", true)
     local props, stickToViewport =
         TableExtract(props, "StickToViewport", false)
+    local props, visible = TableExtract(props, "Visible", true)
+    local props, transparency = TableExtract(props, "Transparency", 0)
+    local props, outRenderVisible =
+        TableExtract(props, "OutRenderVisible")
 
     local effectivePreferredPosition = Computed(scope, function(use): UDim2
         return use<<UDim2>>(preferredPosition)
@@ -110,15 +125,59 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
     local effectiveStickToViewport = Computed(scope, function(use): boolean
         return use<<boolean>>(stickToViewport)
     end)
+    local effectiveVisible = Computed(scope, function(use): boolean
+        return use<<boolean>>(visible)
+    end)
 
     local renderedPosition =
         Value(scope, Peek<<UDim2>>(effectivePreferredPosition))
     local renderedAnchorPoint =
         Value(scope, Peek<<Vector2>>(effectivePreferredAnchorPoint))
 
+    local transitionTransparency = Tween<<number>>(
+        scope,
+        Computed(scope, function(use): number
+            return if use<<boolean>>(effectiveVisible) then 0 else 1
+        end),
+        TransitionTweenInfo
+    )
+    local shouldRender = Computed(scope, function(use): boolean
+        return
+            use<<boolean>>(effectiveVisible)
+            or use<<number>>(transitionTransparency) < .999
+    end)
+    local animatedPosition = Computed(scope, function(use): UDim2
+        local position = use<<UDim2>>(renderedPosition)
+        local offset =
+            use<<number>>(transitionTransparency) * TransitionOffset
+
+        return UDim2.new(
+            position.X.Scale,
+            position.X.Offset,
+            position.Y.Scale,
+            position.Y.Offset + offset
+        )
+    end)
+    local animatedTransparency = ComposeTransparency(
+        scope,
+        transparency,
+        transitionTransparency
+    )
+
+    Observer(scope, shouldRender):onBind(function()
+        if not outRenderVisible then return end
+
+        local isRendering = Peek<<boolean>>(shouldRender)
+        if Peek<<boolean>>(outRenderVisible) == isRendering then return end
+
+        outRenderVisible:set(isRendering)
+    end)
+
     local target = constructor(scope, CombineProps({
-        Position = renderedPosition,
-        AnchorPoint = renderedAnchorPoint
+        Position = animatedPosition,
+        AnchorPoint = renderedAnchorPoint,
+        Transparency = animatedTransparency,
+        Visible = shouldRender
     }, props)) :: GuiObject
 
     local scopeAlive = true
@@ -202,6 +261,12 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
             Peek<<Vector2>>(effectivePreferredAnchorPoint)
 
         if not Peek<<boolean>>(effectiveEnabled) then
+            if not Peek<<boolean>>(effectiveVisible)
+                and Peek<<boolean>>(shouldRender)
+            then
+                return
+            end
+
             SetPlacement(
                 usedPreferredPosition,
                 usedPreferredAnchorPoint
@@ -281,6 +346,7 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
     Observer(scope, effectivePreferredAnchorPoint):onChange(QueuePlacement)
     Observer(scope, effectiveEnabled):onBind(QueuePlacement)
     Observer(scope, effectiveStickToViewport):onChange(QueuePlacement)
+    Observer(scope, shouldRender):onChange(QueuePlacement)
 
     return target
 end)
