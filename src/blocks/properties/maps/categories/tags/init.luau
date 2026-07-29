@@ -25,11 +25,9 @@ type CategoryState = Category.State
 local CommitAddTag = require(script.commitAddTag)
 local CommitRemoveTag = require(script.commitRemoveTag)
 local TagChanged = require(script.tagChanged)
-
-type TagOption = {
-    Tag: string,
-    Label: string
-}
+local TagOptions = require(script.tagOptions)
+type TagOption = TagOptions.Option
+type TagSet = TagOptions.TagSet
 
 local MenuGap = 4
 local MenuMaxHeight = 180
@@ -37,45 +35,10 @@ local MenuRightInset = 6
 local BookmarkCategoryName = "Tags"
 local BookmarkOwnerName = "CollectionService"
 
-local function Trim(text: string): string
-    return text:match("^%s*(.-)%s*$") or ""
-end
-
 local function GetAllTags(): { string }
     local tags = CollectionService:GetAllTags() :: { string }
     table.sort(tags)
     return tags
-end
-
-local function CreateTagOptions(
-    allTags: { string },
-    query: string
-): { TagOption }
-    local candidate = Trim(query)
-    local exactMatch = table.find(allTags, candidate) ~= nil
-    local hasCreateOption = candidate ~= "" and not exactMatch
-    local options = table.create(
-        #allTags + (if hasCreateOption then 1 else 0)
-    ) :: { TagOption }
-    local optionIdx = 1
-
-    if hasCreateOption then
-        options[optionIdx] = {
-            Tag = candidate,
-            Label = `Create tag: {candidate}`
-        }
-        optionIdx += 1
-    end
-
-    for _, tag in allTags do
-        options[optionIdx] = {
-            Tag = tag,
-            Label = tag
-        }
-        optionIdx += 1
-    end
-
-    return options
 end
 
 return function(
@@ -85,6 +48,7 @@ return function(
     instances: { Instance }
 ): CategoryState
     local tagItemsState = Value<<{ Item }>>(scope, {})
+    local commonTagsState = Value<<TagSet>>(scope, {})
     local refreshTagItems: () -> ()
 
     refreshTagItems = function()
@@ -101,7 +65,12 @@ return function(
         end
 
         local tagItems = {} :: { Item }
+        local commonTags = {} :: TagSet
         for tag, tagInstances in instancesByTag do
+            if #tagInstances == #instances then
+                commonTags[tag] = true
+            end
+
             table.insert(tagItems, ({
                 Key = tag,
                 BookmarkKey = Bookmarks.CreateKey(
@@ -134,6 +103,7 @@ return function(
             } :: any) :: Item)
         end
 
+        commonTagsState:set(commonTags)
         tagItemsState:set(tagItems)
     end
 
@@ -144,8 +114,9 @@ return function(
     local searchState = Value(scope, "")
     local selectedIdxState = Value<<number?>>(scope, nil)
     local menuOptions = Computed(scope, function(use): { TagOption }
-        return CreateTagOptions(
+        return TagOptions.Create(
             use<<{ string }>>(allTagsState),
+            use<<TagSet>>(commonTagsState),
             use<<string>>(searchState)
         )
     end)
@@ -306,7 +277,9 @@ return function(
             inputThatCausedFocusLoss: InputObject?
         )
             if enterPressed then
-                local candidate = Trim(Peek<<string>>(searchState))
+                local candidate = TagOptions.Trim(
+                    Peek<<string>>(searchState)
+                )
                 if candidate ~= "" then
                     addTag(candidate)
                 else
@@ -338,6 +311,7 @@ return function(
                     selectedIdxState:set(nil)
                     searchState:set("")
                     refreshAllTags()
+                    refreshTagItems()
                     popoverFocus.Capture()
                 end
             }) :: GuiObject
