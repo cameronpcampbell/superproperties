@@ -23,6 +23,13 @@ type RenderedMaps = {
     Detail: { CategoryDetail }
 }
 
+type CategoryGeneration = {
+    Scope: Fusion.Scope,
+    States: { CategoryState },
+    Alive: boolean,
+    Revision: number
+}
+
 type PropertiesMapsProps = {
     SelectedInstancesValue: Fusion.Value<{ Instance }>,
     Active: Fusion.UsedAs<boolean>?,
@@ -123,33 +130,74 @@ return function(
     local mapsScope = Fusion.innerScope(outerScope)
     local bookmarksOnlyState = GetBookmarksOnlyState(outerScope)
     local filterState = GetFilterState(outerScope)
+    local categoryGenerations: {
+        [CategoryGeneration]: boolean
+    } = {}
+    local categoryGenerationRevision = 0
+    -- Generations are detached because their lifetime follows publication,
+    -- rather than lexical nesting. Register their owner cleanup before the
+    -- Computeds below so reverse-order cleanup destroys consumers first.
+    table.insert(mapsScope, function()
+        for generation in categoryGenerations do
+            categoryGenerations[generation] = nil
+            if generation.Alive then
+                Fusion.doCleanup(generation.Scope)
+            end
+        end
+    end)
 
-    local computeCategoryStates = Computed(mapsScope, function(
-        use,
-        scope: Fusion.Scope
-    ): { CategoryState }
-        if not use<<boolean>>(activeState) then return {} end
+    local computeCategoryGeneration = Computed(mapsScope, function(
+        use
+    ): CategoryGeneration
+        local instances: { Instance }? = nil
+        local showNonScriptableProperties = false
 
-        local instances = use<<{ Instance }>>(selectedInstancesValue)
-        local showNonScriptableProperties =
-            use<<boolean>>(props.ShowNonScriptableProperties)
-        if #instances == 0 then return {} end
+        if use<<boolean>>(activeState) then
+            local selectedInstances =
+                use<<{ Instance }>>(selectedInstancesValue)
+            if #selectedInstances > 0 then
+                instances = selectedInstances
+                showNonScriptableProperties =
+                    use<<boolean>>(props.ShowNonScriptableProperties)
+            end
+        end
 
-        return GetCategoryStates(
-            scope,
-            outerScope,
-            collapsedStateScope,
-            instances,
-            omitRbxAttributes,
-            showNonScriptableProperties
-        )
+        -- This scope is deliberately managed by categoryGenerations, not by
+        -- Computed's callback scope. The previous generation must remain alive
+        -- until its published VMS shape has retired.
+        local generationScope = Fusion.deriveScope(mapsScope)
+        categoryGenerationRevision += 1
+        local generation: CategoryGeneration = {
+            Scope = generationScope,
+            States = {},
+            Alive = true,
+            Revision = categoryGenerationRevision
+        }
+        categoryGenerations[generation] = true
+        table.insert(generationScope, function()
+            generation.Alive = false
+        end)
+
+        if instances then
+            generation.States = GetCategoryStates(
+                generationScope,
+                outerScope,
+                collapsedStateScope,
+                instances,
+                omitRbxAttributes,
+                showNonScriptableProperties
+            )
+        end
+
+        return generation
     end)
 
     local computeRenderedMaps = Computed(mapsScope, function(
         use
     ): RenderedMaps
-        local categoryStates =
-            use<<{ CategoryState }>>(computeCategoryStates)
+        local categoryGeneration =
+            use<<CategoryGeneration>>(computeCategoryGeneration)
+        local categoryStates = categoryGeneration.States
         local shapes =
             table.create(#categoryStates) :: { MapShape }
         local details =
@@ -185,11 +233,43 @@ return function(
     local committedMapRevision = 0
     local pendingBookmarkVisual: boolean? = nil
 
+    local function retireSupersededCategoryGenerations(
+        currentGeneration: CategoryGeneration
+    )
+        for generation, active in categoryGenerations do
+            if not active then continue end
+
+            -- A newer generation can be produced re-entrantly while the
+            -- current snapshot is being published. It belongs to the next
+            -- commit and must not be retired with older snapshots.
+            if generation.Revision >= currentGeneration.Revision then
+                continue
+            end
+            -- Keep queued generations discoverable by the owner cleanup until
+            -- their deferred retirement has actually completed.
+            categoryGenerations[generation] = false
+
+            task.defer(function()
+                if generation.Alive then
+                    Fusion.doCleanup(generation.Scope)
+                end
+                categoryGenerations[generation] = nil
+            end)
+        end
+    end
+
     local function commitRenderedMaps()
+        local commitRevision = mapCommitRevision
+        local nextCategoryGeneration =
+            Peek<<CategoryGeneration>>(computeCategoryGeneration)
         renderedMaps:set(
             Peek<<RenderedMaps>>(computeRenderedMaps)
         )
-        committedMapRevision = mapCommitRevision
+        retireSupersededCategoryGenerations(
+            nextCategoryGeneration
+        )
+        -- Preserve a revision queued re-entrantly by renderedMaps:set().
+        committedMapRevision = commitRevision
 
         local bookmarkVisual = pendingBookmarkVisual
         pendingBookmarkVisual = nil
@@ -226,12 +306,6 @@ return function(
         end)
     end
 
-    local function commitRenderedMapsImmediately()
-        mapCommitRevision += 1
-        if not mapsAlive then return end
-        commitRenderedMaps()
-    end
-
     -- Hold the map list while the shared filter change propagates. This keeps
     -- the refresh atomic: every category switches modes before one map commit.
     Observer(mapsScope, bookmarksOnlyState):onChange(function()
@@ -242,13 +316,6 @@ return function(
 
     Observer(mapsScope, computeRenderedMaps):onChange(function()
         queueRenderedMapsCommit()
-    end)
-
-    -- A selection, activity, or settings change replaces the category scope.
-    -- Publish synchronously so mounted rows never retain state from a scope
-    -- that Fusion has already cleaned up.
-    Observer(mapsScope, computeCategoryStates):onChange(function()
-        commitRenderedMapsImmediately()
     end)
 
     table.insert(mapsScope, function()

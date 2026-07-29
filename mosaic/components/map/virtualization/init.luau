@@ -1306,10 +1306,15 @@ local function CreateRenderedRows(
     renderedRootPlan: Fusion.Computed<RenderedRootPlan>,
     headerContentCache: HeaderContentCache?
 ): Fusion.Value<RenderedRows>
+    local rowLifetimeScope = Fusion.innerScope(scope)
     local renderedRows = Fusion.Value<<RenderedRows>>(scope, {})
     local mountedRows = {} :: { [number]: MountedRow }
+    local alive = true
+    local reconciling = false
+    local reconcilePending = false
 
-    local function reconcileRows()
+    local function reconcileRowsOnce()
+        if not alive then return end
         ProfileBegin("VirtualMapScrollable.ReconcileRows")
 
         local descriptors = Peek<<RenderedRootPlan>>(
@@ -1330,6 +1335,10 @@ local function CreateRenderedRows(
             -- Clean up replaced rows before mounting their replacements so an
             -- old [Children] cleanup cannot unparent them from the new row.
             Fusion.doCleanup(mountedRow.Scope)
+            if not alive then
+                ProfileEnd()
+                return
+            end
 
             if config._PerformanceSink then
                 config._PerformanceSink("RowUnmount", rootIdx)
@@ -1338,8 +1347,12 @@ local function CreateRenderedRows(
 
         for rootIdx, descriptor in descriptors do
             if nextMountedRows[rootIdx] then continue end
+            if not alive then
+                ProfileEnd()
+                return
+            end
 
-            local rowScope = Fusion.innerScope(scope)
+            local rowScope = Fusion.innerScope(rowLifetimeScope)
             local rowInstance = CreateRow(
                 rowScope,
                 config,
@@ -1347,6 +1360,10 @@ local function CreateRenderedRows(
                 rootIdx,
                 descriptor
             )
+            if not alive then
+                ProfileEnd()
+                return
+            end
 
             nextMountedRows[rootIdx] = {
                 Scope = rowScope,
@@ -1360,20 +1377,43 @@ local function CreateRenderedRows(
             end
         end
 
+        if not alive then
+            ProfileEnd()
+            return
+        end
         renderedRows:set(nextRenderedRows)
         mountedRows = nextMountedRows
 
         ProfileEnd()
     end
 
-    Observer(scope, renderedRootPlan):onBind(reconcileRows)
+    local function reconcileRows()
+        if not alive then return end
+        if reconciling then
+            reconcilePending = true
+            return
+        end
+
+        reconciling = true
+        repeat
+            reconcilePending = false
+            reconcileRowsOnce()
+        until not alive or not reconcilePending
+        reconciling = false
+    end
+
+    local renderedRootPlanObserver =
+        Observer(scope, renderedRootPlan)
     table.insert(scope, function()
+        alive = false
         if not config._PerformanceSink then return end
 
         for rootIdx in mountedRows do
             config._PerformanceSink("RowUnmount", rootIdx)
         end
     end)
+    -- Register the teardown guard before onBind queues its initial callback.
+    renderedRootPlanObserver:onBind(reconcileRows)
 
     return renderedRows
 end
@@ -1408,10 +1448,15 @@ local function CreateRenderedGapSpacers(
     config: VirtualRowsConfig,
     renderedRootPlan: Fusion.Computed<RenderedRootPlan>
 ): Fusion.Value<RenderedRows>
+    local spacerLifetimeScope = Fusion.innerScope(scope)
     local renderedSpacers = Fusion.Value<<RenderedRows>>(scope, {})
     local mountedSpacers = {} :: { [number]: MountedSpacer }
+    local alive = true
+    local reconciling = false
+    local reconcilePending = false
 
-    local function reconcileSpacers()
+    local function reconcileSpacersOnce()
+        if not alive then return end
         local gaps = Peek<<RenderedRootPlan>>(
             renderedRootPlan
         ).Gaps
@@ -1434,14 +1479,18 @@ local function CreateRenderedGapSpacers(
 
             if mountedSpacer then
                 Fusion.doCleanup(mountedSpacer.Scope)
+                if not alive then return end
             end
 
-            local spacerScope = Fusion.innerScope(scope)
+            if not alive then return end
+            local spacerScope =
+                Fusion.innerScope(spacerLifetimeScope)
             local spacerInstance = CreateGapSpacer(
                 spacerScope,
                 config,
                 gap
             )
+            if not alive then return end
 
             nextMountedSpacers[gap.First] = {
                 Scope = spacerScope,
@@ -1456,16 +1505,39 @@ local function CreateRenderedGapSpacers(
             if nextMountedSpacers[firstRow] then continue end
 
             Fusion.doCleanup(mountedSpacer.Scope)
+            if not alive then return end
             changed = true
         end
 
         if not changed then return end
 
+        if not alive then return end
         renderedSpacers:set(nextRenderedSpacers)
         mountedSpacers = nextMountedSpacers
     end
 
-    Observer(scope, renderedRootPlan):onBind(reconcileSpacers)
+    local function reconcileSpacers()
+        if not alive then return end
+        if reconciling then
+            reconcilePending = true
+            return
+        end
+
+        reconciling = true
+        repeat
+            reconcilePending = false
+            reconcileSpacersOnce()
+        until not alive or not reconcilePending
+        reconciling = false
+    end
+
+    local renderedRootPlanObserver =
+        Observer(scope, renderedRootPlan)
+    table.insert(scope, function()
+        alive = false
+    end)
+    -- Register the teardown guard before onBind queues its initial callback.
+    renderedRootPlanObserver:onBind(reconcileSpacers)
     return renderedSpacers
 end
 

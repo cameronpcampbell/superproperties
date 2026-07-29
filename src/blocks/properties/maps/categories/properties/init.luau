@@ -305,7 +305,23 @@ return function(
     showNonScriptableProperties: boolean
 ): { CategoryState }
     local propertyCandidates = {} :: { PropertyCandidate }
-    local observePropertyChanges = CreatePropertyObserver(scope)
+    local observersByDetailScope: {
+        [Fusion.Scope]: ObservePropertyChanges
+    } = {}
+    local function getPropertyObserver(
+        detailScope: Fusion.Scope
+    ): ObservePropertyChanges
+        local existingObserver =
+            observersByDetailScope[detailScope]
+        if existingObserver then return existingObserver end
+
+        local observer = CreatePropertyObserver(detailScope)
+        observersByDetailScope[detailScope] = observer
+        table.insert(detailScope, function()
+            observersByDetailScope[detailScope] = nil
+        end)
+        return observer
+    end
 
     for _, instance in instances do
         local metadata: { PropertyMetadata } = GetProperties.GetMetadata(
@@ -359,7 +375,7 @@ return function(
                     return HydratePropertyGroup(
                         hydrationScope,
                         usedGroup,
-                        observePropertyChanges
+                        getPropertyObserver(hydrationScope)
                     )
                 end
             }

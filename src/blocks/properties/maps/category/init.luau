@@ -3,9 +3,8 @@
 local Packages = script.Parent.Parent.Parent.Parent.packages
 
 local Fusion = require(Packages.fusion)
-local Computed, InnerScope, Observer, Peek, Value =
-    Fusion.Computed, Fusion.innerScope, Fusion.Observer, Fusion.peek,
-    Fusion.Value
+local Computed, Observer, Peek, Value =
+    Fusion.Computed, Fusion.Observer, Fusion.peek, Fusion.Value
 
 local Mosaic = require(Packages.mosaic)
 local BooleanIconButton = Mosaic.BooleanIconButton
@@ -43,11 +42,6 @@ type RowFilter = (
 type GetBookmarkState = (
     row: RowDescriptor
 ) -> Fusion.Value<boolean>?
-
-type HydratedRow = {
-    Item: Item,
-    Scope: Fusion.Scope
-}
 
 export type Detail = (
     scope: Fusion.Scope,
@@ -355,20 +349,16 @@ return function(
         then SortRows(scope, filteredRows, getBookmarkState)
         else filteredRows
 
-    -- Hydrated rows deliberately outlive any VirtualMapScrollable detail
-    -- scope. Filtering, bookmark reordering, and shape replacement therefore
-    -- reuse both the Map.Item and all of its observation resources.
-    local hydratedRowsByRow: {
-        [RowDescriptor]: HydratedRow
-    } = {}
-    local function hydrateRow(row: RowDescriptor): Item
-        local existingRow = hydratedRowsByRow[row]
-        if existingRow then return existingRow.Item end
-
-        local hydrationScope = InnerScope(scope)
-        local item = row.Hydrate(hydrationScope)
+    -- VirtualMapScrollable caches each loaded detail for one shape generation.
+    -- Hydrate into its scope so item state and the cached layout retire
+    -- together; retaining either across generations inverts their lifetimes.
+    local function hydrateRow(
+        row: RowDescriptor,
+        detailScope: Fusion.Scope
+    ): Item
+        local item = row.Hydrate(detailScope)
         local bookmarkedState = getBookmarkState(row)
-        local hydratedItem =
+        return
             if bookmarkedState
             then DecorateBookmarkItem(
                 outerScope,
@@ -377,66 +367,7 @@ return function(
                 bookmarkedState
             )
             else item
-
-        hydratedRowsByRow[row] = {
-            Item = hydratedItem,
-            Scope = hydrationScope
-        }
-        return hydratedItem
     end
-
-    -- Dynamic categories replace their descriptor objects when their source
-    -- changes. Retire hydrated rows which no longer belong to the source after
-    -- the coalesced map commit has had time to unmount the previous detail
-    -- window. Filtering alone does not evict rows, so scrolling/filter toggles
-    -- continue to reuse their hydration.
-    local currentSourceRows: {
-        [RowDescriptor]: boolean
-    } = {}
-    local hydrationCleanupRevision = 0
-    local categoryAlive = true
-
-    local function indexCurrentSourceRows()
-        local nextSourceRows: {
-            [RowDescriptor]: boolean
-        } = {}
-        for _, row in Peek<<{ RowDescriptor }>>(sourceRowsState) do
-            nextSourceRows[row] = true
-        end
-        currentSourceRows = nextSourceRows
-    end
-
-    local function queueStaleHydrationCleanup()
-        indexCurrentSourceRows()
-        hydrationCleanupRevision += 1
-        local queuedRevision = hydrationCleanupRevision
-
-        task.defer(function()
-            task.defer(function()
-                if not categoryAlive
-                    or hydrationCleanupRevision ~= queuedRevision
-                then
-                    return
-                end
-
-                for row, hydratedRow in hydratedRowsByRow do
-                    if currentSourceRows[row] then continue end
-
-                    hydratedRowsByRow[row] = nil
-                    Fusion.doCleanup(hydratedRow.Scope)
-                end
-            end)
-        end)
-    end
-
-    indexCurrentSourceRows()
-    Observer(scope, sourceRowsState):onChange(
-        queueStaleHydrationCleanup
-    )
-    table.insert(scope, function()
-        categoryAlive = false
-        hydrationCleanupRevision += 1
-    end)
 
     local shapeTemplate: MapShape = {
         RowCount = 0,
@@ -477,14 +408,14 @@ return function(
                 categoryState:set({
                     Shape = shape,
                     Detail = function(
-                        _detailScope: Fusion.Scope,
+                        detailScope: Fusion.Scope,
                         rowIdx: number
                     ): Item
                         local row = assert(
                             detailRows[rowIdx],
                             `Missing {name} detail for row {rowIdx}.`
                         )
-                        return hydrateRow(row)
+                        return hydrateRow(row, detailScope)
                     end
                 })
             end
