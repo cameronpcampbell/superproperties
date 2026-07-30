@@ -1,8 +1,6 @@
 --!strict
 --!nolint LocalShadow
 
-local RunService = game:GetService("RunService")
-
 local Packages = script.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
@@ -673,41 +671,6 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
             end
         end
 
-        local scrollRefreshScheduler = FrameScheduler.Create(
-            function(callback: () -> ()): () -> ()
-                local connection: RBXScriptConnection? = nil
-                connection = RunService.PreRender:Connect(function()
-                    local currentConnection = connection
-                    connection = nil
-
-                    if currentConnection then
-                        currentConnection:Disconnect()
-                    end
-
-                    callback()
-                end)
-
-                return function()
-                    local currentConnection = connection
-                    connection = nil
-
-                    if currentConnection then
-                        currentConnection:Disconnect()
-                    end
-                end
-            end,
-            function()
-                refreshVirtualWindow()
-            end
-        )
-
-        local function refreshVirtualWindowImmediately(
-            options: VirtualWindowRefreshOptions
-        )
-            scrollRefreshScheduler.Cancel()
-            refreshVirtualWindow(options)
-        end
-
         local deferredRefreshOptions: VirtualWindowRefreshOptions = {}
         local deferredRefreshScheduler = FrameScheduler.Create(
             function(callback: () -> ()): () -> ()
@@ -720,7 +683,7 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
             function()
                 local options = deferredRefreshOptions
                 deferredRefreshOptions = {}
-                refreshVirtualWindowImmediately(options)
+                refreshVirtualWindow(options)
             end
         )
 
@@ -737,7 +700,6 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
         end
 
         table.insert(scope, function()
-            scrollRefreshScheduler.Destroy()
             deferredRefreshScheduler.Destroy()
         end)
 
@@ -791,7 +753,9 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
         end)
         Observer(scope, viewportCanvasPositionState):onChange(function()
             emitPerformanceEvent("RefreshRequest", nil, nil)
-            scrollRefreshScheduler.Request()
+            -- Keep row publication in the same turn as the engine scroll.
+            -- Deferring this to PreRender lets a fast scroll outrun overdraw.
+            refreshVirtualWindow()
         end)
 
         local finalBottom = previousBottom
