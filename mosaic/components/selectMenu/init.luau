@@ -44,9 +44,17 @@ local Text = require(Components.text)
 
 local SelectMenuItem = require(script.item)
 
+export type Item =
+    string
+    | {
+        Text: string,
+        FontFace: Font?
+    }
+
 type IndexedItem = {
     Idx: number,
-    Text: string
+    Text: string,
+    FontFace: Font?
 }
 type IndexedItemFilter =
     (query: string?, items: { IndexedItem }) -> { IndexedItem }
@@ -57,7 +65,7 @@ type SelectMenuProps = {
 	MaxHeight: Fusion.UsedAs<number>?,
 	Position: Fusion.UsedAs<UDim2>?,
 	AnchorPoint: Fusion.UsedAs<Vector2>?,
-	Items: Fusion.UsedAs<{ string }>,
+	Items: Fusion.UsedAs<{ Item }>,
 	EnableSearch: Fusion.UsedAs<boolean>?,
 	SearchState: Fusion.Value<string>?,
 	SearchPlaceholderText: Fusion.UsedAs<string>?,
@@ -148,14 +156,23 @@ return Component<<SelectMenuProps>>(function(scope, props)
     end)
 
     local indexedItems = Computed(scope, function(use): { IndexedItem }
-        local usedItems = use<<{ string }>>(items)
+        local usedItems = use<<{ Item }>>(items)
         local result = table.create(#usedItems) :: { IndexedItem }
 
-        for idx, text in usedItems do
-            result[idx] = {
-                Idx = idx,
-                Text = text
-            }
+        for idx, item in usedItems do
+            if type(item) == "string" then
+                result[idx] = {
+                    Idx = idx,
+                    Text = item,
+                    FontFace = nil
+                }
+            else
+                result[idx] = {
+                    Idx = idx,
+                    Text = item.Text,
+                    FontFace = item.FontFace
+                }
+            end
         end
 
         return result
@@ -465,40 +482,33 @@ return Component<<SelectMenuProps>>(function(scope, props)
         }
     )
 
-    local rowCullTransparency = Computed(
+    local renderedItemSource = Computed(
         scope,
-        function(use: Fusion.Use): number
-            return if use<<boolean>>(renderVisible) then 0 else 1
+        function(use: Fusion.Use): { IndexedItem }
+            if not use<<boolean>>(renderVisible) then return {} end
+
+            return use<<{ IndexedItem }>>(filteredItems)
         end
     )
-    local renderedItems = TransparencyGated(
+    local renderedItems = Fusion.ForPairs(
         scope,
-        function(itemScope: Fusion.Scope, _props): Fusion.Child
-            return Fusion.ForPairs(
-                itemScope,
-                filteredItems,
-                function(
-                    use,
-                    itemScope,
-                    key,
-                    value
-                )
-                    local usedItem = value
-
-                    return usedItem.Idx, SelectMenuItem(itemScope, {
-                        Text = usedItem.Text,
-                        SelectedIdxValue = selectedIdxValue,
-                        Idx = usedItem.Idx,
-                        LayoutOrder = key,
-                        Transparency = contentTransparency,
-                        Interactable = effectiveInteractable
-                    })
-                end
-            ) :: Fusion.Child
-        end,
-        {
-            GateTransparency = rowCullTransparency
-        }
+        renderedItemSource,
+        function(
+            _use,
+            itemScope,
+            key,
+            usedItem
+        )
+            return usedItem.Idx, SelectMenuItem(itemScope, {
+                Text = usedItem.Text,
+                FontFace = usedItem.FontFace,
+                SelectedIdxValue = selectedIdxValue,
+                Idx = usedItem.Idx,
+                LayoutOrder = key,
+                Transparency = contentTransparency,
+                Interactable = effectiveInteractable
+            })
+        end
     )
 
     local selectMenu = Placement(scope, Container, CombineProps({

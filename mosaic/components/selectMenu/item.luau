@@ -26,6 +26,7 @@ local Text = require(Components.text)
 
 type SelectMenuItemProps = {
     Text: string,
+    FontFace: Font?,
     SelectedIdxValue: Fusion.Value<number?>,
     Idx: number,
     LayoutOrder: number,
@@ -148,6 +149,7 @@ local function SelectMenuItem(
         [Children] = {
             Text(scope, {
                 Text = props.Text,
+                FontFace = props.FontFace,
                 TextTransparency = composedOpaqueTransparency
             }),
 

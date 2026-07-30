@@ -1,29 +1,7 @@
-
 --!strict
 
-local Packages =
-    script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.packages
-local Fusion = require(Packages.fusion)
-local Computed, New, Children, Observer, OnEvent, Peek, Value =
-    Fusion.Computed, Fusion.New, Fusion.Children, Fusion.Observer,
-    Fusion.OnEvent, Fusion.peek, Fusion.Value
-
-local Types = require(script.Parent.types)
-local CreateSidePadding = require(script.Parent.utils.createSidePadding)
-
-local Components = script.Parent.Parent.Parent.Parent.Parent
-local Icon = require(Components.icon)
-local SelectMenu = require(Components.selectMenu)
-local Text = require(Components.text)
-local Assets = require(Components.Parent.assets)
-local PopoverFocus = require(Components.Parent.coreComponents.popoverFocus)
-
-local ChevronGap = 6
-local ChevronWidth = 6
-local MenuGap = 4
-local MenuMaxHeight = 150
-local PointerCursor = "rbxasset://SystemCursors/PointingHand"
-local SidePadding = 6
+local CreateSelectMenuVariant =
+    require(script.Parent.utils.createSelectMenuVariant)
 
 type EnumMetadata = {
     Items: { EnumItem },
@@ -56,272 +34,29 @@ local function GetEnumMetadata(value: EnumItem): EnumMetadata
     return createdMetadata
 end
 
-local PluginInstance = script:FindFirstAncestorOfClass("Plugin") :: Plugin?
-assert(PluginInstance, "EnumItem must be created from inside a Plugin")
-local PluginMouse = PluginInstance:GetMouse()
+return CreateSelectMenuVariant({
+    Name = "EnumItem",
 
-return function(
-    scope: Fusion.Scope,
-    props: Types.ValueVariantProps<EnumItem>
-): Fusion.Child
-    local value = props.Value
-    local trySetValue = props.TrySetValue
-
-    if not props.Writable or trySetValue == nil then
-        local displayedValue = Computed(
-            scope,
-            function(use: Fusion.Use): string
-                if use<<boolean>>(props.Mixed) then return "" end
-                return use<<EnumItem>>(value).Name
-            end
-        )
+    GetMetadata = function(initialValue: EnumItem)
+        local metadata = GetEnumMetadata(initialValue)
 
         return {
-            Text(scope, {
-                Text = displayedValue,
-                TextColor3 = props.TextColor3,
-                Size = UDim2.fromScale(1, 0),
+            Items = metadata.Names,
 
-                [Children] = New(scope, "UIFlexItem") {
-                    FlexMode = Enum.UIFlexMode.Shrink
-                }
-            }),
-
-            CreateSidePadding(scope)
-        } :: Fusion.Child
-    end
-
-    local observedValue = Computed(
-        scope,
-        function(use: Fusion.Use): EnumItem
-            return use<<EnumItem>>(value)
-        end
-    )
-    local observedMixed = Computed(
-        scope,
-        function(use: Fusion.Use): boolean
-            return use<<boolean>>(props.Mixed)
-        end
-    )
-    local currentValue = Peek<<EnumItem>>(observedValue)
-    local enumMetadata = GetEnumMetadata(currentValue)
-    local enumItems = enumMetadata.Items
-    local itemNames = enumMetadata.Names
-    local indexByItem = enumMetadata.IndexByItem
-
-    local currentIdx =
-        if Peek<<boolean>>(observedMixed)
-        then nil
-        else indexByItem[currentValue]
-    local selectedIdxState = Value<<number?>>(scope, currentIdx)
-    local displayedValueState = Value(
-        scope,
-        if currentIdx == nil then "" else currentValue.Name
-    )
-    local selectedIdxStateAlive = true
-
-    table.insert(scope, function()
-        selectedIdxStateAlive = false
-    end)
-
-    local function deferSelectedIdxCorrection(
-        observedIdx: number?,
-        correctedIdx: number?
-    )
-        if observedIdx == correctedIdx then return end
-
-        task.defer(function()
-            if not selectedIdxStateAlive then return end
-            if Peek<<number?>>(selectedIdxState) ~= observedIdx then return end
-
-            selectedIdxState:set(correctedIdx)
-        end)
-    end
-
-    local hitArea: TextButton
-    local selectMenu: GuiObject
-    local popoverFocus = PopoverFocus(scope, {
-        GetInteractionRoots = function(): { GuiObject }
-            return { selectMenu, hitArea }
-        end,
-        OnFocusChanged =
-            if props.OnFocusChanged == nil then nil
-            else function(isFocused: boolean)
-                props.OnFocusChanged(isFocused)
+            GetIndex = function(value: EnumItem): number?
+                return metadata.IndexByItem[value]
             end,
-        Name = "EnumItemFocusTarget"
-    })
-    local inputFocusState = popoverFocus.State
-    local visualFocusState = props.FocusState or inputFocusState
-    local previousMouseIcon: string? = nil
-    local isHovering = false
 
-    local function showPointer()
-        if not isHovering then
-            isHovering = true
-            previousMouseIcon = PluginMouse.Icon
-        end
-
-        PluginMouse.Icon = PointerCursor
-    end
-
-    local function restorePointer()
-        if not isHovering then return end
-        isHovering = false
-
-        if PluginMouse.Icon == PointerCursor then
-            PluginMouse.Icon = previousMouseIcon or ""
-        end
-
-        previousMouseIcon = nil
-    end
-
-    table.insert(scope, restorePointer)
-
-    local function closeMenu()
-        popoverFocus.Release()
-    end
-
-    local function syncObservedValue()
-        local nextValue = Peek<<EnumItem>>(observedValue)
-        local nextIdx =
-            if Peek<<boolean>>(observedMixed)
-            then nil
-            else indexByItem[nextValue]
-
-        currentIdx = nextIdx
-        displayedValueState:set(
-            if nextIdx == nil then "" else nextValue.Name
-        )
-
-        if Peek<<number?>>(selectedIdxState) ~= nextIdx then
-            selectedIdxState:set(nextIdx)
-        end
-    end
-
-    Observer(scope, observedValue):onChange(syncObservedValue)
-    Observer(scope, observedMixed):onChange(syncObservedValue)
-
-    Observer(scope, selectedIdxState):onChange(function()
-        local nextIdx = Peek<<number?>>(selectedIdxState)
-        if nextIdx == currentIdx then return end
-
-        local nextValue = if nextIdx == nil then nil else enumItems[nextIdx]
-        if nextValue == nil then
-            deferSelectedIdxCorrection(nextIdx, currentIdx)
-            closeMenu()
-            return
-        end
-
-        local success, err, savedValue = trySetValue(nextValue)
-        if not success then
-            deferSelectedIdxCorrection(nextIdx, currentIdx)
-            closeMenu()
-            warn(`SuperProperties: {err or "Could not set value."}`)
-            return
-        end
-
-        local valueToDisplay =
-            if savedValue ~= nil then savedValue else nextValue
-        currentIdx = indexByItem[valueToDisplay]
-        displayedValueState:set(valueToDisplay.Name)
-
-        deferSelectedIdxCorrection(nextIdx, currentIdx)
-
-        closeMenu()
-    end)
-
-    selectMenu = SelectMenu(scope, {
-        Items = itemNames,
-        SelectedIdx = selectedIdxState,
-        Width = UDim.new(1, 2),
-        MaxHeight = MenuMaxHeight,
-        Position = UDim2.new(0, -1, 1, MenuGap),
-        Visible = visualFocusState,
-        Interactable = inputFocusState,
-        OnSearchFocused = function()
-            popoverFocus.ChildFocused()
-        end,
-        OnSearchFocusLost = function(
-            _enterPressed: boolean,
-            inputThatCausedFocusLoss: InputObject?
-        )
-            popoverFocus.ChildFocusLost(inputThatCausedFocusLoss)
-        end,
-        ZIndex = 4
-    }) :: GuiObject
-
-    local displayedValue = Text(scope, {
-        Size = UDim2.fromScale(1, 1),
-        AutomaticSize = Enum.AutomaticSize.None,
-        Text = displayedValueState,
-        TextColor3 = props.TextColor3,
-        ZIndex = 1,
-
-        Name = "EnumItemText"
-    }, {
-        [Children] = New(scope, "UIPadding") {
-            PaddingLeft = UDim.new(0, SidePadding),
-            PaddingRight = UDim.new(
-                0,
-                SidePadding + ChevronWidth + ChevronGap
-            )
+            ResolveValue = function(
+                idx: number,
+                _currentValue: EnumItem
+            ): EnumItem?
+                return metadata.Items[idx]
+            end
         }
-    })
+    end,
 
-    local chevrons = Icon(scope, {
-        Image = Assets.ChevronsThin,
-        Width = ChevronWidth,
-        Position = UDim2.new(1, -SidePadding, .5, 0),
-        AnchorPoint = Vector2.new(1, .5),
-        ZIndex = 1,
-
-        Name = "EnumItemChevrons"
-    })
-
-    hitArea = New(scope, "TextButton") {
-        Size = UDim2.fromScale(1, 1),
-        BackgroundTransparency = 1,
-        Text = "",
-        AutoButtonColor = false,
-        Selectable = false,
-        ZIndex = 3,
-
-        Name = "EnumItemHitArea",
-
-        [OnEvent "MouseEnter"] = showPointer,
-        [OnEvent "MouseMoved"] = showPointer,
-        [OnEvent "MouseLeave"] = restorePointer,
-
-        [OnEvent "Activated"] = function()
-            popoverFocus.Capture()
-
-            task.defer(function()
-                if isHovering then showPointer() end
-            end)
-        end
-    } :: TextButton
-
-    return New(scope, "Frame") {
-        Size = UDim2.fromScale(1, 1),
-        BackgroundTransparency = 1,
-
-        Name = "EnumItemValue",
-
-        [Children] = ({
-            displayedValue,
-
-            chevrons,
-
-            popoverFocus.Target,
-
-            hitArea,
-
-            selectMenu,
-
-            New(scope, "UIFlexItem") {
-                FlexMode = Enum.UIFlexMode.Shrink
-            }
-        } :: { Fusion.Child })
-    }
-end
+    Format = function(value: EnumItem): string
+        return value.Name
+    end
+})

@@ -12,6 +12,7 @@ return {
     number = require(script.number),
     boolean = require(script.boolean),
     EnumItem = require(script.enumItem),
+    Font = require(script.font),
     Color3 = require(script.color),
     BrickColor = require(script.color),
     Vector2 = require(script.vector2),

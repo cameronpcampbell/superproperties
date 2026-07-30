@@ -145,18 +145,11 @@ local Patches: Patches = {
         }
     },
     Text = {
-        TextLabel = {
-            TextColor = TextColorPatch
-        },
-        TextButton = {
-            TextColor = TextColorPatch
-        },
-        TextBox = {
-            TextColor = TextColorPatch
-        },
         ["*"] = {
+            TextColor = TextColorPatch,
             LocalizationMatchIdentifier = HIDDEN_PATCH,
             LocalizationMatchedSourceText = HIDDEN_PATCH,
+            Font = HIDDEN_PATCH
         }
     },
     Transform = {
