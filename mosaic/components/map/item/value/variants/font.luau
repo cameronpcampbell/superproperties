@@ -34,7 +34,7 @@ local function GetFamilyName(font: Font): string
     return NameByFamily[font.Family] or font.Family
 end
 
-return CreateSelectMenuVariant({
+return CreateSelectMenuVariant<<Font>>({
     Name = "Font",
     EnableSearch = false,
     SortOrder = Enum.SortOrder.Name,

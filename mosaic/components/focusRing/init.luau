@@ -25,7 +25,7 @@ local CoreComponents = script.Parent.Parent.coreComponents
 local TransparencyGated = require(CoreComponents.transparencyGated)
 
 type FocusRingProps = {
-    Variant: Fusion.UsedAs<ThemeUtils.AccentVariant>,
+    Variant: Fusion.UsedAs<ThemeUtils.AccentVariant>?,
     BaseSize: Fusion.UsedAs<UDim2>?,
     CornerRadius: Fusion.UsedAs<number>?,
 	TopLeftRadius: Fusion.UsedAs<number>?,

@@ -34,14 +34,14 @@ local function GetEnumMetadata(value: EnumItem): EnumMetadata
     return createdMetadata
 end
 
-return CreateSelectMenuVariant({
+return CreateSelectMenuVariant<<EnumItem>>({
     Name = "EnumItem",
 
     GetMetadata = function(initialValue: EnumItem)
         local metadata = GetEnumMetadata(initialValue)
 
         return {
-            Items = metadata.Names,
+            Items = metadata.Names :: any,
 
             GetIndex = function(value: EnumItem): number?
                 return metadata.IndexByItem[value]
