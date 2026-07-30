@@ -11,9 +11,9 @@ local Tween, Computed, Observer, Peek =
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CombineProps, ComposeTransparency =
+local Component, CombineProps, ComposeTransparency, Oktween =
     FusionUtils.Component, FusionUtils.CombineProps,
-    FusionUtils.ComposeTransparency
+    FusionUtils.ComposeTransparency, FusionUtils.Oktween
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
@@ -25,6 +25,7 @@ local CoreComponents = script.Parent.Parent.coreComponents
 local TransparencyGated = require(CoreComponents.transparencyGated)
 
 type FocusRingProps = {
+    Variant: Fusion.UsedAs<ThemeUtils.AccentVariant>,
     BaseSize: Fusion.UsedAs<UDim2>?,
     CornerRadius: Fusion.UsedAs<number>?,
 	TopLeftRadius: Fusion.UsedAs<number>?,
@@ -47,6 +48,7 @@ local DefaultTransitionTweenInfo = TweenInfo.new(
 )
 
 return Component<<FocusRingProps>>(function(scope, props)
+    local props, variant = TableExtract(props, "Variant", "Primary")
     local props, baseSize =
         TableExtract(props, "BaseSize", UDim2.new(1, 0, 1, 0))
     local props, cornerRadius = TableExtract(props, "CornerRadius")
@@ -128,7 +130,7 @@ return Component<<FocusRingProps>>(function(scope, props)
     )
 
     local theme = GetThemeForScope(scope)
-    local accentColor = theme:GetAccent(scope, "Primary")
+    local accentColor = theme:GetAccent(scope, variant)
 
     local ringProps = CombineProps({
         Size = computeSize,
@@ -136,7 +138,14 @@ return Component<<FocusRingProps>>(function(scope, props)
         AnchorPoint = Vector2.new(.5, .5),
         StrokeThickness = ringThickness + ringInset,
         StrokeTransparency = composedTransparency,
-        StrokeColor = accentColor,
+        StrokeColor = Oktween(
+            scope, accentColor,
+            TweenInfo.new(
+                .12,
+                Enum.EasingStyle.Exponential,
+                Enum.EasingDirection.InOut
+            )
+        ),
         BackgroundTransparency = 1,
         ForceSupercorner = true,
         CornerRadius = ringCornerRadius,
