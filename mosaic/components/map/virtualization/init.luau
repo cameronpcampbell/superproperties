@@ -1316,7 +1316,6 @@ local function CreateRenderedRows(
 
     local function reconcileRowsOnce()
         if not alive then return end
-        ProfileBegin("VirtualMapScrollable.ReconcileRows")
 
         local descriptors = Peek<<RenderedRootPlan>>(
             renderedRootPlan
@@ -1336,10 +1335,7 @@ local function CreateRenderedRows(
             -- Clean up replaced rows before mounting their replacements so an
             -- old [Children] cleanup cannot unparent them from the new row.
             Fusion.doCleanup(mountedRow.Scope)
-            if not alive then
-                ProfileEnd()
-                return
-            end
+            if not alive then return end
 
             if performanceSink then
                 performanceSink("RowUnmount", rootIdx)
@@ -1348,10 +1344,7 @@ local function CreateRenderedRows(
 
         for rootIdx, descriptor in descriptors do
             if nextMountedRows[rootIdx] then continue end
-            if not alive then
-                ProfileEnd()
-                return
-            end
+            if not alive then return end
 
             local rowScope = Fusion.innerScope(rowLifetimeScope)
             local rowInstance = CreateRow(
@@ -1361,10 +1354,7 @@ local function CreateRenderedRows(
                 rootIdx,
                 descriptor
             )
-            if not alive then
-                ProfileEnd()
-                return
-            end
+            if not alive then return end
 
             nextMountedRows[rootIdx] = {
                 Scope = rowScope,
@@ -1378,14 +1368,9 @@ local function CreateRenderedRows(
             end
         end
 
-        if not alive then
-            ProfileEnd()
-            return
-        end
+        if not alive then return end
         renderedRows:set(nextRenderedRows)
         mountedRows = nextMountedRows
-
-        ProfileEnd()
     end
 
     local function reconcileRows()

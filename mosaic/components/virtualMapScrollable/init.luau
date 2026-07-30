@@ -708,8 +708,37 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
             refreshVirtualWindow(options)
         end
 
+        local deferredRefreshOptions: VirtualWindowRefreshOptions = {}
+        local deferredRefreshScheduler = FrameScheduler.Create(
+            function(callback: () -> ()): () -> ()
+                local thread = task.defer(callback)
+
+                return function()
+                    task.cancel(thread)
+                end
+            end,
+            function()
+                local options = deferredRefreshOptions
+                deferredRefreshOptions = {}
+                refreshVirtualWindowImmediately(options)
+            end
+        )
+
+        local function deferVirtualWindowRefresh(
+            options: VirtualWindowRefreshOptions
+        )
+            deferredRefreshOptions.BypassBuffer =
+                deferredRefreshOptions.BypassBuffer
+                or options.BypassBuffer
+            deferredRefreshOptions.RebuildRetention =
+                deferredRefreshOptions.RebuildRetention
+                or options.RebuildRetention
+            deferredRefreshScheduler.Request()
+        end
+
         table.insert(scope, function()
             scrollRefreshScheduler.Destroy()
+            deferredRefreshScheduler.Destroy()
         end)
 
         -- Geometry changes are correctness invalidations rather than scroll
@@ -747,12 +776,16 @@ local VirtualMapScrollableComponent = (Component :: any)(function(
 
         rebuildRetainedMapIndices()
         Observer(scope, computeGeometryInputs):onBind(function()
-            refreshVirtualWindowImmediately({
+            -- Loading visible detail updates RootGeometry. Defer the refresh
+            -- so that update cannot feed back into this busy Fusion observer.
+            deferVirtualWindowRefresh({
                 BypassBuffer = true
             })
         end)
         Observer(scope, computeRetentionInputs):onChange(function()
-            refreshVirtualWindowImmediately({
+            -- Loaded detail also updates FocusedRootRange, so retention must
+            -- cross the same deferred graph boundary.
+            deferVirtualWindowRefresh({
                 RebuildRetention = true
             })
         end)

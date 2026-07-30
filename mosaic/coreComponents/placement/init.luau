@@ -162,8 +162,12 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
     end)
     local animatedPosition = Computed(scope, function(use): UDim2
         local position = use<<UDim2>>(renderedPosition)
+        local anchorPoint = use<<Vector2>>(renderedAnchorPoint)
+        local offsetDirection = if anchorPoint.Y > .5 then -1 else 1
         local offset =
-            use<<number>>(transitionTransparency) * TransitionOffset
+            use<<number>>(transitionTransparency)
+            * TransitionOffset
+            * offsetDirection
 
         return UDim2.new(
             position.X.Scale,
