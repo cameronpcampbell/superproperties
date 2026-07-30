@@ -494,7 +494,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
                         Interactable = effectiveInteractable
                     })
                 end
-            )
+            ) :: Fusion.Child
         end,
         {
             GateTransparency = rowCullTransparency

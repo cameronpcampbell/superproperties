@@ -1338,7 +1338,7 @@ local function CreateRenderedRows(
             if not alive then return end
 
             if performanceSink then
-                performanceSink("RowUnmount", rootIdx)
+                (performanceSink :: (event: string, rootIdx: number?) -> ())("RowUnmount", rootIdx)
             end
         end
 
@@ -1364,7 +1364,7 @@ local function CreateRenderedRows(
             nextRenderedRows[rootIdx] = rowInstance
 
             if performanceSink then
-                performanceSink("RowMount", rootIdx)
+                (performanceSink :: (event: string, rootIdx: number?) -> ())("RowMount", rootIdx)
             end
         end
 
