@@ -13,7 +13,6 @@ Install the `rbxm` from the [latest release](https://github.com/cameronpcampbell
 - Implement `ColorSequence` and `NumberSequence` property values.
 - Implement `BrickColor` property values.
 - Implement `PhysicalProperties` property values.
-- Implement `Font` property values.
 - Implement `Content` property values.
 
 ### Fixes
