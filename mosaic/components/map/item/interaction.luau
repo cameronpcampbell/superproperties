@@ -193,7 +193,9 @@ local function CreateMapItemInteraction(
     )
         pendingFocusState = isFocused
         pendingFocusRingVariant =
-            if parserFailed then "Destructive" else "Primary"
+            if isFocused and parserFailed
+            then "Destructive"
+            else "Primary"
         focusRevision += 1
         if focusUpdateScheduled then return end
 
