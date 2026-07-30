@@ -2,6 +2,8 @@
 
 local ParseUDim = require(script.Parent.Parent.udim.parser)
 local UDim2Lexer = require(script.Parent.lexer)
+local NormalizeCommaDelimitedTokens =
+    require(script.Parent.Parent.utils.normalizeCommaDelimitedTokens)
 
 type UDimComponents = {
     Scale: number,
@@ -13,10 +15,7 @@ export type Components = {
     Y: UDimComponents
 }
 
-type Token = {
-    Kind: string?,
-    Value: string
-}
+type Token = NormalizeCommaDelimitedTokens.Token
 
 type Parser = {
     Tokens: { Token },
@@ -255,7 +254,7 @@ local function Tokenize(text: string): { Token }
         })
     end
 
-    return tokens
+    return NormalizeCommaDelimitedTokens(tokens)
 end
 
 local function ParseUDim2(text: string): (Components?, string?)

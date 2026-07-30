@@ -2,6 +2,8 @@
 
 local DelimitedNumbersLexer =
     require(script.Parent.Parent.utils.delimitedNumbersLexer)
+local NormalizeCommaDelimitedTokens =
+    require(script.Parent.Parent.utils.normalizeCommaDelimitedTokens)
 local ParseMathExpression =
     require(script.Parent.Parent.mathExpression.parser)
 
@@ -11,10 +13,7 @@ export type Components = {
     Z: number
 }
 
-type Token = {
-    Kind: string?,
-    Value: string
-}
+type Token = NormalizeCommaDelimitedTokens.Token
 
 type Parser = {
     Tokens: { Token },
@@ -101,7 +100,7 @@ local function Tokenize(text: string): { Token }
         })
     end
 
-    return tokens
+    return NormalizeCommaDelimitedTokens(tokens)
 end
 
 local function ParseVector(text: string): (Components?, string?)

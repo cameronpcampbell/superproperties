@@ -6,6 +6,8 @@ local Lexuau = require(Packages.lexuau)
 
 local CreateDelimitedNumbersLexer =
     require(script.Parent.Parent.utils.createDelimitedNumbersLexer)
+local NormalizeCommaDelimitedTokens =
+    require(script.Parent.Parent.utils.normalizeCommaDelimitedTokens)
 local MathExpressionLexer =
     require(script.Parent.Parent.mathExpression.lexer)
 type LexerState = MathExpressionLexer.State
@@ -13,10 +15,7 @@ type LexerState = MathExpressionLexer.State
 local ParseMathExpression =
     require(script.Parent.Parent.mathExpression.parser)
 
-type Token = {
-    Kind: string?,
-    Value: string
-}
+type Token = NormalizeCommaDelimitedTokens.Token
 
 type Parser = {
     Tokens: { Token },
@@ -244,17 +243,19 @@ local function ParseRgb(parser: Parser): (Color3?, string?)
 end
 
 local function ParseColor(text: string): (Color3?, string?)
-    local parser: Parser = {
-        Tokens = Tokenize(text),
-        Position = 1
-    }
-
-    local firstToken = Peek(parser)
+    local tokens = Tokenize(text)
+    local firstToken = tokens[1]
     if firstToken ~= nil and firstToken.Kind == "hash" then
-        return ParseHex(parser)
+        return ParseHex({
+            Tokens = tokens,
+            Position = 1
+        })
     end
 
-    return ParseRgb(parser)
+    return ParseRgb({
+        Tokens = NormalizeCommaDelimitedTokens(tokens),
+        Position = 1
+    })
 end
 
 return ParseColor

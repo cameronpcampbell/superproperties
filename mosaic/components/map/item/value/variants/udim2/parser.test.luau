@@ -25,4 +25,34 @@ assert(
     "unexpected braced UDim2 components"
 )
 
+local permissiveFlat
+permissiveFlat, parseError =
+    ParseUDim2("0.5,,, 4,,, 1,,, 8,,,")
+assert(
+    permissiveFlat ~= nil,
+    `expected permissive flat UDim2 components, got {parseError}`
+)
+assert(
+    permissiveFlat.X.Scale == 0.5
+    and permissiveFlat.X.Offset == 4
+    and permissiveFlat.Y.Scale == 1
+    and permissiveFlat.Y.Offset == 8,
+    "unexpected permissive flat UDim2 components"
+)
+
+local permissiveBraced
+permissiveBraced, parseError =
+    ParseUDim2("{0.5,,, 4,,,},,, {1,,, 8,,,},,,")
+assert(
+    permissiveBraced ~= nil,
+    `expected permissive braced UDim2 components, got {parseError}`
+)
+assert(
+    permissiveBraced.X.Scale == 0.5
+    and permissiveBraced.X.Offset == 4
+    and permissiveBraced.Y.Scale == 1
+    and permissiveBraced.Y.Offset == 8,
+    "unexpected permissive braced UDim2 components"
+)
+
 print("UDim2 parser verification passed")

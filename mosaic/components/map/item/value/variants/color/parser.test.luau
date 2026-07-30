@@ -45,12 +45,35 @@ AssertColor(
     Color3.fromRGB(127.5, 128, 1),
     "math expression components"
 )
+AssertColor(
+    "255,,, 0,,, 128,,,",
+    Color3.fromRGB(255, 0, 128),
+    "chained and trailing commas"
+)
 AssertColor("#123456", Color3.fromHex("123456"), "hexadecimal")
 
 local outOfRangeColor, outOfRangeError = ParseColor("256, 0, 0")
 assert(
     outOfRangeColor == nil and outOfRangeError ~= nil,
     "values above 255 should remain invalid"
+)
+
+local incompleteColor, incompleteError = ParseColor("255,,, 0,,,")
+assert(
+    incompleteColor == nil and incompleteError ~= nil,
+    "incomplete RGB lists should remain invalid"
+)
+
+local leadingCommaColor, leadingCommaError = ParseColor(",,,255, 0, 0")
+assert(
+    leadingCommaColor == nil and leadingCommaError ~= nil,
+    "leading RGB commas should remain invalid"
+)
+
+local trailingHexColor, trailingHexError = ParseColor("#123456,")
+assert(
+    trailingHexColor == nil and trailingHexError ~= nil,
+    "hexadecimal colors should not accept trailing commas"
 )
 
 print("color parser verification passed")

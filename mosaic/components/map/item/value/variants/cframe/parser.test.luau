@@ -28,4 +28,50 @@ assert(
     "unexpected braced CFrame components"
 )
 
+local permissiveFlat
+permissiveFlat, parseError = ParseCFrame("1,,, 2,,, 3,,,")
+assert(
+    permissiveFlat ~= nil,
+    `expected permissive flat CFrame components, got {parseError}`
+)
+assert(
+    permissiveFlat.Position.X == 1
+    and permissiveFlat.Position.Y == 2
+    and permissiveFlat.Position.Z == 3
+    and permissiveFlat.Orientation == nil,
+    "unexpected permissive flat CFrame components"
+)
+
+local permissiveBraced
+permissiveBraced, parseError =
+    ParseCFrame("{1,,, 2,,, 3,,,},,, {4,,, 5,,, 6,,,},,,")
+assert(
+    permissiveBraced ~= nil,
+    `expected permissive braced CFrame components, got {parseError}`
+)
+assert(
+    permissiveBraced.Orientation ~= nil,
+    "expected permissive orientation components"
+)
+assert(
+    permissiveBraced.Position.X == 1
+    and permissiveBraced.Position.Y == 2
+    and permissiveBraced.Position.Z == 3
+    and permissiveBraced.Orientation.X == 4
+    and permissiveBraced.Orientation.Y == 5
+    and permissiveBraced.Orientation.Z == 6,
+    "unexpected permissive braced CFrame components"
+)
+
+local trailingPosition
+trailingPosition, parseError = ParseCFrame("{1, 2, 3},")
+assert(
+    trailingPosition ~= nil,
+    `expected trailing-comma position CFrame, got {parseError}`
+)
+assert(
+    trailingPosition.Orientation == nil,
+    "a trailing comma should not require an orientation"
+)
+
 print("CFrame parser verification passed")

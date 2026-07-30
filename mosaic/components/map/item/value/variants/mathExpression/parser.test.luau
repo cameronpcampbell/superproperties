@@ -47,6 +47,8 @@ AssertInvalid("2 +", "missing operand")
 AssertInvalid("(1 + 2", "missing right bracket")
 AssertInvalid("1 2", "adjacent numbers")
 AssertInvalid("1, 2", "comma")
+AssertInvalid("1,,, 2", "chained commas")
+AssertInvalid("1,", "trailing comma")
 AssertInvalid("hello", "invalid characters")
 
 print("math expression parser verification passed")

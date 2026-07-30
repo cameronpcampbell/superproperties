@@ -18,4 +18,26 @@ assert(
     `unexpected shared Vector2 components: {shared.X}, {shared.Y}`
 )
 
+local permissive
+permissive, parseError = ParseVector2("3,,, 4,,,")
+assert(
+    permissive ~= nil,
+    `expected permissive Vector2 components, got {parseError}`
+)
+assert(
+    permissive.X == 3 and permissive.Y == 4,
+    `unexpected permissive Vector2 components: {permissive.X}, {permissive.Y}`
+)
+
+local trailingShared
+trailingShared, parseError = ParseVector2("5,")
+assert(
+    trailingShared ~= nil,
+    `expected trailing-comma shared Vector2 components, got {parseError}`
+)
+assert(
+    trailingShared.X == 5 and trailingShared.Y == 5,
+    "unexpected trailing-comma shared Vector2 components"
+)
+
 print("Vector2 parser verification passed")

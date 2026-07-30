@@ -25,4 +25,23 @@ assert(
     `unexpected offset expression result: {offset.Scale}, {offset.Offset}`
 )
 
+local permissive
+permissive, parseError = ParseUDim("0.5,,, 8,,,")
+assert(permissive ~= nil, `expected permissive UDim, got {parseError}`)
+assert(
+    permissive.Scale == 0.5 and permissive.Offset == 8,
+    "unexpected permissive UDim components"
+)
+
+local trailingScale
+trailingScale, parseError = ParseUDim("0.5,")
+assert(
+    trailingScale ~= nil,
+    `expected trailing-comma scale UDim, got {parseError}`
+)
+assert(
+    trailingScale.Scale == 0.5 and trailingScale.Offset == 0,
+    "unexpected trailing-comma scale UDim components"
+)
+
 print("UDim parser verification passed")
