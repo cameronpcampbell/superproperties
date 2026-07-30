@@ -8,6 +8,7 @@
 - Select menu's now have a subtle motion animation when fading in/out.
 - Map value's now visually show if they're in an error state whilst editing.
 - Added support for `Font` property values.
+- Added support for `Content` property values.
 
 # v0.3.0
 - Properties, attributes, and tags can now be bookmarked.
