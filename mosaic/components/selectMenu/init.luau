@@ -402,7 +402,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
         scope,
         Supercorner.new :: any,
         {
-            GatedTransparencyProperty = "ImageTransparency",
+            GatedTransparencyProperty = "StrokeTransparency",
             BackgroundTransparency = 1,
             StrokeColor = animatedSearchStrokeColor,
             StrokeTransparency = composedSearchStrokeTransparency,
@@ -462,6 +462,42 @@ return Component<<SelectMenuProps>>(function(scope, props)
             } :: { Fusion.Child },
 
             [Children] = searchInput
+        }
+    )
+
+    local rowCullTransparency = Computed(
+        scope,
+        function(use: Fusion.Use): number
+            return if use<<boolean>>(renderVisible) then 0 else 1
+        end
+    )
+    local renderedItems = TransparencyGated(
+        scope,
+        function(itemScope: Fusion.Scope, _props): Fusion.Child
+            return Fusion.ForPairs(
+                itemScope,
+                filteredItems,
+                function(
+                    use,
+                    itemScope,
+                    key,
+                    value
+                )
+                    local usedItem = value
+
+                    return usedItem.Idx, SelectMenuItem(itemScope, {
+                        Text = usedItem.Text,
+                        SelectedIdxValue = selectedIdxValue,
+                        Idx = usedItem.Idx,
+                        LayoutOrder = key,
+                        Transparency = contentTransparency,
+                        Interactable = effectiveInteractable
+                    })
+                end
+            )
+        end,
+        {
+            GateTransparency = rowCullTransparency
         }
     )
 
@@ -543,23 +579,7 @@ return Component<<SelectMenuProps>>(function(scope, props)
                                 Name = "SelectMenuEmptyText"
                             }),
 
-                            Fusion.ForPairs(scope, filteredItems, function(
-                                use,
-                                scope,
-                                key,
-                                value
-                            )
-                                local usedItem = value
-
-                                return usedItem.Idx, SelectMenuItem(scope, {
-                                    Text = usedItem.Text,
-                                    SelectedIdxValue = selectedIdxValue,
-                                    Idx = usedItem.Idx,
-                                    LayoutOrder = key,
-                                    Transparency = contentTransparency,
-                                    Interactable = effectiveInteractable
-                                })
-                            end),
+                            renderedItems,
 
                             New(scope, "UIListLayout") {
                                 Padding = UDim.new(0, 1),

@@ -15,18 +15,36 @@ local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
 export type Props = {
+    GateTransparency: Fusion.UsedAs<number>?,
     GatedTransparencyProperty: string?,
     [any]: any
 }
 
 return ConstructorComponent<<Props>>(function(scope, constructor, props)
+    local requestedGatedTransparencyProperty =
+        props.GatedTransparencyProperty
+    local props, explicitGateTransparency =
+        TableExtract(props, "GateTransparency")
     local props, gatedTransparencyProperty = TableExtract(
         props,
         "GatedTransparencyProperty",
         "BackgroundTransparency"
     )
+    local propertyGateTransparency =
+        (props :: { [any]: any })[gatedTransparencyProperty]
+
+    if
+        explicitGateTransparency == nil
+        and requestedGatedTransparencyProperty ~= nil
+    then
+        assert(
+            propertyGateTransparency ~= nil,
+            `TransparencyGated expected a "{gatedTransparencyProperty}" prop`
+        )
+    end
+
     local gatedTransparency =
-        (props :: { [any]: any })[gatedTransparencyProperty] or 0
+        explicitGateTransparency or propertyGateTransparency or 0
 
     local renderState = Value(
         scope,

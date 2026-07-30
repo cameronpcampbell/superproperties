@@ -175,7 +175,7 @@ return Component<<CheckboxProps>>(function(scope, props)
 
         RootChildren = {
             TransparencyGated(scope, Supercorner.new :: any, {
-                GatedTransparencyProperty = "ImageTransparency",
+                GatedTransparencyProperty = "StrokeTransparency",
                 Size = UDim2.fromScale(1, 1),
                 StrokeThickness = 1,
                 BackgroundTransparency = 1,

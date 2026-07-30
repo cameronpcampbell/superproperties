@@ -25,6 +25,37 @@ local MenuMaxHeight = 150
 local PointerCursor = "rbxasset://SystemCursors/PointingHand"
 local SidePadding = 6
 
+type EnumMetadata = {
+    Items: { EnumItem },
+    Names: { string },
+    IndexByItem: { [EnumItem]: number }
+}
+
+local EnumMetadataByType: { [any]: EnumMetadata } = {}
+
+local function GetEnumMetadata(value: EnumItem): EnumMetadata
+    local enumType = value.EnumType
+    local metadata = EnumMetadataByType[enumType]
+    if metadata then return metadata end
+
+    local items = enumType:GetEnumItems()
+    local names = table.create(#items) :: { string }
+    local indexByItem = {} :: { [EnumItem]: number }
+
+    for idx, item in items do
+        names[idx] = item.Name
+        indexByItem[item] = idx
+    end
+
+    local createdMetadata: EnumMetadata = {
+        Items = table.freeze(items),
+        Names = table.freeze(names),
+        IndexByItem = table.freeze(indexByItem)
+    }
+    EnumMetadataByType[enumType] = createdMetadata
+    return createdMetadata
+end
+
 local PluginInstance = script:FindFirstAncestorOfClass("Plugin") :: Plugin?
 assert(PluginInstance, "EnumItem must be created from inside a Plugin")
 local PluginMouse = PluginInstance:GetMouse()
@@ -35,26 +66,13 @@ return function(
 ): Fusion.Child
     local value = props.Value
     local trySetValue = props.TrySetValue
-    local observedValue = Computed(
-        scope,
-        function(use: Fusion.Use): EnumItem
-            return use<<EnumItem>>(value)
-        end
-    )
-    local observedMixed = Computed(
-        scope,
-        function(use: Fusion.Use): boolean
-            return use<<boolean>>(props.Mixed)
-        end
-    )
-    local currentValue = Peek<<EnumItem>>(observedValue)
 
     if not props.Writable or trySetValue == nil then
         local displayedValue = Computed(
             scope,
             function(use: Fusion.Use): string
-                if use<<boolean>>(observedMixed) then return "" end
-                return use<<EnumItem>>(observedValue).Name
+                if use<<boolean>>(props.Mixed) then return "" end
+                return use<<EnumItem>>(value).Name
             end
         )
 
@@ -73,16 +91,28 @@ return function(
         } :: Fusion.Child
     end
 
-    local enumItems = currentValue.EnumType:GetEnumItems()
-    local itemNames = table.create(#enumItems) :: { string }
-    for idx, enumItem in enumItems do
-        itemNames[idx] = enumItem.Name
-    end
+    local observedValue = Computed(
+        scope,
+        function(use: Fusion.Use): EnumItem
+            return use<<EnumItem>>(value)
+        end
+    )
+    local observedMixed = Computed(
+        scope,
+        function(use: Fusion.Use): boolean
+            return use<<boolean>>(props.Mixed)
+        end
+    )
+    local currentValue = Peek<<EnumItem>>(observedValue)
+    local enumMetadata = GetEnumMetadata(currentValue)
+    local enumItems = enumMetadata.Items
+    local itemNames = enumMetadata.Names
+    local indexByItem = enumMetadata.IndexByItem
 
     local currentIdx =
         if Peek<<boolean>>(observedMixed)
         then nil
-        else table.find(enumItems, currentValue)
+        else indexByItem[currentValue]
     local selectedIdxState = Value<<number?>>(scope, currentIdx)
     local displayedValueState = Value(
         scope,
@@ -157,7 +187,7 @@ return function(
         local nextIdx =
             if Peek<<boolean>>(observedMixed)
             then nil
-            else table.find(enumItems, nextValue)
+            else indexByItem[nextValue]
 
         currentIdx = nextIdx
         displayedValueState:set(
@@ -193,7 +223,7 @@ return function(
 
         local valueToDisplay =
             if savedValue ~= nil then savedValue else nextValue
-        currentIdx = table.find(enumItems, valueToDisplay)
+        currentIdx = indexByItem[valueToDisplay]
         displayedValueState:set(valueToDisplay.Name)
 
         deferSelectedIdxCorrection(nextIdx, currentIdx)
