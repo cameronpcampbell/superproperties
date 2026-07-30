@@ -61,8 +61,7 @@ return Component<<FocusRingProps>>(function(scope, props)
     local props, isFocus = TableExtract(props, "IsFocus")
     local props, cullWhenHidden = TableExtract(props, "CullWhenHidden", true)
     local props, alphaOut = TableExtract(props, "AlphaOut")
-    local props, transparency =
-        TableExtract(props, "Transparency", 0)
+    local props, transparency = TableExtract(props, "Transparency", 0)
     local props, transitionTweenInfo =
         TableExtract(
             props,
@@ -141,7 +140,7 @@ return Component<<FocusRingProps>>(function(scope, props)
         StrokeColor = Oktween(
             scope, accentColor,
             TweenInfo.new(
-                .12,
+                .18,
                 Enum.EasingStyle.Exponential,
                 Enum.EasingDirection.InOut
             )

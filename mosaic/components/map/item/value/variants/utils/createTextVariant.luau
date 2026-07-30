@@ -66,13 +66,34 @@ local function CreateTextVariant<T>(
             scope,
             Peek<<string>>(displayedValue)
         )
+        local editing = false
+        local focusedValue = ""
+
+        local function reportFocus(
+            isFocused: boolean,
+            parserFailed: boolean?
+        )
+            if props.OnFocusChanged then
+                props.OnFocusChanged(isFocused, parserFailed)
+            end
+        end
+
         local textOutProxy = CreateOutProxy<<string>>(
             scope,
             textState,
-            function(newText) textState:set(newText) end
+            function(newText)
+                textState:set(newText)
+                if not editing then return end
+
+                local parserFailed = false
+                if newText ~= focusedValue then
+                    local parsedValue = config.Parse(newText)
+                    parserFailed = parsedValue == nil
+                end
+
+                reportFocus(true, parserFailed)
+            end
         )
-        local editing = false
-        local focusedValue = ""
 
         local function syncDisplayedValue()
             if editing then return end
@@ -114,14 +135,13 @@ local function CreateTextVariant<T>(
                 textBox.CursorPosition = #focusedValue + 1
                 textBox.SelectionStart = 1
 
-                if props.OnFocusChanged then props.OnFocusChanged(true) end
+                reportFocus(true, false)
             end,
 
             [OnEvent "FocusLost"] = function()
-                if props.OnFocusChanged then props.OnFocusChanged(false) end
-
                 local nextText = Peek<<string>>(textState)
                 if nextText == focusedValue then
+                    reportFocus(false, false)
                     editing = false
                     syncDisplayedValue()
                     return
@@ -129,12 +149,14 @@ local function CreateTextVariant<T>(
 
                 local nextValue, parseError = config.Parse(nextText)
                 if nextValue == nil then
+                    reportFocus(false, true)
                     editing = false
                     syncDisplayedValue()
                     warn(`SuperProperties: {parseError or "Invalid value."}`)
                     return
                 end
 
+                reportFocus(false, false)
                 local success, err, savedValue = trySetValue(nextValue)
                 editing = false
                 if success then

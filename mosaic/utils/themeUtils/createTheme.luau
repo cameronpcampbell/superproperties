@@ -134,7 +134,7 @@ local function CreateTheme(config: Types.ThemeConfig): Types.ThemeSource
     local accentPrimary = config.AccentPrimary
     local accentSecondary = config.AccentSecondary
     local accentCaution = config.AccentCaution
-    local accentDestructive = config.AccentCaution
+    local accentDestructive = config.AccentDestructive
 
     local bgColors = GenPalette(
         bgBaseColor,

@@ -10,7 +10,10 @@ export type ValueVariantProps<T> = {
     TextColor3: Fusion.UsedAs<Color3>,
     Writable: boolean,
     TrySetValue: ((value: T) -> (boolean, string?, T?))?,
-    OnFocusChanged: ((isFocused: boolean) -> ())?,
+    OnFocusChanged: ((
+        isFocused: boolean,
+        parserFailed: boolean?
+    ) -> ())?,
     FocusState: Fusion.Value<boolean>?,
     HoverState: Fusion.Value<boolean>?
 }

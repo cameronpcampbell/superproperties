@@ -4,8 +4,8 @@ local Packages = script.Parent.Parent.Parent.Parent.Parent
 local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local Computed, OnEvent, Peek, Tween =
-    Fusion.Computed, Fusion.OnEvent, Fusion.peek, Fusion.Tween
+local Computed, OnEvent, Peek, Tween, Value =
+    Fusion.Computed, Fusion.OnEvent, Fusion.peek, Fusion.Tween, Fusion.Value
 
 local Utils = script.Parent.Parent.Parent.Parent.utils
 local FusionUtils = require(Utils.fusionUtils)
@@ -43,7 +43,10 @@ export type Props = {
 export type Result = {
     RootChildren: { Fusion.Child },
     InteractionProps: { [any]: any },
-    OnFocusChanged: ((isFocused: boolean) -> ())?
+    OnFocusChanged: ((
+        isFocused: boolean,
+        parserFailed: boolean?
+    ) -> ())?
 }
 
 local function CreateMapItemInteraction(
@@ -74,6 +77,8 @@ local function CreateMapItemInteraction(
         props.FocusElevationState :: Fusion.Value<boolean>
     local focusRingAlphaState =
         props.FocusRingAlphaState :: Fusion.Value<number>
+    local focusRingVariantState =
+        Value<<ThemeUtils.AccentVariant>>(scope, "Primary")
 
     interactionProps.ZIndex = Computed(
         scope,
@@ -99,14 +104,23 @@ local function CreateMapItemInteraction(
         GetNextVariant(scope, props.Variant),
         strokeColorModifier
     )
-    local accentColor =
-        theme:GetAccent(scope, "Primary", strokeColorModifier)
+    local accentColor = theme:GetAccent(
+        scope,
+        focusRingVariantState,
+        strokeColorModifier
+    )
 
     local tweenStrokeColor = Oktween(
         scope,
         Computed(scope, function(use): Color3
+            local focusRingVariant =
+                use<<ThemeUtils.AccentVariant>>(focusRingVariantState)
+
             return
-                if use<<boolean>>(isFocusState) then
+                if
+                    use<<boolean>>(isFocusState)
+                    or focusRingVariant == "Destructive"
+                then
                     use<<Color3>>(accentColor)
                 else
                     use<<Color3>>(strokeColor)
@@ -147,6 +161,7 @@ local function CreateMapItemInteraction(
     })
 
     local focusRing = FocusRing(scope, {
+        Variant = focusRingVariantState,
         IsFocus = isFocusState,
         CullWhenHidden = false,
         AlphaOut = focusRingAlphaState,
@@ -162,6 +177,7 @@ local function CreateMapItemInteraction(
     })
 
     local pendingFocusState = false
+    local pendingFocusRingVariant: ThemeUtils.AccentVariant = "Primary"
     local focusUpdateScheduled = false
     local focusRevision = 0
     local focusStateAlive = true
@@ -171,8 +187,13 @@ local function CreateMapItemInteraction(
         focusRevision += 1
     end)
 
-    local function onFocusChanged(isFocused: boolean)
+    local function onFocusChanged(
+        isFocused: boolean,
+        parserFailed: boolean?
+    )
         pendingFocusState = isFocused
+        pendingFocusRingVariant =
+            if parserFailed then "Destructive" else "Primary"
         focusRevision += 1
         if focusUpdateScheduled then return end
 
@@ -184,7 +205,15 @@ local function CreateMapItemInteraction(
             if not focusStateAlive then return end
 
             local nextFocusState = pendingFocusState
+            local nextFocusRingVariant = pendingFocusRingVariant
             local updateRevision = focusRevision
+
+            if
+                Peek<<ThemeUtils.AccentVariant>>(focusRingVariantState)
+                    ~= nextFocusRingVariant
+            then
+                focusRingVariantState:set(nextFocusRingVariant)
+            end
 
             if nextFocusState then
                 if not Peek<<boolean>>(isFocusElevationState) then
