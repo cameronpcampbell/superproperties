@@ -53,11 +53,14 @@ return function(
             use<<Color3?>>(props.SelectedColor)
             == props.BrickColor.Color
     end)
+
     local adaptiveHighlightEnabled =
         Computed(scope, function(use): boolean
             return not use<<boolean>>(isSelected)
         end)
+
     local theme = ThemeUtils.GetThemeForScope(scope)
+
     local selectionColor = Computed(scope, function(use): Color3
         return ColorSpace.Srgb.From(
             ColorSpace.Srgb.From(props.BrickColor.Color):BestContrast(
@@ -67,16 +70,19 @@ return function(
             )
         ):ToColor3()
     end)
+
     local gradientColor =
         Computed(scope, function(use): ColorSequence?
             if not use<<boolean>>(isSelected) then return nil end
 
             return ColorSequence.new(use<<Color3>>(selectionColor))
         end)
+
     local gradientTransparency =
         Computed(scope, function(use): number
             return if use<<boolean>>(isSelected) then 0 else 0.78
         end)
+
     local selectionTransparency = Tween<<number>>(
         scope,
         Computed(scope, function(use): number
@@ -84,11 +90,13 @@ return function(
         end),
         SelectionTransparencyTweenInfo
     )
+
     local colorModifier = ThemeUtils.CalcColorModifier(
         scope,
         isHoverState,
         isFocusState
     )
+
     local imageColor = Oktween(
         scope,
         ThemeUtils.ApplyColorModifier(
