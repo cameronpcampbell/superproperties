@@ -31,7 +31,42 @@ local function ComputeWithDefault(
     end)
 end
 
+local function ResolveColorModifier(
+    theme: Types.Theme,
+    use: Fusion.Use,
+    color: Color3,
+    modifier: Types.ThemeColorModifier?
+): Color3
+    return
+        if modifier == "Hover" then
+            LerpColor(color, use<<Color3>>(theme.BgPrimary), .1)
+
+        elseif modifier == "HoverStroke" then
+            LerpColor(color, use<<Color3>>(theme.FgPrimary), .1)
+
+        elseif modifier == "Press" then
+            LerpColor(color, use<<Color3>>(theme.BgPrimary), .2)
+
+        else color
+end
+
 local function ApplyColorModifier(
+    theme: Types.Theme,
+    scope: Fusion.Scope,
+    color: Fusion.UsedAs<Color3>,
+    modifier: Fusion.UsedAs<Types.ThemeColorModifier?>
+): Fusion.Computed<Color3>
+    return Computed(scope, function(use, scope): Color3
+        return ResolveColorModifier(
+            theme,
+            use,
+            use<<Color3>>(color),
+            use(modifier)
+        )
+    end)
+end
+
+local function ApplyNamedColorModifier(
     theme: Types.Theme,
     scope: Fusion.Scope,
     colorName: Fusion.UsedAs<string>,
@@ -45,19 +80,7 @@ local function ApplyColorModifier(
             use<<Color3>>(theme[usedColorName] :: Fusion.UsedAs<Color3>) or
             use<<Color3>>(defaultColor)
 
-        local usedModifier = use(modifier)
-
-        return
-            if usedModifier == "Hover" then
-                LerpColor(usedColor, use<<Color3>>(theme.BgPrimary), .1)
-
-            elseif usedModifier == "HoverStroke" then
-                LerpColor(usedColor, use<<Color3>>(theme.FgPrimary), .1)
-
-            elseif usedModifier == "Press" then
-                LerpColor(usedColor, use<<Color3>>(theme.BgPrimary), .2)
-
-            else usedColor
+        return ResolveColorModifier(theme, use, usedColor, use(modifier))
     end)
 end
 
@@ -73,7 +96,7 @@ local function GetBg(
         return `Bg{usedVariant}`
     end)
 
-    return ApplyColorModifier(
+    return ApplyNamedColorModifier(
         theme, scope, computeName, theme.BgPrimary, modifier
     )
 end
@@ -90,7 +113,7 @@ local function GetBgHighlight(
         return `Bg{usedVariant}Highlight`
     end)
 
-    return ApplyColorModifier(
+    return ApplyNamedColorModifier(
         theme, scope, computeName, theme.BgPrimaryHighlight, modifier
     )
 end
@@ -111,7 +134,7 @@ local function GetFg(
             else `Fg{usedVariant}`
     end)
 
-    return ApplyColorModifier(
+    return ApplyNamedColorModifier(
         theme, scope, computeName, theme.FgPrimary, modifier
     )
 end
@@ -128,7 +151,7 @@ local function GetAccent(
         return `Accent{usedVariant}`
     end)
 
-    return ApplyColorModifier(
+    return ApplyNamedColorModifier(
         theme, scope, computeName, theme.AccentPrimary, modifier
     )
 end
@@ -145,7 +168,7 @@ local function GetAccentFg(
         return `AccentFg{usedVariant}`
     end)
 
-    return ApplyColorModifier(
+    return ApplyNamedColorModifier(
         theme, scope, computeName, theme.AccentPrimary, modifier
     )
 end
@@ -276,5 +299,6 @@ return {
     GetFont = GetFont,
     GetFontSize = GetFontSize,
     HighlightGradient = HighlightGradient,
+    ApplyColorModifier = ApplyColorModifier,
     CalcColorModifier = CalcColorModifier
 }

@@ -15,15 +15,7 @@ local Component, CombineProps =
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
-local CoreComponents = script.Parent.Parent.coreComponents
-local AdaptiveHighlight = require(CoreComponents.adaptiveHighlight)
-
-local Assets = require(script.Parent.Parent.assets)
-
-type BrickColorItemProps = {
-    BrickColor: BrickColor,
-    PaletteIndex: number
-}
+local BrickColorItem = require(script.item)
 
 local CellWidth = 20
 local CellHeight = 23
@@ -53,37 +45,6 @@ local BottomRowBrickColorNames = {
 
 local BottomRowSize = #BottomRowBrickColorNames + 1
 
-local function NewUnscoped(name: string)
-    return function(
-        scope: Fusion.Scope,
-        props: { [any]: any }
-    ): Fusion.Child
-        return New(scope, name)(props)
-    end
-end
-
-local function BrickColorItem(
-    scope: Fusion.Scope,
-    props: BrickColorItemProps
-)
-    return New(scope, "ImageButton") {
-        Size = UDim2.fromOffset(CellWidth, CellHeight),
-        LayoutOrder = props.PaletteIndex,
-        Image = Assets.BrickColor,
-        ImageColor3 = props.BrickColor.Color,
-        BackgroundTransparency = 1,
-        Name = props.BrickColor.Name,
-
-        [Children] = {
-            AdaptiveHighlight(scope, NewUnscoped("ImageLabel"), {
-                Size = UDim2.fromScale(1, 1),
-                Image = Assets.BrickColorStroke,
-                BackgroundTransparency = 1,
-            })
-        }
-    }
-end
-
 local function CreatePaletteRow(
     scope: Fusion.Scope,
     brickColors: { BrickColor },
@@ -97,7 +58,8 @@ local function CreatePaletteRow(
     for columnIndex, brickColor in brickColors do
         table.insert(rowChildren, BrickColorItem(scope, {
             BrickColor = brickColor,
-            PaletteIndex = firstPaletteIndex + columnIndex - 1
+            PaletteIndex = firstPaletteIndex + columnIndex - 1,
+            Size = UDim2.fromOffset(CellWidth, CellHeight)
         }))
     end
 

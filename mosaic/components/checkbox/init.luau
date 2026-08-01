@@ -129,7 +129,7 @@ return Component<<CheckboxProps>>(function(scope, props)
         BackgroundColor3 = Oktween(
             scope, accentColor,
             TweenInfo.new(
-                .25, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
+                .18, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut
             )
         ),
         BackgroundTransparency = checkedTransparency,

@@ -72,11 +72,25 @@ local function GetNextVariant<V>(
     end) :: any
 end
 
+local function ApplyColorModifier(
+    scope: Fusion.Scope,
+    color: Fusion.UsedAs<Color3>,
+    modifier: Fusion.UsedAs<ThemeColorModifier?>
+): Fusion.UsedAs<Color3>
+    return ThemeHelpers.ApplyColorModifier(
+        ManageTheme.GetThemeForScope(scope),
+        scope,
+        color,
+        modifier
+    )
+end
+
 return {
     CreateTheme = CreateTheme,
     SetThemeForScope = ManageTheme.SetThemeForScope,
     GetThemeForScope = ManageTheme.GetThemeForScope,
     GetNextVariant = GetNextVariant,
+    ApplyColorModifier = ApplyColorModifier,
     CalcColorModifier = ThemeHelpers.CalcColorModifier,
     DefaultThemeConfig = DefaultThemeConfig
 }
