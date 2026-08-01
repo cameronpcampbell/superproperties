@@ -34,6 +34,9 @@ local PaletteRowSizes = {
     12, 11, 10, 9, 8, 7
 }
 
+local HexRowStep = CellHeight * 3 / 4
+local HexRowPadding = HexRowStep - CellHeight
+
 local BottomRowBrickColorNames = {
     "Dark stone grey",
     "Medium stone grey",
@@ -117,12 +120,13 @@ local function CreatePaletteRow(
     }
 end
 
-local function CreatePaletteRows(
+local function CreatePaletteChildren(
     scope: Fusion.Scope,
     padding: number,
+    rowPadding: number,
     maximumRowWidth: number
 ): { Fusion.Child }
-    local rows = {} :: { Fusion.Child }
+    local paletteRows = {} :: { Fusion.Child }
     local paletteIndex = 0
 
     for rowIndex, rowSize in PaletteRowSizes do
@@ -134,7 +138,7 @@ local function CreatePaletteRows(
             paletteIndex += 1
         end
 
-        table.insert(rows, CreatePaletteRow(
+        table.insert(paletteRows, CreatePaletteRow(
             scope,
             rowColors,
             firstPaletteIndex,
@@ -148,10 +152,11 @@ local function CreatePaletteRows(
     bottomRowColors[1] = BrickColor.palette(paletteIndex)
 
     for index, brickColorName in BottomRowBrickColorNames do
-        bottomRowColors[index + 1] = BrickColor.new(brickColorName)
+        bottomRowColors[index + 1] =
+            (BrickColor.new :: (string) -> BrickColor)(brickColorName)
     end
 
-    table.insert(rows, CreatePaletteRow(
+    table.insert(paletteRows, CreatePaletteRow(
         scope,
         bottomRowColors,
         paletteIndex,
@@ -160,14 +165,14 @@ local function CreatePaletteRows(
         maximumRowWidth
     ))
 
-    table.insert(rows, New(scope, "UIListLayout") {
+    table.insert(paletteRows, New(scope, "UIListLayout") {
         FillDirection = Enum.FillDirection.Vertical,
         HorizontalAlignment = Enum.HorizontalAlignment.Center,
         SortOrder = Enum.SortOrder.LayoutOrder,
-        Padding = UDim.new(0, padding)
+        Padding = UDim.new(0, rowPadding)
     })
 
-    return rows
+    return paletteRows
 end
 
 type BrickColorPickerProps = {
@@ -182,17 +187,19 @@ return Component<<BrickColorPickerProps>>(function(scope, props)
         MaximumColumns * CellWidth
         + (MaximumColumns - 1) * padding
     local rowCount = #PaletteRowSizes + 1
+    local rowPadding = HexRowPadding + padding
     local paletteHeight =
         rowCount * CellHeight
-        + (rowCount - 1) * padding
+        + (rowCount - 1) * rowPadding
 
     return New(scope, "Frame") (CombineProps({
         Size = UDim2.fromOffset(maximumRowWidth, paletteHeight),
         BackgroundTransparency = 1,
 
-        [Children] = CreatePaletteRows(
+        [Children] = CreatePaletteChildren(
             scope,
             padding,
+            rowPadding,
             maximumRowWidth
         ),
 
