@@ -77,11 +77,11 @@ return Component<<ContainerProps>>(function(scope, props)
         -- Supercorner places regular children in a full-size intermediate
         -- frame. Roblox cannot derive the root's automatic height through
         -- that scaled frame, so mount auto-sized content directly at root.
+        -- Keep the content at least as wide as the root so alignment layouts
+        -- use the container width, while AutomaticSize.X can still expand it
+        -- for wider content.
         automaticSizeContent = New(scope, "Frame") {
-            Size =
-                if automaticSize == Enum.AutomaticSize.XY then
-                    UDim2.fromOffset(0, 0)
-                else UDim2.new(1, 0, 0, 0),
+            Size = UDim2.new(1, 0, 0, 0),
             AutomaticSize = automaticSize,
             BackgroundTransparency = 1,
             ZIndex = contentZIndex,

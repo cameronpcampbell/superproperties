@@ -9,7 +9,8 @@ local New, Children, Computed, Value, OnEvent, Tween =
 
 local Utils = script.Parent.Parent.Parent.utils
 local FusionUtils = require(Utils.fusionUtils)
-local Oktween = FusionUtils.Oktween
+local ComposeTransparency, Oktween =
+    FusionUtils.ComposeTransparency, FusionUtils.Oktween
 
 local ColorSpace = require(Utils.colorSpace)
 local ThemeUtils = require(Utils.themeUtils)
@@ -30,8 +31,9 @@ type BrickColorItemProps = {
     BrickColor: BrickColor,
     PaletteIndex: number,
     Size: UDim2,
-    SelectedColor: Fusion.UsedAs<Color3?>,
-    OnSelected: (color: Color3) -> ()
+    SelectedBrickColor: Fusion.UsedAs<BrickColor?>,
+    OnSelected: (brickColor: BrickColor) -> (),
+    Transparency: Fusion.UsedAs<number>
 }
 
 local function NewUnscoped(name: string)
@@ -49,9 +51,11 @@ return function(
 ): Fusion.Child
     local isHoverState, isFocusState = Value(scope, false), Value(scope, false)
     local isSelected = Computed(scope, function(use): boolean
-        return
-            use<<Color3?>>(props.SelectedColor)
-            == props.BrickColor.Color
+        local selectedBrickColor =
+            use<<BrickColor?>>(props.SelectedBrickColor)
+
+        return selectedBrickColor ~= nil
+            and selectedBrickColor.Number == props.BrickColor.Number
     end)
 
     local adaptiveHighlightEnabled =
@@ -82,6 +86,16 @@ return function(
         Computed(scope, function(use): number
             return if use<<boolean>>(isSelected) then 0 else 0.78
         end)
+    local composedGradientTransparency = ComposeTransparency(
+        scope,
+        gradientTransparency,
+        props.Transparency
+    )
+    local imageTransparency = ComposeTransparency(
+        scope,
+        0,
+        props.Transparency
+    )
 
     local selectionTransparency = Tween<<number>>(
         scope,
@@ -89,6 +103,11 @@ return function(
             return if use<<boolean>>(isSelected) then 0 else 1
         end),
         SelectionTransparencyTweenInfo
+    )
+    local composedSelectionTransparency = ComposeTransparency(
+        scope,
+        selectionTransparency,
+        props.Transparency
     )
 
     local colorModifier = ThemeUtils.CalcColorModifier(
@@ -116,6 +135,7 @@ return function(
         LayoutOrder = props.PaletteIndex,
         Image = Assets.BrickColor,
         ImageColor3 = imageColor,
+        ImageTransparency = imageTransparency,
         BackgroundTransparency = 1,
         Name = props.BrickColor.Name,
 
@@ -137,14 +157,14 @@ return function(
         end,
 
         [OnEvent "MouseButton1Click"] = function()
-            props.OnSelected(props.BrickColor.Color)
+            props.OnSelected(props.BrickColor)
         end,
 
         [Children] = {
             AdaptiveHighlight(scope, NewUnscoped("ImageLabel"), {
                 Enabled = adaptiveHighlightEnabled,
                 GradientColor = gradientColor,
-                GradientTransparency = gradientTransparency,
+                GradientTransparency = composedGradientTransparency,
                 Size = UDim2.fromScale(1, 1),
                 Image = Assets.BrickColorStroke,
                 BackgroundTransparency = 1,
@@ -155,7 +175,7 @@ return function(
                 Size = UDim2.fromScale(1, 1),
                 Image = Assets.BrickColorCheck,
                 ImageColor3 = selectionColor,
-                ImageTransparency = selectionTransparency,
+                ImageTransparency = composedSelectionTransparency,
                 BackgroundTransparency = 1,
                 ZIndex = 2,
 

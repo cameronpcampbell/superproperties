@@ -15,7 +15,7 @@ return {
 	Font = require(script.font),
 	Content = require(script.content),
 	Color3 = require(script.color),
-	BrickColor = require(script.color),
+	BrickColor = require(script.brickColor),
 	Vector2 = require(script.vector2),
 	Vector3 = Vector,
 	vector = Vector,

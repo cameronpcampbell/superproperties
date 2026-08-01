@@ -46,7 +46,7 @@ local BottomRowBrickColorNames = {
 
 local BottomRowSize = #BottomRowBrickColorNames + 1
 
-type ColorSelectedCallback = (color: Color3) -> ()
+type BrickColorSelectedCallback = (brickColor: BrickColor) -> ()
 
 local function CreatePaletteRow(
     scope: Fusion.Scope,
@@ -55,8 +55,9 @@ local function CreatePaletteRow(
     rowIndex: number,
     padding: number,
     maximumRowWidth: number,
-    selectedColor: Fusion.UsedAs<Color3?>,
-    onSelected: ColorSelectedCallback
+    selectedBrickColor: Fusion.UsedAs<BrickColor?>,
+    onSelected: BrickColorSelectedCallback,
+    transparency: Fusion.UsedAs<number>
 ): Fusion.Child
     local rowChildren = {} :: { Fusion.Child }
 
@@ -65,8 +66,9 @@ local function CreatePaletteRow(
             BrickColor = brickColor,
             PaletteIndex = firstPaletteIndex + columnIndex - 1,
             Size = UDim2.fromOffset(CellWidth, CellHeight),
-            SelectedColor = selectedColor,
-            OnSelected = onSelected
+            SelectedBrickColor = selectedBrickColor,
+            OnSelected = onSelected,
+            Transparency = transparency
         }))
     end
 
@@ -94,8 +96,9 @@ local function CreatePaletteChildren(
     padding: number,
     rowPadding: number,
     maximumRowWidth: number,
-    selectedColor: Fusion.UsedAs<Color3?>,
-    onSelected: ColorSelectedCallback
+    selectedBrickColor: Fusion.UsedAs<BrickColor?>,
+    onSelected: BrickColorSelectedCallback,
+    transparency: Fusion.UsedAs<number>
 ): { Fusion.Child }
     local paletteRows = {} :: { Fusion.Child }
     local paletteIndex = 0
@@ -116,8 +119,9 @@ local function CreatePaletteChildren(
             rowIndex,
             padding,
             maximumRowWidth,
-            selectedColor,
-            onSelected
+            selectedBrickColor,
+            onSelected,
+            transparency
         ))
     end
 
@@ -136,8 +140,9 @@ local function CreatePaletteChildren(
         #PaletteRowSizes + 1,
         padding,
         maximumRowWidth,
-        selectedColor,
-        onSelected
+        selectedBrickColor,
+        onSelected,
+        transparency
     ))
 
     table.insert(paletteRows, New(scope, "UIListLayout") {
@@ -152,47 +157,46 @@ end
 
 type BrickColorPickerProps = {
     Padding: number?,
-    ColorState: Fusion.Value<Color3>?
+    SelectedBrickColor: Fusion.UsedAs<BrickColor?>?,
+    OnSelected: ((brickColor: BrickColor) -> ())?,
+    Transparency: Fusion.UsedAs<number>?
 }
 
 return Component<<BrickColorPickerProps>>(function(scope, props)
-    local props, extractedColorState =
-        TableExtract(props, "ColorState")
-    local providedColorState =
-        extractedColorState :: Fusion.Value<Color3>?
+    local props, extractedSelectedBrickColor =
+        TableExtract(props, "SelectedBrickColor")
+    local providedSelectedBrickColor =
+        extractedSelectedBrickColor :: Fusion.UsedAs<BrickColor?>?
+    local props, onSelected = TableExtract(props, "OnSelected")
+    local props, transparency = TableExtract(props, "Transparency", 0)
     local props, padding = TableExtract(props, "Padding", 1)
     padding = math.max(0, padding)
 
-    local internalColorState = Value<<Color3?>>(scope, nil)
-    local selectedColor = Computed(scope, function(use): Color3?
-        local colorState = providedColorState
+    local internalSelectedBrickColor = Value<<BrickColor?>>(scope, nil)
+    local selectedBrickColor = Computed(scope, function(use): BrickColor?
+        local provided = providedSelectedBrickColor
 
         return
-            if colorState then use<<Color3>>(colorState)
-            else use<<Color3?>>(internalColorState)
+            if provided ~= nil then use<<BrickColor?>>(provided)
+            else use<<BrickColor?>>(internalSelectedBrickColor)
     end)
 
-    local function SetSelectedColor(color: Color3)
-        local colorState = providedColorState
-
-        if colorState then
-            colorState:set(color)
-        else
-            internalColorState:set(color)
+    local function SetSelectedBrickColor(brickColor: BrickColor)
+        if providedSelectedBrickColor == nil then
+            internalSelectedBrickColor:set(brickColor)
         end
+
+        if onSelected then onSelected(brickColor) end
     end
 
     local maximumRowWidth =
         MaximumColumns * CellWidth
         + (MaximumColumns - 1) * padding
-    local rowCount = #PaletteRowSizes + 1
     local rowPadding = HexRowPadding + padding
-    local paletteHeight =
-        rowCount * CellHeight
-        + (rowCount - 1) * rowPadding
 
     return New(scope, "Frame")(CombineProps({
-        Size = UDim2.fromOffset(maximumRowWidth, paletteHeight),
+        Size = UDim2.fromOffset(0, 0),
+        AutomaticSize = Enum.AutomaticSize.XY,
         BackgroundTransparency = 1,
 
         [Children] = CreatePaletteChildren(
@@ -200,8 +204,9 @@ return Component<<BrickColorPickerProps>>(function(scope, props)
             padding,
             rowPadding,
             maximumRowWidth,
-            selectedColor,
-            SetSelectedColor
+            selectedBrickColor,
+            SetSelectedBrickColor,
+            transparency
         ),
 
         Name = "BrickColorPicker"
