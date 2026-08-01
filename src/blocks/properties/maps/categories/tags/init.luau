@@ -337,7 +337,7 @@ return function(
     end)
 
     selectMenu = SelectMenu(scope, {
-        Items = menuLabels,
+        Items = menuLabels :: any,
         EnableSearch = true,
         SortOrder = Enum.SortOrder.Name,
         SearchState = searchState,

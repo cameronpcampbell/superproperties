@@ -20,6 +20,6 @@ return {
 
     Cross = "rbxassetid://90093302261099",
 
-    BrickColor = "rbxassetid://104036867155496",
-    BrickColorStroke = "rbxassetid://131914723964764",
+    BrickColor = "rbxassetid://113083526343572",
+    BrickColorStroke = "rbxassetid://111501097354421",
 }

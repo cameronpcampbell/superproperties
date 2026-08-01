@@ -254,7 +254,7 @@ return Component<<SelectProps>>(function(scope, props)
 
     selectMenu = SelectMenu(scope, {
         Variant = variant,
-        Items = items,
+        Items = items :: any,
         SelectedIdx = selectedIdxState,
         Width = UDim.new(1, 2),
         MaxHeight = menuMaxHeight,

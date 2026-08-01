@@ -28,6 +28,9 @@ return {
     BooleanIconButton = require(Components.booleanIconButton),
     Checkbox = require(Components.checkbox),
 
+    -- BrickColor.
+    BrickColorPicker = require(Components.brickColorPicker),
+
     -- Map.
     Map = require(Components.map),
     VirtualMapScrollable = require(Components.virtualMapScrollable),

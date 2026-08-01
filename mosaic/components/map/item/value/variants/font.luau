@@ -41,7 +41,8 @@ return CreateSelectMenuVariant<<Font>>({
 
     GetMetadata = function(_initialValue: Font)
         return {
-            Items = MenuItems,
+            Items =
+                MenuItems :: {string | { FontFace: Font?, Text: string }},
 
             GetIndex = function(value: Font): number?
                 return IndexByFamily[value.Family]

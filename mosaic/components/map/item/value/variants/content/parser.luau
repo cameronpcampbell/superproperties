@@ -12,7 +12,7 @@ type Parser = {
 	Position: number,
 }
 
-local SupportedSchemes: { [string]: boolean } = table.freeze({
+local SupportedSchemes = table.freeze({
 	rbxassetid = true,
 	rbxasset = true,
 	rbxthumb = true,
@@ -21,7 +21,7 @@ local SupportedSchemes: { [string]: boolean } = table.freeze({
 	rbxtemp = true,
 	http = true,
 	https = true,
-})
+}) :: { read [string]: boolean }
 
 local function DescribeToken(token: Token?): string
 	if token == nil then
