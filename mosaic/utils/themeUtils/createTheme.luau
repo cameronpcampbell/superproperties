@@ -7,7 +7,6 @@ local ColorSpace = require(Utils.colorSpace)
 
 local Types = require(script.Parent.types)
 local Constants = require(script.Parent.constants)
-local GetBestColor = require(script.Parent.getBestColor)
 
 const CORNER_RADIUS_SM = 3
 const CORNER_RADIUS_MD = 6
@@ -79,11 +78,12 @@ local function GenLerpedPalette(colors: { Color3 }, alpha: number): { Color3 }
 end
 
 local function GenFgPalette(surfaceColor: Color3): { Color3 }
-    local baseFgColor = GetBestColor(
-        surfaceColor,
-        Constants.BASE_LIGHT_TEXT_COLOR,
-        Constants.BASE_DARK_TEXT_COLOR
-    )
+    local baseFgColor = ColorSpace.Srgb.From(
+        ColorSpace.Srgb.From(surfaceColor):BestContrast(
+            ColorSpace.Srgb.From(Constants.BASE_LIGHT_TEXT_COLOR),
+            ColorSpace.Srgb.From(Constants.BASE_DARK_TEXT_COLOR)
+        )
+    ):ToColor3()
 
     local baseFg = ColorSpace.Oklch.From(baseFgColor)
     local lightnessStrength =

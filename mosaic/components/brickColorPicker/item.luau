@@ -3,20 +3,28 @@
 local Packages = script.Parent.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
-local New, Children, Computed, Value, OnEvent =
+local New, Children, Computed, Value, OnEvent, Tween =
     Fusion.New, Fusion.Children, Fusion.Computed,
-    Fusion.Value, Fusion.OnEvent
+    Fusion.Value, Fusion.OnEvent, Fusion.Tween
 
 local Utils = script.Parent.Parent.Parent.utils
 local FusionUtils = require(Utils.fusionUtils)
 local Oktween = FusionUtils.Oktween
 
+local ColorSpace = require(Utils.colorSpace)
 local ThemeUtils = require(Utils.themeUtils)
 
 local CoreComponents = script.Parent.Parent.Parent.coreComponents
 local AdaptiveHighlight = require(CoreComponents.adaptiveHighlight)
+local TransparencyGated = require(CoreComponents.transparencyGated)
 
 local Assets = require(script.Parent.Parent.Parent.assets)
+
+local SelectionTransparencyTweenInfo = TweenInfo.new(
+    .18,
+    Enum.EasingStyle.Exponential,
+    Enum.EasingDirection.InOut
+)
 
 type BrickColorItemProps = {
     BrickColor: BrickColor,
@@ -50,23 +58,32 @@ return function(
             return not use<<boolean>>(isSelected)
         end)
     local theme = ThemeUtils.GetThemeForScope(scope)
+    local selectionColor = Computed(scope, function(use): Color3
+        return ColorSpace.Srgb.From(
+            ColorSpace.Srgb.From(props.BrickColor.Color):BestContrast(
+                ColorSpace.Srgb.From(use<<Color3>>(theme.FgPrimary)),
+                ColorSpace.Srgb.From(use<<Color3>>(theme.AccentPrimary)),
+                ColorSpace.Srgb.From(use<<Color3>>(theme.AccentFgPrimary))
+            )
+        ):ToColor3()
+    end)
     local gradientColor =
         Computed(scope, function(use): ColorSequence?
             if not use<<boolean>>(isSelected) then return nil end
 
-            local foregroundColor =
-                ThemeUtils.GetBestColor(
-                    props.BrickColor.Color,
-                    use<<Color3>>(theme.FgPrimary),
-                    use<<Color3>>(theme.AccentPrimary)
-                )
-
-            return ColorSequence.new(foregroundColor)
+            return ColorSequence.new(use<<Color3>>(selectionColor))
         end)
     local gradientTransparency =
         Computed(scope, function(use): number
             return if use<<boolean>>(isSelected) then 0 else 0.78
         end)
+    local selectionTransparency = Tween<<number>>(
+        scope,
+        Computed(scope, function(use): number
+            return if use<<boolean>>(isSelected) then 0 else 1
+        end),
+        SelectionTransparencyTweenInfo
+    )
     local colorModifier = ThemeUtils.CalcColorModifier(
         scope,
         isHoverState,
@@ -123,6 +140,18 @@ return function(
                 Size = UDim2.fromScale(1, 1),
                 Image = Assets.BrickColorStroke,
                 BackgroundTransparency = 1,
+            }),
+
+            TransparencyGated(scope, NewUnscoped("ImageLabel"), {
+                GatedTransparencyProperty = "ImageTransparency",
+                Size = UDim2.fromScale(1, 1),
+                Image = Assets.BrickColorCheck,
+                ImageColor3 = selectionColor,
+                ImageTransparency = selectionTransparency,
+                BackgroundTransparency = 1,
+                ZIndex = 2,
+
+                Name = "BrickColorCheck"
             })
         }
     }

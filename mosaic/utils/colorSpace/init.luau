@@ -462,8 +462,9 @@ function Oklch.IsLight(self: OklchClass): boolean
 	return not self:IsDark()
 end
 
-export type AnyColor =
-    SrgbClass | LinearRgbClass | XyzClass | OklabClass | OklchClass | Color3
+export type ColorSpace =
+	SrgbClass | LinearRgbClass | XyzClass | OklabClass | OklchClass
+export type AnyColor = ColorSpace | Color3
 export type AnyColorConstructor =
     typeof(Srgb) | typeof(LinearRgb) | typeof(Xyz) | typeof(Oklab) | typeof(Oklch) | "Color3"
 export type ContrastResult = Contrast.Result
@@ -538,6 +539,27 @@ local function checkContrast(
 	)
 end
 
+local function bestContrast(
+	reference: ColorSpace,
+	firstCandidate: ColorSpace,
+	...: ColorSpace
+): ColorSpace
+	local bestCandidate = firstCandidate
+	local bestContrastRatio =
+		checkContrast(reference, firstCandidate).ratio
+
+	for _, candidate in { ... } do
+		local contrastRatio = checkContrast(reference, candidate).ratio
+
+		if contrastRatio > bestContrastRatio then
+			bestCandidate = candidate
+			bestContrastRatio = contrastRatio
+		end
+	end
+
+	return bestCandidate
+end
+
 function Srgb.CheckContrast(
 	self: SrgbClass,
 	other: AnyColor
@@ -571,6 +593,46 @@ function Oklch.CheckContrast(
 	other: AnyColor
 ): Contrast.Result
 	return checkContrast(self, other)
+end
+
+function Srgb.BestContrast(
+	self: SrgbClass,
+	firstCandidate: ColorSpace,
+	...: ColorSpace
+): ColorSpace
+	return bestContrast(self, firstCandidate, ...)
+end
+
+function LinearRgb.BestContrast(
+	self: LinearRgbClass,
+	firstCandidate: ColorSpace,
+	...: ColorSpace
+): ColorSpace
+	return bestContrast(self, firstCandidate, ...)
+end
+
+function Xyz.BestContrast(
+	self: XyzClass,
+	firstCandidate: ColorSpace,
+	...: ColorSpace
+): ColorSpace
+	return bestContrast(self, firstCandidate, ...)
+end
+
+function Oklab.BestContrast(
+	self: OklabClass,
+	firstCandidate: ColorSpace,
+	...: ColorSpace
+): ColorSpace
+	return bestContrast(self, firstCandidate, ...)
+end
+
+function Oklch.BestContrast(
+	self: OklchClass,
+	firstCandidate: ColorSpace,
+	...: ColorSpace
+): ColorSpace
+	return bestContrast(self, firstCandidate, ...)
 end
 
 return {
