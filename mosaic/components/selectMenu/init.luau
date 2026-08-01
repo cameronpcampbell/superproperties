@@ -34,7 +34,6 @@ local CoreComponents = script.Parent.Parent.coreComponents
 local CoreFrame = require(CoreComponents.frame)
 local CoreInput = require(CoreComponents.input)
 local Placement = require(CoreComponents.placement)
-local TransparencyGated = require(CoreComponents.transparencyGated)
 
 local Components = script.Parent.Parent.components
 local Container = require(Components.container)
@@ -415,28 +414,27 @@ return Component<<SelectMenuProps>>(function(scope, props)
         Name = "Search"
     }) :: TextBox
 
-    local searchBorder = TransparencyGated(
-        scope,
-        Supercorner.new :: any,
-        {
-            GatedTransparencyProperty = "StrokeTransparency",
-            BackgroundTransparency = 1,
-            StrokeColor = animatedSearchStrokeColor,
-            StrokeTransparency = composedSearchStrokeTransparency,
-            StrokeThickness = 1,
-            Size = UDim2.new(1, 2, 1, 2),
-            ZIndex = 3,
-            TopLeftRadius = searchCornerRadius,
-            TopRightRadius = searchCornerRadius,
-            BottomLeftRadius = 0,
-            BottomRightRadius = 0,
-            Position = UDim2.fromScale(.5, .5),
-            AnchorPoint = Vector2.new(.5, .5)
-        }
-    )
+    -- Search focus can change while the popover is mounting. Keep both focus
+    -- visuals in the child tree so sibling visibility updates cannot make
+    -- [Children] re-enter a busy structural Computed.
+    local searchBorder = Supercorner.new(scope, {
+        BackgroundTransparency = 1,
+        StrokeColor = animatedSearchStrokeColor,
+        StrokeTransparency = composedSearchStrokeTransparency,
+        StrokeThickness = 1,
+        Size = UDim2.new(1, 2, 1, 2),
+        ZIndex = 3,
+        TopLeftRadius = searchCornerRadius,
+        TopRightRadius = searchCornerRadius,
+        BottomLeftRadius = 0,
+        BottomRightRadius = 0,
+        Position = UDim2.fromScale(.5, .5),
+        AnchorPoint = Vector2.new(.5, .5)
+    })
 
     local searchFocusRing = FocusRing(scope, {
         IsFocus = visualSearchFocusState,
+        CullWhenHidden = false,
         TransitionTweenInfo = FocusTransitionTweenInfo,
         BaseSize = UDim2.new(1, 2, 1, 2),
         TopLeftRadius = searchCornerRadius,

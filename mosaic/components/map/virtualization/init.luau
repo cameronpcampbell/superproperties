@@ -1569,14 +1569,50 @@ local function ComputeVirtualizedRows(
 ): Fusion.Computed<Fusion.Child>
     local rowChildren, renderedRows = ComputeRows(scope, config)
 
-    return Computed(scope, function(use: Fusion.Use): Fusion.Child
+    local fullyCollapsed = Computed(scope, function(use: Fusion.Use): boolean
         local usedRowHeight = use<<number>>(config.RowHeight)
-        local isFullyCollapsed =
+        return
             use<<boolean>>(config.CollapsedState)
             and use<<UDim2>>(config.AnimatedMapSize).Height.Offset
                 == usedRowHeight
+    end)
+    local fullyCollapsedState =
+        Value(scope, Peek<<boolean>>(fullyCollapsed))
+    local pendingFullyCollapsed =
+        Peek<<boolean>>(fullyCollapsedState)
+    local updateScheduled = false
+    local stateAlive = true
 
-        if isFullyCollapsed then
+    Observer(scope, fullyCollapsed):onChange(function()
+        local nextFullyCollapsed = Peek<<boolean>>(fullyCollapsed)
+        if pendingFullyCollapsed == nextFullyCollapsed then return end
+
+        pendingFullyCollapsed = nextFullyCollapsed
+        if updateScheduled then return end
+
+        -- AnimatedMapSize changes while Fusion is evaluating its graph.
+        -- Publish the structural child change afterward so [Children] cannot
+        -- re-enter the Computed which is currently producing that update.
+        updateScheduled = true
+        task.defer(function()
+            updateScheduled = false
+            if not stateAlive then return end
+            if Peek<<boolean>>(fullyCollapsedState)
+                == pendingFullyCollapsed
+            then
+                return
+            end
+
+            fullyCollapsedState:set(pendingFullyCollapsed)
+        end)
+    end)
+
+    table.insert(scope, function()
+        stateAlive = false
+    end)
+
+    return Computed(scope, function(use: Fusion.Use): Fusion.Child
+        if use<<boolean>>(fullyCollapsedState) then
             local usedRenderedRows = use<<RenderedRows>>(renderedRows)
             local headerRow = usedRenderedRows[1]
             return if config.Header and headerRow then headerRow else {}
