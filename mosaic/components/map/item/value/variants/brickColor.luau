@@ -98,7 +98,7 @@ return function(
         AutomaticSize = Enum.AutomaticSize.XY,
         Position = UDim2.new(1, 1, 1, MenuGap),
         AnchorPoint = Vector2.new(1, 0),
-        Enabled = true,
+        ViewportFittingEnabled = true,
         StickToViewport = false,
         Visible = visualFocusState,
         Interactable = inputFocusState,

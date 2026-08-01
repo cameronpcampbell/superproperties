@@ -24,7 +24,7 @@ local Fit = require(script.fit)
 export type Props = {
     Position: Fusion.UsedAs<UDim2>?,
     AnchorPoint: Fusion.UsedAs<Vector2>?,
-    Enabled: Fusion.UsedAs<boolean>?,
+    ViewportFittingEnabled: Fusion.UsedAs<boolean>?,
     StickToViewport: Fusion.UsedAs<boolean>?,
     Visible: Fusion.UsedAs<boolean>?,
     Transparency: Fusion.UsedAs<number>?,
@@ -107,7 +107,8 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
         TableExtract(props, "Position", UDim2.fromScale(0, 0))
     local props, preferredAnchorPoint =
         TableExtract(props, "AnchorPoint", Vector2.zero)
-    local props, enabled = TableExtract(props, "Enabled", true)
+    local props, viewportFittingEnabled =
+        TableExtract(props, "ViewportFittingEnabled", true)
     local props, stickToViewport =
         TableExtract(props, "StickToViewport", false)
     local props, visible = TableExtract(props, "Visible", true)
@@ -124,9 +125,10 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
         Computed(scope, function(use): Vector2
             return use<<Vector2>>(preferredAnchorPoint)
         end)
-    local effectiveEnabled = Computed(scope, function(use): boolean
-        return use<<boolean>>(enabled)
-    end)
+    local effectiveViewportFittingEnabled =
+        Computed(scope, function(use): boolean
+            return use<<boolean>>(viewportFittingEnabled)
+        end)
     local effectiveStickToViewport = Computed(scope, function(use): boolean
         return use<<boolean>>(stickToViewport)
     end)
@@ -295,7 +297,7 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
         local usedPreferredAnchorPoint =
             Peek<<Vector2>>(effectivePreferredAnchorPoint)
 
-        if not Peek<<boolean>>(effectiveEnabled) then
+        if not Peek<<boolean>>(effectiveViewportFittingEnabled) then
             if not Peek<<boolean>>(effectiveVisible)
                 and Peek<<boolean>>(shouldRender)
             then
@@ -413,7 +415,7 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
 
     Observer(scope, effectivePreferredPosition):onChange(QueuePlacement)
     Observer(scope, effectivePreferredAnchorPoint):onChange(QueuePlacement)
-    Observer(scope, effectiveEnabled):onBind(QueuePlacement)
+    Observer(scope, effectiveViewportFittingEnabled):onBind(QueuePlacement)
     Observer(scope, effectiveStickToViewport):onChange(QueuePlacement)
     Observer(scope, effectiveVisible):onChange(function()
         openingRevision += 1
