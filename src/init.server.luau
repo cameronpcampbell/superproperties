@@ -98,18 +98,14 @@ local Widget = Scope:Widget {
                     }
                 },
 
-                Scope:BrickColorPicker {
-
-                },
-
-                --[[Properties.Maps(Scope, {
+                Properties.Maps(Scope, {
                     SelectedInstancesValue = SelectedInstancesValue,
                     Active = WidgetEnabled,
                     OmitRbxAttributes = true,
                     TintHeaders = SettingsState.TintHeaders,
                     ShowNonScriptableProperties =
                         SettingsState.ShowNonScriptableProperties
-                }),]]
+                }),
 
                 Scope:New "UIPadding" {
                     PaddingRight = UDim.new(0, 4),
