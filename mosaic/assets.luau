@@ -18,5 +18,8 @@ return {
     CheckboxFalse = "rbxassetid://94880891664339",
     CheckboxMixed = "rbxassetid://93039358278963",
 
-    Cross = "rbxassetid://90093302261099"
+    Cross = "rbxassetid://90093302261099",
+
+    BrickColor = "rbxassetid://104036867155496",
+    BrickColorStroke = "rbxassetid://131914723964764",
 }
