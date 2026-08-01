@@ -39,6 +39,7 @@ return {
     Text = require(Components.text),
 
     -- Core components.
+    AdaptiveHighlight = require(CoreComponents.adaptiveHighlight),
     Placement = require(CoreComponents.placement),
     PopoverFocus = require(CoreComponents.popoverFocus),
     TransparencyGated = require(CoreComponents.transparencyGated),

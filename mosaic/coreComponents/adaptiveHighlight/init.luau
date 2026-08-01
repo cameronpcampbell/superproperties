@@ -2,17 +2,17 @@
 --!nolint LocalShadow
 
 local Packages = script.Parent.Parent.Parent
-local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
-local Computed, Observer, OnEvent, Peek, Spring, Value =
-    Fusion.Computed, Fusion.Observer, Fusion.OnEvent,
-    Fusion.peek, Fusion.Spring, Fusion.Value
+local Children, Computed, Observer, OnEvent, Peek, Spring, Value =
+    Fusion.Children, Fusion.Computed, Fusion.Observer,
+    Fusion.OnEvent, Fusion.peek, Fusion.Spring, Fusion.Value
 
 local Utils = script.Parent.Parent.utils
 
 local FusionUtils = require(Utils.fusionUtils)
-local Component, CombineProps = FusionUtils.Component, FusionUtils.CombineProps
+local ConstructorComponent, CombineProps =
+    FusionUtils.ConstructorComponent, FusionUtils.CombineProps
 
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
@@ -20,13 +20,14 @@ local GetThemeForScope = ThemeUtils.GetThemeForScope
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
-local CoreComponents = script.Parent.Parent.coreComponents
+local CoreComponents = script.Parent
 local CoreButton = require(CoreComponents.button)
 local CoreFrame = require(CoreComponents.frame)
 
-type HighlightGradientProps = {
+export type Props = {
     Enabled: Fusion.UsedAs<boolean>?,
     GradientTransparency: Fusion.UsedAs<number>?,
+    GradientProperty: string | Fusion.SpecialKey?,
     DefaultRotation: Fusion.UsedAs<number>?,
     CenterLockRadius: number?,
     CenterReleaseRadius: number?,
@@ -82,10 +83,12 @@ local function GetPointerRotation(
         radius
 end
 
-return Component<<HighlightGradientProps>>(function(scope, props)
+return ConstructorComponent<<Props>>(function(scope, constructor, props)
     local props, enabled = TableExtract(props, "Enabled", true)
     local props, gradientTransparency =
         TableExtract(props, "GradientTransparency", 0.78)
+    local props, gradientProperty =
+        TableExtract(props, "GradientProperty", Children)
     local props, defaultRotation =
         TableExtract(props, "DefaultRotation", 90)
     local props, centerLockRadius =
@@ -226,7 +229,7 @@ return Component<<HighlightGradientProps>>(function(scope, props)
     end)
 
     local rootProps = CombineProps(props, {
-        StrokeGradient = highlightGradient,
+        [gradientProperty] = highlightGradient,
 
         [OnEvent "MouseEnter"] = function(x: number, y: number)
             FollowPointer(x, y)
@@ -245,9 +248,9 @@ return Component<<HighlightGradientProps>>(function(scope, props)
     })
     local createdRoot = (
         if props.Button == true then
-            CoreButton(scope, Supercorner.new :: any, rootProps)
+            CoreButton(scope, constructor, rootProps)
         else
-            CoreFrame(scope, Supercorner.new :: any, rootProps)
+            CoreFrame(scope, constructor, rootProps)
     ) :: GuiObject
     root = createdRoot
 

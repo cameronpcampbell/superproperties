@@ -1,6 +1,7 @@
 --!strict
 
 local Packages = script.Parent.Parent.Parent.Parent
+local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
 local New, Children, Computed, Value, Peek, OnEvent, Tween =
@@ -20,8 +21,10 @@ local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope, CalcColorModifier =
     ThemeUtils.GetThemeForScope, ThemeUtils.CalcColorModifier
 
+local CoreComponents = script.Parent.Parent.Parent.coreComponents
+local AdaptiveHighlight = require(CoreComponents.adaptiveHighlight)
+
 local Components = script.Parent.Parent
-local HighlightSupercorner = require(Components.highlightSupercorner)
 local Text = require(Components.text)
 
 type SelectMenuItemProps = {
@@ -115,10 +118,11 @@ local function SelectMenuItem(
         props.Transparency
     )
 
-    return HighlightSupercorner(scope, {
+    return AdaptiveHighlight(scope, Supercorner.new :: any, {
         Button = true,
         Interactable = props.Interactable,
         GradientTransparency = composedGradientTransparency,
+        GradientProperty = "StrokeGradient",
         BackgroundColor3 = Oktween(
             scope,
             accentColor,

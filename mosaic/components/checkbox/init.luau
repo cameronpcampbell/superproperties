@@ -24,12 +24,11 @@ local GetThemeForScope, CalcColorModifier =
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
-local Components = script.Parent
-local HighlightSupercorner = require(Components.highlightSupercorner)
-local GetNextChecked = require(script.getNextChecked)
-
 local CoreComponents = script.Parent.Parent.coreComponents
+local AdaptiveHighlight = require(CoreComponents.adaptiveHighlight)
 local TransparencyGated = require(CoreComponents.transparencyGated)
+
+local GetNextChecked = require(script.getNextChecked)
 
 local Assets = require(script.Parent.Parent.assets)
 
@@ -121,11 +120,12 @@ return Component<<CheckboxProps>>(function(scope, props)
         return not use<<boolean>>(disabled)
     end)
 
-    return HighlightSupercorner(scope, {
+    return AdaptiveHighlight(scope, Supercorner.new :: any, {
         Button = true,
         Disabled = disabled,
         Enabled = gradientEnabled,
         GradientTransparency = 0.82,
+        GradientProperty = "StrokeGradient",
         BackgroundColor3 = Oktween(
             scope, accentColor,
             TweenInfo.new(

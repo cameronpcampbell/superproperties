@@ -2,6 +2,7 @@
 
 local Packages =
     script.Parent.Parent.Parent.Parent.Parent.Parent.Parent.Parent.packages
+local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
 local Computed, New, Children, Peek =
@@ -16,8 +17,11 @@ local ComputeUDim2FromOffset = ComputeTransforms.UDim2FromOffset
 local ThemeUtils = require(Utils.themeUtils)
 local GetThemeForScope = ThemeUtils.GetThemeForScope
 
+local CoreComponents =
+    script.Parent.Parent.Parent.Parent.Parent.Parent.coreComponents
+local AdaptiveHighlight = require(CoreComponents.adaptiveHighlight)
+
 local Components = script.Parent.Parent.Parent.Parent.Parent
-local HighlightSupercorner = require(Components.highlightSupercorner)
 local Text = require(Components.text)
 
 local Types = require(script.Parent.types)
@@ -50,8 +54,9 @@ local function Color(
     local height = theme:GetHeight(scope, "Sm")
     local cornerRadius = theme:GetCornerRadius(scope, "Sm")
 
-    return HighlightSupercorner(scope, {
+    return AdaptiveHighlight(scope, Supercorner.new :: any, {
         GradientTransparency = 0.78,
+        GradientProperty = "StrokeGradient",
         BackgroundColor3 = color,
         Visible = visible,
         StrokeThickness = 1,

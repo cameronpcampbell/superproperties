@@ -2,6 +2,7 @@
 --!nolint LocalShadow
 
 local Packages = script.Parent.Parent.Parent
+local Supercorner = require(Packages.supercorner)
 
 local Fusion = require(Packages.fusion)
 local New, Children, Value, Peek, Computed, OnEvent, Tween =
@@ -24,8 +25,10 @@ local GetThemeForScope, CalcColorModifier =
 local TableUtils = require(Utils.tableUtils)
 local TableExtract = TableUtils.Extract
 
+local CoreComponents = script.Parent.Parent.coreComponents
+local AdaptiveHighlight = require(CoreComponents.adaptiveHighlight)
+
 local Components = script.Parent
-local HighlightSupercorner = require(Components.highlightSupercorner)
 local Text = require(Components.text)
 
 type ButtonProps = {
@@ -119,11 +122,12 @@ return Component<<ButtonProps>>(function(scope, props)
         return not use<<boolean>>(disabled)
     end)
 
-    return HighlightSupercorner(scope, {
+    return AdaptiveHighlight(scope, Supercorner.new :: any, {
         Button = true,
         Disabled = disabled,
         Enabled = gradientEnabled,
         GradientTransparency = gradientTransparency,
+        GradientProperty = "StrokeGradient",
         BackgroundColor3 = Oktween(
             scope, accentColor,
             TweenInfo.new(
