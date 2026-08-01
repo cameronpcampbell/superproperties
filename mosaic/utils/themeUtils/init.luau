@@ -13,6 +13,7 @@ local ManageTheme = require(script.manageTheme)
 local Types = require(script.types)
 local ThemeHelpers = require(script.themeHelpers)
 local DefaultThemeConfig = require(script.defaultThemeConfig)
+local GetBestColor = require(script.getBestColor)
 
 export type Theme = Types.Theme
 export type ThemeSource = Types.ThemeSource
@@ -92,5 +93,6 @@ return {
     GetNextVariant = GetNextVariant,
     ApplyColorModifier = ApplyColorModifier,
     CalcColorModifier = ThemeHelpers.CalcColorModifier,
+    GetBestColor = GetBestColor,
     DefaultThemeConfig = DefaultThemeConfig
 }

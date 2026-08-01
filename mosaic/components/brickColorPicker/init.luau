@@ -4,7 +4,8 @@
 local Packages = script.Parent.Parent.Parent
 
 local Fusion = require(Packages.fusion)
-local New, Children = Fusion.New, Fusion.Children
+local New, Children, Computed, Value =
+    Fusion.New, Fusion.Children, Fusion.Computed, Fusion.Value
 
 local Utils = script.Parent.Parent.utils
 
@@ -45,13 +46,17 @@ local BottomRowBrickColorNames = {
 
 local BottomRowSize = #BottomRowBrickColorNames + 1
 
+type ColorSelectedCallback = (color: Color3) -> ()
+
 local function CreatePaletteRow(
     scope: Fusion.Scope,
     brickColors: { BrickColor },
     firstPaletteIndex: number,
     rowIndex: number,
     padding: number,
-    maximumRowWidth: number
+    maximumRowWidth: number,
+    selectedColor: Fusion.UsedAs<Color3?>,
+    onSelected: ColorSelectedCallback
 ): Fusion.Child
     local rowChildren = {} :: { Fusion.Child }
 
@@ -59,7 +64,9 @@ local function CreatePaletteRow(
         table.insert(rowChildren, BrickColorItem(scope, {
             BrickColor = brickColor,
             PaletteIndex = firstPaletteIndex + columnIndex - 1,
-            Size = UDim2.fromOffset(CellWidth, CellHeight)
+            Size = UDim2.fromOffset(CellWidth, CellHeight),
+            SelectedColor = selectedColor,
+            OnSelected = onSelected
         }))
     end
 
@@ -86,7 +93,9 @@ local function CreatePaletteChildren(
     scope: Fusion.Scope,
     padding: number,
     rowPadding: number,
-    maximumRowWidth: number
+    maximumRowWidth: number,
+    selectedColor: Fusion.UsedAs<Color3?>,
+    onSelected: ColorSelectedCallback
 ): { Fusion.Child }
     local paletteRows = {} :: { Fusion.Child }
     local paletteIndex = 0
@@ -106,7 +115,9 @@ local function CreatePaletteChildren(
             firstPaletteIndex,
             rowIndex,
             padding,
-            maximumRowWidth
+            maximumRowWidth,
+            selectedColor,
+            onSelected
         ))
     end
 
@@ -124,7 +135,9 @@ local function CreatePaletteChildren(
         paletteIndex,
         #PaletteRowSizes + 1,
         padding,
-        maximumRowWidth
+        maximumRowWidth,
+        selectedColor,
+        onSelected
     ))
 
     table.insert(paletteRows, New(scope, "UIListLayout") {
@@ -138,12 +151,36 @@ local function CreatePaletteChildren(
 end
 
 type BrickColorPickerProps = {
-    Padding: number?
+    Padding: number?,
+    ColorState: Fusion.Value<Color3>?
 }
 
 return Component<<BrickColorPickerProps>>(function(scope, props)
+    local props, extractedColorState =
+        TableExtract(props, "ColorState")
+    local providedColorState =
+        extractedColorState :: Fusion.Value<Color3>?
     local props, padding = TableExtract(props, "Padding", 1)
     padding = math.max(0, padding)
+
+    local internalColorState = Value<<Color3?>>(scope, nil)
+    local selectedColor = Computed(scope, function(use): Color3?
+        local colorState = providedColorState
+
+        return
+            if colorState then use<<Color3>>(colorState)
+            else use<<Color3?>>(internalColorState)
+    end)
+
+    local function SetSelectedColor(color: Color3)
+        local colorState = providedColorState
+
+        if colorState then
+            colorState:set(color)
+        else
+            internalColorState:set(color)
+        end
+    end
 
     local maximumRowWidth =
         MaximumColumns * CellWidth
@@ -154,7 +191,7 @@ return Component<<BrickColorPickerProps>>(function(scope, props)
         rowCount * CellHeight
         + (rowCount - 1) * rowPadding
 
-    return New(scope, "Frame") (CombineProps({
+    return New(scope, "Frame")(CombineProps({
         Size = UDim2.fromOffset(maximumRowWidth, paletteHeight),
         BackgroundTransparency = 1,
 
@@ -162,7 +199,9 @@ return Component<<BrickColorPickerProps>>(function(scope, props)
             scope,
             padding,
             rowPadding,
-            maximumRowWidth
+            maximumRowWidth,
+            selectedColor,
+            SetSelectedColor
         ),
 
         Name = "BrickColorPicker"

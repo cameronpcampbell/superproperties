@@ -26,6 +26,7 @@ local CoreFrame = require(CoreComponents.frame)
 
 export type Props = {
     Enabled: Fusion.UsedAs<boolean>?,
+    GradientColor: Fusion.UsedAs<ColorSequence?>?,
     GradientTransparency: Fusion.UsedAs<number>?,
     GradientProperty: string | Fusion.SpecialKey?,
     DefaultRotation: Fusion.UsedAs<number>?,
@@ -85,6 +86,8 @@ end
 
 return ConstructorComponent<<Props>>(function(scope, constructor, props)
     local props, enabled = TableExtract(props, "Enabled", true)
+    local props, gradientColor =
+        TableExtract(props, "GradientColor")
     local props, gradientTransparency =
         TableExtract(props, "GradientTransparency", 0.78)
     local props, gradientProperty =
@@ -133,7 +136,11 @@ return ConstructorComponent<<Props>>(function(scope, constructor, props)
 
     local theme = GetThemeForScope(scope)
     local highlightGradient =
-        theme:HighlightGradient(scope, gradientTransparency)
+        theme:HighlightGradient(
+            scope,
+            gradientTransparency,
+            gradientColor
+        )
     highlightGradient.Name = GradientName
     highlightGradient.Type = Enum.GradientType.Linear
     highlightGradient.Offset = Vector2.zero

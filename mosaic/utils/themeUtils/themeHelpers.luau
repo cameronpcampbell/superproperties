@@ -247,22 +247,33 @@ local function GetFontSize(
     )
 end
 
+local DefaultHighlightColor = ColorSequence.new({
+    ColorSequenceKeypoint.new(
+        0,
+        Constants.BASE_LIGHT_TEXT_COLOR
+    ),
+    ColorSequenceKeypoint.new(
+        1,
+        Constants.BASE_DARK_TEXT_COLOR
+    ),
+})
+
 local function HighlightGradient(
     _theme: Types.Theme,
     scope: Fusion.Scope,
-    transparency: Fusion.UsedAs<number>
+    transparency: Fusion.UsedAs<number>,
+    gradientColor: Fusion.UsedAs<ColorSequence?>?
 )
+    local color =
+        if gradientColor == nil then DefaultHighlightColor
+        else Computed(scope, function(use): ColorSequence
+            return
+                use<<ColorSequence?>>(gradientColor)
+                or DefaultHighlightColor
+        end)
+
     return New(scope, "UIGradient") {
-        Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(
-                0,
-                Constants.BASE_LIGHT_TEXT_COLOR
-            ),
-            ColorSequenceKeypoint.new(
-                1,
-                Constants.BASE_DARK_TEXT_COLOR
-            ),
-        }),
+        Color = color,
         Rotation = 90,
         Transparency = Computed(scope, function(use, scope)
             return NumberSequence.new(use(transparency))

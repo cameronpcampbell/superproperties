@@ -274,7 +274,8 @@ export type Theme = {
     HighlightGradient: (
         theme: Theme,
         scope: Fusion.Scope,
-        transparency: Fusion.UsedAs<number>
+        transparency: Fusion.UsedAs<number>,
+        gradientColor: Fusion.UsedAs<ColorSequence?>?
     ) -> UIGradient
 }
 return nil

@@ -22,4 +22,5 @@ return {
 
     BrickColor = "rbxassetid://113083526343572",
     BrickColorStroke = "rbxassetid://111501097354421",
+    BrickColorCheck = "rbxassetid://119781966846557",
 }

@@ -7,13 +7,12 @@ local ColorSpace = require(Utils.colorSpace)
 
 local Types = require(script.Parent.types)
 local Constants = require(script.Parent.constants)
+local GetBestColor = require(script.Parent.getBestColor)
 
 const CORNER_RADIUS_SM = 3
 const CORNER_RADIUS_MD = 6
 const CORNER_RADIUS_LG = 9
 
-const BASE_DARK_TEXT_COLOR = Constants.BASE_DARK_TEXT_COLOR
-const BASE_LIGHT_TEXT_COLOR = Constants.BASE_LIGHT_TEXT_COLOR
 const DARK_FG_LIGHTNESS_STRENGTH = 1
 const LIGHT_FG_LIGHTNESS_STRENGTH = .62
 const BASE_BG_TINT_COLOR = Color3.fromRGB(25, 26, 31)
@@ -80,21 +79,11 @@ local function GenLerpedPalette(colors: { Color3 }, alpha: number): { Color3 }
 end
 
 local function GenFgPalette(surfaceColor: Color3): { Color3 }
-    local surface = ColorSpace.Srgb.From(surfaceColor)
-
-    local lightContrast = surface:CheckContrast(
-        ColorSpace.Srgb.From(BASE_LIGHT_TEXT_COLOR)
+    local baseFgColor = GetBestColor(
+        surfaceColor,
+        Constants.BASE_LIGHT_TEXT_COLOR,
+        Constants.BASE_DARK_TEXT_COLOR
     )
-
-    local darkContrast = surface:CheckContrast(
-        ColorSpace.Srgb.From(BASE_DARK_TEXT_COLOR)
-    )
-
-    local useLightCandidate = lightContrast.ratio >= darkContrast.ratio
-
-    local baseFgColor =
-        if useLightCandidate then BASE_LIGHT_TEXT_COLOR
-        else BASE_DARK_TEXT_COLOR
 
     local baseFg = ColorSpace.Oklch.From(baseFgColor)
     local lightnessStrength =
