@@ -16,6 +16,7 @@ local ColorSpace = require(Utils.colorSpace)
 local ThemeUtils = require(Utils.themeUtils)
 
 local CoreComponents = script.Parent.Parent.Parent.coreComponents
+local CoreButton = require(CoreComponents.button)
 local AdaptiveHighlight = require(CoreComponents.adaptiveHighlight)
 local TransparencyGated = require(CoreComponents.transparencyGated)
 
@@ -50,6 +51,7 @@ return function(
     props: BrickColorItemProps
 ): Fusion.Child
     local isHoverState, isFocusState = Value(scope, false), Value(scope, false)
+
     local isSelected = Computed(scope, function(use): boolean
         local selectedBrickColor =
             use<<BrickColor?>>(props.SelectedBrickColor)
@@ -130,7 +132,7 @@ return function(
         )
     )
 
-    return New(scope, "ImageButton") {
+    return CoreButton(scope, NewUnscoped("ImageButton"), {
         Size = props.Size,
         LayoutOrder = props.PaletteIndex,
         Image = Assets.BrickColor,
@@ -182,5 +184,5 @@ return function(
                 Name = "BrickColorCheck"
             })
         }
-    }
+    })
 end
