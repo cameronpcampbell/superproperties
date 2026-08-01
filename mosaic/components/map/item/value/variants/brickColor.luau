@@ -88,8 +88,6 @@ return function(
             SyncSelectedBrickColor()
             warn(`SuperProperties: {err or "Could not set value."}`)
         end
-
-        popoverFocus.Release()
     end
 
     pickerContainer = Placement(scope, Container, {
