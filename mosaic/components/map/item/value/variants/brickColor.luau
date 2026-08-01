@@ -21,7 +21,7 @@ local Types = require(script.Parent.types)
 local ColorVariant = require(script.Parent.color)
 
 local MenuGap = 4
-local MenuPadding = 6
+local MenuPadding = 7
 
 local function NewTextButton(
     scope: Fusion.Scope,
@@ -92,7 +92,7 @@ return function(
 
     pickerContainer = Placement(scope, Container, {
         Variant = "Tertiary",
-        Size = UDim2.fromScale(1, 0),
+        Size = UDim2.new(1, 1, 0, 0),
         AutomaticSize = Enum.AutomaticSize.XY,
         Position = UDim2.new(1, 1, 1, MenuGap),
         AnchorPoint = Vector2.new(1, 0),
